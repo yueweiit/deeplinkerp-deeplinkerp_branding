@@ -1,47 +1,54 @@
-# ERP 分支与对接说明
+# ERP 独立仓库与对接说明
 
 ## 应该上传到哪里
 
-采购、销售、库存、导航和共享界面服务统一使用 `deeplinkerp_branding`，也是 GitHub 默认分支。
-从对应应用的固定分支拉取当前代码，开发修改后提交到该分支的 PR；不要从历史 `codex/*` 分支继续建立协作基线。
+2026-10-16 起，应用按一个 Frappe App 一个仓库管理，统一使用 `main` 开发和接收 PR。仓库名称使用 `deeplinkerp-` 前缀，Frappe App 名、Python 包和接口路径保持不变。
 
-仓库中的其他应用分别使用固定入口：
+| 业务范围 | App | GitHub 仓库（组织为 `yueweiit`） |
+| --- | --- | --- |
+| ERPNext 定制核心 | `erpnext` | `deeplinkerp-erpnext` |
+| 采购、销售、库存及共享界面 | `deeplinkerp_branding` | `deeplinkerp-deeplinkerp_branding` |
+| CRM 订单与出库接口 | `crm_integration` | `deeplinkerp-crm_integration` |
+| MES 集成 | `mes_integration` | `deeplinkerp-mes_integration` |
+| 中国财务和凭证 | `china_finance` | `deeplinkerp-china_finance` |
+| OA 采购申请与审批 | `oa_purchase_request` | `deeplinkerp-oa_purchase_request` |
+| 海外成本核算 | `overseas_costing` | `deeplinkerp-overseas_costing` |
+| 筛选和桌面扩展 | `custom_filters` | `deeplinkerp-custom_filters` |
+| 客户定制与经营指标 | `client_akivision` | `deeplinkerp-client_akivision` |
+| AI 助手 | `ai_assistant` | `deeplinkerp-ai_assistant` |
+| 草稿通知 | `draft_notifications` | `deeplinkerp-draft_notifications` |
+| 移动作业 | `mobile_operations` | `deeplinkerp-mobile_operations` |
 
-- CRM 销售订单、销售出库及 CRM 接口：`crm_integration`。
-- 中国财务和凭证：`china_finance`。
-- OA 采购申请及审批接入：`oa_purchase_request`。
-- 海外成本核算：`overseas_costing`。
-
-这些分支是独立的 Frappe 应用代码树，不能把一个应用的整棵分支直接覆盖另一个应用。
-对接 ERP 的应按实际修改的应用选择入口；跨应用修改拆成相应应用的 PR，并标明彼此依赖。
+按实际修改的 App 选择仓库，跨应用修改拆成相应仓库的 PR，并标明彼此依赖。原 `yueweiit/DeepLinkERP` 的应用分支和历史标签继续保留，用于追溯迁移前的版本。
 
 ## 同时修改三个部分时
 
-ERP 页面改动提交到 `deeplinkerp_branding`，ERP 侧 CRM 接口改动提交到 `crm_integration`，财务改动提交到 `china_finance`；涉及 OA 申请和审批的代码另外提交到 `oa_purchase_request`。
-各应用分别检出到独立目录或 worktree，并为同一次对接的 PR 标明依赖、接口字段和验收顺序。不要将不同应用的仓库根目录互相复制覆盖。
+ERP 页面改动提交到 Branding 仓库，ERP 侧 CRM 接口改动提交到 CRM Integration 仓库，财务改动提交到 China Finance 仓库；涉及 OA 申请和审批的代码另外提交到 OA Purchase Request 仓库。
+各应用分别检出到 Bench 的 `apps/<App名称>`，为同一次对接的 PR 标明依赖、接口字段和验收顺序。
 独立运行的 CRM 后端属于另一套仓库；这里的 `crm_integration` 是 ERP 侧接入应用，并非 CRM 网站后端源码。
 
 ## 取得应用主线
 
-以下以 ERP 界面为例；修改其他应用时，将两个 `deeplinkerp_branding` 参数替换为上文对应分支：
+以下以已有本地 Branding 工作区为例：
 
 ```bash
-git fetch origin '+refs/heads/*:refs/remotes/origin/*' --prune
-git switch deeplinkerp_branding
-git pull --ff-only origin deeplinkerp_branding
+git remote get-url origin
+git fetch origin
+git switch main
+git pull --ff-only origin main
 git switch -c feature/your-change
 ```
 
-新克隆仓库会默认检出 `deeplinkerp_branding`。已有未提交修改先正常提交或保存，再更新自己的工作区；不要使用强推或重置覆盖工作。
-PR 的目标选择对应的长期应用分支；完成合并后删除本人临时功能分支，长期应用主线保持固定名称。
+Branding 的 `origin` 应为 `https://github.com/yueweiit/deeplinkerp-deeplinkerp_branding.git`。其他应用使用表中对应的仓库。新克隆仓库默认检出 `main`；已有未提交修改先正常提交或保存，再更新工作区。
+PR 的目标选择本应用仓库的 `main`；完成合并后删除本人临时功能分支。
 如果旧功能分支在本次整理前已经开发，应从更新后的固定分支新建功能分支，再有选择地移植所需提交并重新测试；不要把归档版本整批合回来。
 
 ## 本次基线如何确定
 
-本次按用户确认，以服务器正在运行的版本为准，四个应用的协作基线分别与生产源码一致。
-2026-10-16 的生产提交保存在 `production/2026-10-16/<应用分支名>` 标签中；整理前的主线保存在 `archive/2026-10-16/<应用分支名>-before-production-alignment` 标签和合并历史中，没有强推或改写既有提交。
+迁移以原仓库各应用固定分支已核实的提交为起点，保留其可达历史。仓库入口和 CI 调整以新提交记录，不改写已有业务提交。
+此前按用户确认完成的生产对齐历史继续保留。原仓库的 `production/2026-10-16/<应用分支名>` 保存生产提交，`archive/2026-10-16/<应用分支名>-before-production-alignment` 保存对齐前主线。
 原默认分支中的三个独有提交，以及 CRM 主线尚未部署的订单修订改动，本次不带入协作基线；需要恢复时独立评审。
-同时保留已验证的 CRM 发布工具 `289690cd45944a3ccbfe8fb8e100c2fc1fe9791d`；它们不修改运行中的接口。
+已验证的 CRM 发布工具 `289690cd45944a3ccbfe8fb8e100c2fc1fe9791d` 继续保留在提交历史中。
 
 线上 ERP 镜像包含多个应用的冻结版本，具体提交见根目录 `PRODUCTION_BASELINE.json`。
 分支会随着后续开发继续前进，因此分支最新提交不自动代表已经部署；核对当前线上接口时，以该文件的生产提交、应用代码树和实际在线接口为依据。

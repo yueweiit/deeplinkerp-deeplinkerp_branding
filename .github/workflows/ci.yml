@@ -3,9 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - deeplinkerp_branding
       - main
-      - codex/crm-outbound-release
   pull_request:
 
 concurrency:
@@ -115,7 +113,7 @@ jobs:
           bench get-app --branch "$ERPNEXT_RELEASE" erpnext https://github.com/frappe/erpnext
           # Exercise the real optional approval helpers without installing their schema.
           costing_source="$RUNNER_TEMP/overseas_costing"
-          git clone --depth 1 --no-checkout --branch overseas_costing https://github.com/yueweiit/DeepLinkERP "$costing_source"
+          git clone --depth 1 --no-checkout --branch main https://github.com/yueweiit/deeplinkerp-overseas_costing.git "$costing_source"
           git -C "$costing_source" fetch --depth 1 origin "$OVERSEAS_COSTING_COMMIT"
           git -C "$costing_source" checkout --detach "$OVERSEAS_COSTING_COMMIT"
           bench get-app --skip-assets overseas_costing "$costing_source"
