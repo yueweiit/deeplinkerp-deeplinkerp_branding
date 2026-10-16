@@ -88,4 +88,11 @@ body:not(.dlp-sales-order-grid-active) .dlp-sales-scroll-top{display:none !impor
 .dlp-sales-detail-layout dt,.dlp-sales-detail-layout dd{padding:7px;border-bottom:1px solid var(--border-color,#e2e2e2);margin:0;overflow-wrap:anywhere}
 .dlp-sales-detail-layout dt{background:#edf5ff;font-weight:400}.dlp-sales-detail-layout .text-muted{font-size:12px}
 .dlp-sales-detail-heading{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.dlp-sales-receipts{padding:14px 0;border-top:1px solid var(--border-color,#e2e2e2);border-bottom:1px solid var(--border-color,#e2e2e2);margin:12px 0}
+.dlp-sales-receipts .dlp-sales-detail-heading h4{margin:0}
+.dlp-sales-payment-new .icon{margin-right:4px}
+.dlp-sales-receipts-body{margin-top:10px;font-size:13px}
+.dlp-sales-receipt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border-color,#e2e2e2)}
+.dlp-sales-receipt:last-child{border-bottom:0}.dlp-sales-receipt strong{margin-left:auto;font-variant-numeric:tabular-nums}
+.dlp-sales-receipts .text-warning{margin:8px 0 0;font-size:12px}
 @media(max-width:800px){.dlp-sales-detail-layout{grid-template-columns:1fr}.dlp-sales-release-action{flex:1 1 100%;justify-content:space-between}body.dlp-sales-order-grid-active .dlp-po-filter{flex:1 1 130px}body.dlp-sales-order-grid-active .dlp-po-filter[data-fieldname=search]{flex:1 1 100%}.dlp-sales-scroll-top{right:16px}}

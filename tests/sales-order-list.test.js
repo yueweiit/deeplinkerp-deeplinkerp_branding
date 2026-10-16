@@ -28,6 +28,23 @@ test("detail output escapes source text and only renders permission-filtered ite
  assert.ok(html.includes('0 件'));
 });
 
+test("sales detail offers mapped payment creation only when permitted and labels zero-value orders", () => {
+ const detail={header:{name:'SO-1',grand_total:0,currency:'MXN'},item_fields:[],items:[],can_create_payment_entry:true};
+ const html=grid.detailsHTML(detail);
+ assert.match(html,/dlp-sales-payment-new[^>]*>新增收款<\/button>/);
+ assert.match(html,/订单金额为 0，请先核实销售价格/);
+ assert.match(html,/dlp-sales-receipts-body/);
+ assert.doesNotMatch(grid.detailsHTML({...detail,can_create_payment_entry:false}),/dlp-sales-payment-new/);
+});
+
+test("detail receipts escape identifiers and distinguish draft, submitted and hidden records", () => {
+ const html=grid.receiptsHTML({receipts:[{name:'PE-<bad>',docstatus:0,posting_date:'2026-10-16',allocated_amount:20,currency:'MXN'},{name:'PE-2',docstatus:1,allocated_amount:10,currency:'MXN'}],receipts_complete:true});
+ assert.match(html,/PE-&lt;bad&gt;.*草稿.*20\.00 MXN.*PE-2.*已提交/s);
+ assert.doesNotMatch(html,/<bad>/);
+ assert.match(grid.receiptsHTML({receipts:[],receipts_complete:false}),/暂无关联收款记录.*部分收款记录不可见/s);
+ assert.match(grid.receiptsHTML({reason:'denied'}),/收款记录不可用/);
+});
+
 test("main quantity summary renders authorized totals without units and removes the price renderer", () => {
  const render=grid.renderValue;
  for(const [doc,expected] of [[{dlp_quantity:3,dlp_uom:'件'},'3'],[{dlp_quantity:3.75,dlp_multiple_units:true},'3.75'],[{dlp_multiple_units:true},'—'],[{dlp_quantity:0,dlp_uom:'件'},'0']])assert.equal(render("dlp_quantity",doc,{translate:x=>x}),expected);

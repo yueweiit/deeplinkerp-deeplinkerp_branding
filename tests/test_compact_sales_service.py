@@ -7,7 +7,7 @@ import unittest
 from contextvars import ContextVar
 from decimal import Decimal
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 class NativeRow(types.SimpleNamespace):
@@ -23,6 +23,10 @@ class SalesSummaryTests(unittest.TestCase):
 		frappe.PermissionError = type("PermissionError", (Exception,), {})
 		frappe.DoesNotExistError = type("DoesNotExistError", (Exception,), {})
 		frappe.whitelist = lambda: lambda method: method
+		frappe.has_permission = lambda doctype, permission, **kwargs: True
+		frappe.throw = lambda message, error=None: (_ for _ in ()).throw((error or Exception)(message))
+		frappe._ = lambda message: message
+		self.frappe = frappe
 		model = types.ModuleType("frappe.model")
 		model.get_permitted_fields = lambda *args, **kwargs: self.fields
 		utils = types.ModuleType("frappe.utils")
@@ -106,6 +110,29 @@ class SalesSummaryTests(unittest.TestCase):
 				self.assertNotIn("dlp_quantity", row)
 				if "rate" in fields:
 					self.assertEqual(row["dlp_rate"], 10, "legacy public response remains compatible")
+
+	def test_payment_action_requires_submitted_order_and_payment_entry_create_permission(self):
+		self.docs["SO-1"] = NativeRow(name="SO-1", company="Company", docstatus=0, items=[], sales_team=[])
+		self.assertFalse(self.sales.get_sales_order_details("SO-1")["can_create_payment_entry"])
+		self.docs["SO-1"].docstatus = 1
+		with patch.object(self.frappe, "has_permission", side_effect=lambda doctype, permission, **kwargs: doctype != "Payment Entry"):
+			self.assertFalse(self.sales.get_sales_order_details("SO-1")["can_create_payment_entry"])
+			with self.assertRaises(self.frappe.PermissionError):
+				self.sales.make_sales_order_payment_entry("SO-1")
+		self.assertTrue(self.sales.get_sales_order_details("SO-1")["can_create_payment_entry"])
+
+	def test_payment_action_uses_native_sales_order_mapping_without_saving(self):
+		self.docs["SO-1"] = NativeRow(name="SO-1", company="Company", docstatus=1, items=[], sales_team=[])
+		mapped = NativeRow(doctype="Payment Entry", name="new-payment-entry")
+		mapper = Mock(return_value=mapped)
+		modules = {}
+		for name in ("erpnext", "erpnext.accounts", "erpnext.accounts.doctype", "erpnext.accounts.doctype.payment_entry"):
+			modules[name] = types.ModuleType(name)
+		modules["erpnext.accounts.doctype.payment_entry.payment_entry"] = types.ModuleType("payment_entry")
+		modules["erpnext.accounts.doctype.payment_entry.payment_entry"].get_payment_entry = mapper
+		with patch.dict(sys.modules, modules):
+			self.assertIs(self.sales.make_sales_order_payment_entry("SO-1"), mapped)
+		mapper.assert_called_once_with("Sales Order", "SO-1")
 
 
 if __name__ == "__main__":

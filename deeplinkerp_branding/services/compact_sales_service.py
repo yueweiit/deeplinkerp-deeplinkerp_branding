@@ -99,4 +99,15 @@ def get_sales_order_details(sales_order):
 		attachments = frappe.get_list("File", filters={"attached_to_doctype": "Sales Order", "attached_to_name": doc.name},
 			fields=["file_name", "file_url"], limit_page_length=100)
 	return {"header": header, "items": items, "item_fields": sorted(item_fields & ITEM_FIELDS), "attachments": attachments,
-		"can_edit": bool(frappe.has_permission("Sales Order", "write", doc=doc))}
+		"can_edit": bool(frappe.has_permission("Sales Order", "write", doc=doc)),
+		"can_create_payment_entry": bool(doc.docstatus == 1 and frappe.has_permission("Payment Entry", "create"))}
+
+
+@frappe.whitelist()
+def make_sales_order_payment_entry(sales_order):
+	doc = _read("Sales Order", sales_order, {"company"})
+	if doc.docstatus != 1 or not frappe.has_permission("Payment Entry", "create"):
+		frappe.throw(frappe._("订单未提交或没有创建收款凭证的权限。"), frappe.PermissionError)
+	from erpnext.accounts.doctype.payment_entry.payment_entry import get_payment_entry
+
+	return get_payment_entry("Sales Order", doc.name)

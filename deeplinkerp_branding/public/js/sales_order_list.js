@@ -39,7 +39,37 @@
 	function detailsHTML(detail) {
 		const header = detail.header;
 		const fields = [["custom_crm_order_no", "CRM 订单号"], ["name", "ERP 订单号"], ["customer_name", "客户"], ["customer", "ERP 客户编码"], ["title", "ERP 标题"], ["contact_display", "联系人"], ["contact_email", "联系人邮箱"], ["contact_mobile", "联系电话"], ["transaction_date", "订单日期"], ["delivery_date", "预计交付日期"], ["company", "公司"], ["custom_process_status", "ERP 业务状态"], ["grand_total", "ERP 订单金额"], ["advance_paid", "ERP 预付款汇总"], ["custom_odt", "ODT"], ["custom_remark", "销售备注"], ["owner", "ERP 创建人"], ["creation", "创建时间"], ["modified_by", "ERP 更新人"], ["modified", "更新时间"]].filter(([field]) => Object.hasOwn(header, field));
-		return `<div class="dlp-sales-detail-layout"><section><h4>${esc(t("订单基本信息"))}</h4><dl>${fields.map(([field, label]) => `<dt>${esc(t(label))}</dt><dd>${field === "custom_process_status" ? esc(state(header[field])) : field === "advance_paid" ? prepayment(header) : field === "grand_total" ? money(header[field], header.currency) : esc(header[field] || "—")}</dd>`).join("")}</dl>${Object.hasOwn(header, "advance_paid") ? `<p class="text-muted">${esc(t("预付款为 ERP 订单汇总；草稿收款不代表已到账，未录入的收款请向财务核对。"))}</p>` : ""}<p class="text-muted">${esc(t("显示 ERP 已同步字段；负责人来自销售团队，创建人是 ERP 账户。"))}</p><a class="btn btn-default btn-sm" href="/desk/sales-order/${encodeURIComponent(header.name)}">${esc(t(detail.can_edit ? "打开原生订单编辑" : "打开原生订单"))}</a></section><section><div class="dlp-sales-detail-heading"><h4>${esc(t("订单产品明细"))}</h4><button class="btn btn-default btn-sm dlp-sales-all-items" aria-expanded="false">${esc(t("显示全部明细字段"))}</button></div>${itemTable(detail, false)}<h4>${esc(t("订单附件"))}</h4>${(detail.attachments || []).filter(file => /^\/(private\/)?files\//.test(file.file_url)).map(file => `<p><a target="_blank" rel="noopener" href="${esc(file.file_url)}">${esc(file.file_name)}</a></p>`).join("") || `<p class="text-muted">${esc(t("没有可见附件"))}</p>`}<p class="text-muted">${esc(t("预计交付日期沿用 ERP 交期；CRM 未同步的源字段不作推断。"))}</p></section></div>`;
+		const addIcon = root.frappe?.utils?.icon?.("add", "sm") || "";
+		const paymentButton = detail.can_create_payment_entry ? `<button type="button" class="btn btn-primary btn-sm dlp-sales-payment-new">${addIcon}${esc(t("新增收款"))}</button>` : "";
+		return `<div class="dlp-sales-detail-layout"><section><h4>${esc(t("订单基本信息"))}</h4><dl>${fields.map(([field, label]) => `<dt>${esc(t(label))}</dt><dd>${field === "custom_process_status" ? esc(state(header[field])) : field === "advance_paid" ? prepayment(header) : field === "grand_total" ? money(header[field], header.currency) : esc(header[field] || "—")}</dd>`).join("")}</dl>${Object.hasOwn(header, "advance_paid") ? `<p class="text-muted">${esc(t("预付款为 ERP 订单汇总；草稿收款不代表已到账，未录入的收款请向财务核对。"))}</p>` : ""}<p class="text-muted">${esc(t("显示 ERP 已同步字段；负责人来自销售团队，创建人是 ERP 账户。"))}</p><a class="btn btn-default btn-sm" href="/desk/sales-order/${encodeURIComponent(header.name)}">${esc(t(detail.can_edit ? "打开原生订单编辑" : "打开原生订单"))}</a></section><section><div class="dlp-sales-detail-heading"><h4>${esc(t("订单产品明细"))}</h4><button class="btn btn-default btn-sm dlp-sales-all-items" aria-expanded="false">${esc(t("显示全部明细字段"))}</button></div>${itemTable(detail, false)}<div class="dlp-sales-receipts"><div class="dlp-sales-detail-heading"><h4>${esc(t("收款与预付"))}</h4>${paymentButton}</div><div class="dlp-sales-receipts-body" role="status">${esc(t("正在读取关联收款记录…"))}</div>${header.grand_total === 0 ? `<p class="text-warning">${esc(t("订单金额为 0，请先核实销售价格后再分配预付款。"))}</p>` : ""}</div><h4>${esc(t("订单附件"))}</h4>${(detail.attachments || []).filter(file => /^\/(private\/)?files\//.test(file.file_url)).map(file => `<p><a target="_blank" rel="noopener" href="${esc(file.file_url)}">${esc(file.file_name)}</a></p>`).join("") || `<p class="text-muted">${esc(t("没有可见附件"))}</p>`}<p class="text-muted">${esc(t("预计交付日期沿用 ERP 交期；CRM 未同步的源字段不作推断。"))}</p></section></div>`;
+	}
+	function receiptsHTML(review) {
+		if (!Array.isArray(review?.receipts)) return esc(t("收款记录不可用，请打开原生订单核对。"));
+		const records = review.receipts.map(payment => `<div class="dlp-sales-receipt"><a href="/desk/payment-entry/${esc(encodeURIComponent(payment.name))}">${esc(payment.name)}</a><span>${esc(t(payment.docstatus === 1 ? "已提交" : payment.docstatus === 2 ? "已取消" : "草稿"))} · ${esc(payment.posting_date || "")}</span><strong>${money(payment.allocated_amount, payment.currency)}</strong></div>`).join("");
+		const warning = review.association_error ? "收款与订单关联异常，请财务核对。" : review.receipts_complete === false ? "部分收款记录不可见，请财务核对。" : "";
+		return (records || `<p class="text-muted">${esc(t("暂无关联收款记录"))}</p>`) + (warning ? `<p class="text-warning">${esc(t(warning))}</p>` : "");
+	}
+	async function loadDetailReceipts(dialog, name) {
+		const body = dialog.$wrapper.find(".dlp-sales-receipts-body");
+		try {
+			const response = await root.frappe.call({ method: "crm_integration.crm_integration.finance_release.get_finance_release_review", args: { sales_orders: [name] } });
+			body.html(receiptsHTML(response.message?.orders?.[0]));
+		} catch (_) {
+			body.text(t("收款记录读取失败，请打开原生订单核对。"));
+		}
+	}
+	async function openSalesOrderPaymentEntry(dialog, name, button) {
+		button.prop("disabled", true);
+		try {
+			const response = await root.frappe.call({ method: API + "make_sales_order_payment_entry", args: { sales_order: name } });
+			const [payment] = root.frappe.model.sync(response.message);
+			if (!payment) throw new Error("Missing mapped payment entry");
+			dialog.hide();
+			root.frappe.set_route("Form", payment.doctype, payment.name);
+		} catch (_) {
+			dialog.$wrapper.find(".dlp-sales-receipts-body").text(t("无法新建收款，请检查订单状态和收款权限。"));
+			button.prop("disabled", false);
+		}
 	}
 	function renderValue(field, doc, formatters) {
 		const tr = formatters.translate || t;
@@ -214,6 +244,8 @@
 			button.prop("disabled", true);
 			try { const detail = await call("get_sales_order_details", { sales_order: name }); if (button.hasClass("dlp-sales-expand")) { controller.salesExpanded.set(name, detail); controller.list.render_list(); controller.list.set_rows_as_checked?.(); } else {
 				const dialog = new root.frappe.ui.Dialog({ title: `${t("订单详情")} · ${name}`, size: "extra-large", fields: [{ fieldname: "details", fieldtype: "HTML", options: detailsHTML(detail) }] }); dialog.$wrapper.addClass("dlp-sales-detail-dialog"); dialog.show(); dialog.$wrapper.find(".dlp-sales-all-items").on("click", e => { const expanded = e.currentTarget.getAttribute("aria-expanded") !== "true"; e.currentTarget.setAttribute("aria-expanded", String(expanded)); e.currentTarget.textContent = t(expanded ? "收起额外字段" : "显示全部明细字段"); dialog.$wrapper.find(".dlp-sales-items").toggleClass("dlp-sales-items-overview", !expanded); });
+				loadDetailReceipts(dialog, name);
+				dialog.$wrapper.find(".dlp-sales-payment-new").on("click", event => openSalesOrderPaymentEntry(dialog, name, root.$(event.currentTarget)));
 			} } finally { button.prop("disabled", false); }
 		});
 		mountScrollTop(controller, true);
@@ -313,5 +345,5 @@
 		rowExtra: (controller, doc) => controller.salesExpanded?.has(doc.name) ? `<section class="dlp-sales-expanded"><strong>${esc(t("订单产品明细"))}</strong>${itemTable(controller.salesExpanded.get(doc.name))}</section>` : "",
 		afterRender: controller => { controller.updateSalesSelection?.(); mountScrollTop(controller, salesListActive(controller)); mountHorizontalScroll(controller, salesListActive(controller)); },
 	});
-	return { ...grid, COLUMNS, presets, itemTable, detailsHTML, transformQuery, financialLabel, statusLabels, orderStatusLabels, updateReleaseSelection, invalidateExpandedDetails, dismissAutomaticOnboarding };
+	return { ...grid, COLUMNS, presets, itemTable, detailsHTML, receiptsHTML, transformQuery, financialLabel, statusLabels, orderStatusLabels, updateReleaseSelection, invalidateExpandedDetails, dismissAutomaticOnboarding };
 });
