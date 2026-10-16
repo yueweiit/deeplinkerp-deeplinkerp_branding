@@ -86,7 +86,7 @@ def test_branding_declares_and_ci_installs_erpnext_dependency() -> None:
 	assert 'bench get-app --branch "$ERPNEXT_RELEASE" erpnext' in workflow
 	assert "OVERSEAS_COSTING_COMMIT: a8070a92fb963f7fad97ef40bc2cdac90e4b10bc" in workflow
 	assert (
-		'git clone --depth 1 --no-checkout --branch overseas_costing https://github.com/yueweiit/DeepLinkERP "$costing_source"'
+		'git clone --depth 1 --no-checkout --branch main https://github.com/yueweiit/deeplinkerp-overseas_costing.git "$costing_source"'
 		in workflow
 	)
 	assert 'git -C "$costing_source" fetch --depth 1 origin "$OVERSEAS_COSTING_COMMIT"' in workflow
