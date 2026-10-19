@@ -16,6 +16,8 @@ python3 deploy/production/dedicated_source_sync.py install --revision <SHA> --im
 
 配置、原始 create_log 证据和当前运行记录存于 `/home/yuewei/.local/state/deeplinkerp-source-sync`；启动器独立保存于 `.local/share/deeplinkerp-source-sync/launcher.py`，不依赖临时发布目录。重复安装保留首次原始 create_log 证据。
 
+身份核验同时固定实际运行的 immutable image ID、镜像内 `app-revisions.json` 的 `deeplinkerp_branding` 完整提交和容器 runner SHA-256。旧 `org.deeplinkerp.branding.revision` 标签可以缺省；若存在则必须与上述提交一致。缺失、无效或冲突的应用提交元数据仍拒绝执行，不能只换 image pin 或跳过版本核验。宿主工具来自独立仓库 `yueweiit/deeplinkerp-deeplinkerp_branding` 的已评审提交；`--revision` 指当前运行应用的提交，不是新宿主工具自身的提交。
+
 ## 故障与回滚
 
 原生 Scheduled Job Log 记录 Start、Complete、Failed，creation/modified 及 last_execution 保留原生语义。runner 检查实际终态，Failed 的 details/debug 在保存前去除来源内容。运营支出错误提示单独提交，只写 last_error，避免覆盖手动同步刚更新的游标。
@@ -33,6 +35,27 @@ python3 deploy/production/dedicated_source_sync.py rollback
 发布前必须在**当前已核验镜像**上先用已安装 launcher 执行 `rollback`：停用 user timer、停止 service，并按首次安装证据恢复两项 `create_log`。仅暂停 timer 不够，原发布安装器会严格比对完整 Scheduled Job Type 定义，本次首次记录的两项日志初值均为 0；不要放宽校验或直接改写固定值。此操作不删除缓存、游标或原生日志，安装证据也保留，供新版本再次安装。
 
 发布脚本和启动器复用 `/tmp/deeplinkerp-erp-release.lock`，同步另有自身运行锁，防止发布切换与同步重叠。只有定时 run 抢锁失败可返回 Skipped/exit 0；install/rollback 抢锁失败返回 Failed/非 0，控制动作不可误认成功。新镜像切换后按新 image ID、branding revision 和 runner checksum 重新 staged install，验收后显式启用 timer。旧 identity 会拒绝执行，不能直接重启旧配置绕过核验。
+
+### Finance-only 发布的原任务接续
+
+Finance-only 发布不重新安装上述原生 Scheduled Job Type。即使 Branding 源码完全未变，新镜像 ID 也必须通过现有 `retarget` 入口重新绑定，不能沿用旧配置；也不为此重新执行 `install`、重置日志或清空队列。
+
+1. 发布前保留当前 timer 是否 active、`config.json`、完整 `installation.json`、`run.json` 和两条固定 job 元数据。没有已安装证据、账本存在未确认活动任务或配置与 receipt 不符时停止处理。
+2. 等待原 Finance 发布流程成功退出，再核对最终服务镜像、`app-revisions.json` 和实际 runner 校验和。必须先释放该发布流程持有的 ERP/source/bench 锁，再调用 `retarget`；不要在继承这些锁的 wrapper 子进程中重新开锁，也不要绑定中间构建镜像。发布失败时不执行接续步骤。
+3. 仅暂存已评审的宿主工具文件，复用原控制入口：
+
+   ```sh
+   python3 <已评审的 dedicated_source_sync.py> retarget \
+     --revision <最终镜像内的 Branding SHA> \
+     --image-id <最终 immutable image ID> \
+     --runner-sha256 <最终容器内 runner SHA-256> \
+     --start-timer
+   ```
+
+   `--start-timer` 仅用于发布前已经 active 的既有 timer；此前未运行则省略。保留原 backend container，不能通过改 container 扩大到其他任务。`retarget` 自身取得原两把锁、复查运行身份与旧安装证据，原子更新 host launcher/config/receipt，保留首次 `logging_before`，不调用原生日志安装、取消、恢复或业务任务。
+4. 接续后只读确认新配置与 receipt 一致、日志初值证据未变、全局 scheduler 仍为 0、两项业务启用开关及原生 job 定义未变。等待下一个正常日历轮次，检查两条新的原生日志与来源更新；不得把 `Complete` 单独当作下游采购草稿已生成的证据，应另抽样核对既有来源资格、关联和 `docstatus=0`。
+
+此接续只恢复原有 15 分钟任务及其既有业务行为，不另外补跑历史脚本、修改范围规则、启用全局 scheduler 或提交业务单据。每次后续 Finance-only 镜像发布都重复相同的最终身份核对和 `retarget`，包括仅修改 Finance 而 Branding 提交未变化的情况。宿主 focused 回归覆盖无标签的分层镜像、冲突标签/应用提交/旧镜像/runner 校验拒绝，以及同一 Branding 提交换镜像后的接续与日志证据保留。
 
 ## 验证与范围
 

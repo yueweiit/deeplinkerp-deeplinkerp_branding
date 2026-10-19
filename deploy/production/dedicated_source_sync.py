@@ -132,8 +132,21 @@ def verify_identity(config):
     format_value = '{"image":"{{.Image}}","running":{{.State.Running}},"revision":"{{index .Config.Labels "org.deeplinkerp.branding.revision"}}"}'
     result = subprocess.run(["docker", "inspect", container, "--format", format_value], capture_output=True, text=True, check=True, timeout=15)
     actual = json.loads(result.stdout)
-    if actual != {"image": config["image_id"], "running": True, "revision": config["revision"]}:
+    expected = {"image": config["image_id"], "running": True, "revision": config["revision"]}
+    if actual not in (expected, {**expected, "revision": ""}):
         raise RuntimeError("Running backend differs from the verified source release")
+    # Layered releases record every app's commit in the image manifest. A
+    # legacy branding label may be absent, but a conflicting label must fail.
+    revision_result = subprocess.run(
+        ["docker", "exec", "--user", "frappe", container, "cat", BENCH + "/app-revisions.json"],
+        capture_output=True, text=True, check=True, timeout=15,
+    )
+    try:
+        revisions = json.loads(revision_result.stdout)
+    except (TypeError, ValueError):
+        raise RuntimeError("Installed app revision metadata is invalid") from None
+    if not isinstance(revisions, dict) or revisions.get("deeplinkerp_branding") != config["revision"]:
+        raise RuntimeError("Installed Branding revision differs from the verified source release")
     checksum = subprocess.run(["docker", "exec", "--user", "frappe", container, "sha256sum", RUNNER_FILE],
                               capture_output=True, text=True, check=True, timeout=15)
     if checksum.stdout.split()[0] != config["runner_sha256"]:
