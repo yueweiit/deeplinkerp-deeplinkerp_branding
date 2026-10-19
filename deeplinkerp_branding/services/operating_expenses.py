@@ -447,11 +447,12 @@ def _reconcile_oa_cache(until, maps):
         return 0
     changed = 0
     with _oa_connection()._connection() as connection:
-        for offset in range(0, len(cached), 500):
-            batch = cached[offset:offset + 500]
+        for offset in range(0, len(cached), 100):
+            batch = cached[offset:offset + 100]
             identities = [raw["oa_identity"] for _, raw in batch]
             with connection.cursor() as query:
-                query.execute("SELECT corp_id,process_instance_id,process_code,create_time,updated_at,status,result,form_component_values::text AS form_component_values FROM costing_read.approval_instances_v2 WHERE corp_id=ANY(%s) AND process_instance_id=ANY(%s)",
+                query.execute("SELECT corp_id,process_instance_id,process_code,create_time,updated_at,status,result,"
+                              + oa._OPERATING_FORM_VALUES + "::text AS form_component_values FROM costing_read.approval_instances_v2 WHERE corp_id=ANY(%s) AND process_instance_id=ANY(%s)",
                               (list({i["corp_id"] for i in identities}), [i["process_instance_id"] for i in identities]))
                 originals = {(r["corp_id"], r["process_instance_id"]): dict(r) for r in query.fetchall()}
             for doc, raw in batch:
