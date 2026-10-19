@@ -135,6 +135,7 @@ jobs:
           ./env/bin/python -c 'import frappe, erpnext; from deeplinkerp_branding.services.purchase_native_repost import install; from overseas_costing.scripts.import_oa_logistics import COMPLETED_APPROVAL_STATUSES, resolve_approval_decision; install(); print("Supported native runtime:", frappe.__version__, erpnext.__version__)'
           ./env/bin/python -m pytest -q "$GITHUB_WORKSPACE/deeplinkerp_branding/tests"
           bench --site test_site set-config allow_tests true
+          bench --site test_site set-config lang zh
           bench --site test_site run-tests --app deeplinkerp_branding
         env:
           TYPE: server
