@@ -313,12 +313,85 @@ class DedicatedSourceHostTests(unittest.TestCase):
 				"run",
 				side_effect=[
 					SimpleNamespace(stdout=json.dumps(expected)),
+					SimpleNamespace(stdout=json.dumps({"deeplinkerp_branding": self.config["revision"]})),
 					SimpleNamespace(stdout="d" * 64 + " file"),
 				],
 			),
-			self.assertRaises(RuntimeError),
+			self.assertRaisesRegex(RuntimeError, "runner"),
 		):
 			self.host.verify_identity(self.config)
+
+	def identity_responses(self, *, label, manifest, image=None):
+		"""Fixed Docker reads only; never execute a production container."""
+		def read(command, **kwargs):
+			if command[:2] == ["docker", "inspect"]:
+				body = {"image": image or self.config["image_id"], "running": True, "revision": label}
+				return SimpleNamespace(stdout=json.dumps(body))
+			if command[-2:] == ["cat", self.host.BENCH + "/app-revisions.json"]:
+				return SimpleNamespace(stdout=manifest)
+			if "sha256sum" in command:
+				return SimpleNamespace(stdout=self.config["runner_sha256"] + " runner.py")
+			self.fail("Identity verification attempted an unexpected command")
+		return read
+
+	def test_runtime_app_revision_verifies_images_with_or_without_legacy_branding_label(self):
+		for label in ("", self.config["revision"]):
+			with (
+				self.subTest(label_present=bool(label)),
+				patch.object(self.host.subprocess, "run", side_effect=self.identity_responses(
+					label=label, manifest=json.dumps({"deeplinkerp_branding": self.config["revision"]}),
+				)) as reads,
+			):
+				self.host.verify_identity(self.config)
+			self.assertTrue(any(call.args[0][-2:] == ["cat", self.host.BENCH + "/app-revisions.json"]
+				for call in reads.call_args_list))
+
+	def test_missing_invalid_or_conflicting_runtime_revision_never_uses_a_matching_label_as_bypass(self):
+		for manifest in ("{}", "[]", "not-json", json.dumps({"china_finance": self.config["revision"]}),
+			json.dumps({"deeplinkerp_branding": "d" * 40})):
+			with (
+				self.subTest(manifest=manifest),
+				patch.object(self.host.subprocess, "run", side_effect=self.identity_responses(
+					label=self.config["revision"], manifest=manifest,
+				)),
+				self.assertRaises(RuntimeError),
+			):
+				self.host.verify_identity(self.config)
+
+	def test_conflicting_label_is_rejected_even_when_runtime_app_revision_matches(self):
+		with (
+			patch.object(self.host.subprocess, "run", side_effect=self.identity_responses(
+				label="d" * 40, manifest=json.dumps({"deeplinkerp_branding": self.config["revision"]}),
+			)) as reads,
+			self.assertRaisesRegex(RuntimeError, "Running backend"),
+		):
+			self.host.verify_identity(self.config)
+		self.assertEqual(reads.call_count, 1)
+
+	def test_image_only_release_requires_retarget_and_preserves_existing_jobs_and_logging(self):
+		original = {"version": 1, "config": self.config, "status": "installed",
+			"logging_before": {"jobs": [{"name": "operating", "create_log": 0}]}}
+		self.host.save_json(self.host.STATE / "installation.json", original)
+		self.host.save_json(self.host.STATE / "config.json", self.config)
+		self.host.save_json(self.host.STATE / "run.json", {"active": None})
+		target = {**self.config, "image_id": "sha256:" + "d" * 64}
+		with (
+			patch.object(self.host.subprocess, "run", side_effect=self.identity_responses(
+				label="", manifest=json.dumps({"deeplinkerp_branding": self.config["revision"]}),
+				image=target["image_id"],
+			)),
+			patch.object(self.host, "systemctl") as timer,
+			patch.object(self.host, "container_call", side_effect=AssertionError("No native job mutation during retarget")),
+		):
+			with self.assertRaises(RuntimeError):
+				self.host.verify_identity(self.config)
+			self.host.retarget(target, start_timer=True)
+			self.host.verify_identity(json.loads((self.host.STATE / "config.json").read_text()))
+		receipt = json.loads((self.host.STATE / "installation.json").read_text())
+		self.assertEqual(receipt["config"], target)
+		self.assertEqual(receipt["previous_config"], self.config)
+		self.assertEqual(receipt["logging_before"], original["logging_before"])
+		self.assertEqual([call.args for call in timer.call_args_list], [("start", "deeplinkerp-source-sync.timer")])
 
 	def test_installer_rechecks_native_jobs_immediately_before_starting_timer(self):
 		before = {
