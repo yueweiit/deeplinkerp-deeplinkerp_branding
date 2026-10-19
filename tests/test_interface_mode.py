@@ -46,6 +46,7 @@ class FakeDB:
 
 
 FAKE_FRAPPE = types.ModuleType("frappe")
+FAKE_FRAPPE._ = lambda message: message
 FAKE_FRAPPE.PermissionError = FakePermissionError
 FAKE_FRAPPE.ValidationError = FakeValidationError
 FAKE_FRAPPE.session = types.SimpleNamespace(user="employee@example.com")
