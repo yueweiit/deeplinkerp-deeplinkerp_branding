@@ -1,8 +1,13 @@
 """Original OA applications stay authoritative; cashier evidence is supplemental."""
 import copy
 import importlib
+import importlib.util
+import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+from unittest.mock import Mock, call, patch
 
 
 def approval(**values):
@@ -24,6 +29,104 @@ class RecordingConnection:
     def cursor(self): return self
     def execute(self, sql, params): self.sql, self.params = sql, params
     def fetchall(self): return self.rows
+
+
+class OperatingCacheReconciliationTest(unittest.TestCase):
+    def setUp(self):
+        self.source = importlib.import_module("deeplinkerp_branding.services.operating_oa_source")
+        # Exercise the real reconciliation service without a site, HTTP or a database.
+        # These imports are unrelated to reconciliation and remain unused in these tests.
+        frappe = ModuleType("frappe")
+        frappe._ = lambda message: message
+        frappe.whitelist = lambda **kwargs: lambda method: method
+        modules = {"frappe": frappe, "requests": ModuleType("requests"),
+            "frappe.utils": SimpleNamespace(now_datetime=None, getdate=None),
+            "deeplinkerp_branding.services.purchase_payment_service": SimpleNamespace(_require_fields=None),
+            "deeplinkerp_branding.services.unified_purchase_service": SimpleNamespace(_require_export_permission=None)}
+        path = Path(__file__).parents[1] / "deeplinkerp_branding/services/operating_expenses.py"
+        spec = importlib.util.spec_from_file_location("operating_reconciliation_test_target", path)
+        self.service = importlib.util.module_from_spec(spec)
+        with patch.dict(sys.modules, modules):
+            spec.loader.exec_module(self.service)
+
+    def cached(self, rows):
+        result = []
+        for row in rows:
+            raw = self.source.merge_application(row, [], {})
+            raw.update(payments=[{"source_id": "cashier-evidence"}],
+                       attachments=[{"source_id": "archive-evidence"}], remark="原始缓存备注")
+            raw["version"] = self.source.digest({key: value for key, value in raw.items() if key != "version"})
+            result.append((SimpleNamespace(source_version=raw["version"]), raw))
+        return result
+
+    def reconcile(self, cached, originals):
+        class Connection(RecordingConnection):
+            def __init__(self, rows):
+                super().__init__(rows)
+                self.queries = []
+
+            def execute(self, sql, params):
+                super().execute(sql, params)
+                self.queries.append((sql, params))
+
+            def fetchall(self):
+                corps, instances = self.params
+                return [row for row in self.rows if row["corp_id"] in corps
+                        and row["process_instance_id"] in instances]
+
+        query = Connection(originals)
+        adapter = SimpleNamespace(_connection=Mock(return_value=query))
+        maps = {"来源组织": "采购公司"}
+        with patch.object(self.service, "_oa_cached_identities", return_value=(cached, {})), \
+                patch.object(self.service, "_oa_connection", return_value=adapter) as factory, \
+                patch.object(self.service, "_upsert") as upsert:
+            changed = self.service._reconcile_oa_cache("2026-10-06T00:00:00Z", maps)
+        factory.assert_called_once_with()
+        adapter._connection.assert_called_once_with()
+        return changed, query.queries, upsert, maps
+
+    def test_reconciliation_projects_scope_fields_and_preserves_cached_audit_evidence(self):
+        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(6)]
+        for index, row in enumerate(rows):
+            row.update(corp_id="corp'one", process_instance_id="instance-'" + str(index))
+        rows[-1].update(corp_id="other-corp", process_instance_id=rows[0]["process_instance_id"])
+        cached = self.cached(rows)
+        before = copy.deepcopy(cached)
+        originals = copy.deepcopy(rows)
+        originals[1]["form_component_values"][1]["value"] = "墨西哥"
+        originals[1].update(status="TERMINATED", result=None)
+        originals[3]["form_component_values"][1]["value"] = "墨西哥"
+        originals[3]["updated_at"] = datetime(2026, 10, 7, tzinfo=UTC)
+        originals[4]["form_component_values"].append(copy.deepcopy(originals[4]["form_component_values"][0]))
+        originals[-1]["form_component_values"][1]["value"] = "墨西哥"
+        originals.pop(2)  # Missing source remains visible as withdrawn, with its original evidence.
+        changed, queries, upsert, maps = self.reconcile(cached, originals)
+        self.assertEqual(changed, 4)
+        self.assertEqual(cached, before)
+        expected = [(cached[index][1], next((row for row in originals
+            if (row["corp_id"], row["process_instance_id"]) ==
+               (cached[index][1]["oa_identity"]["corp_id"], cached[index][1]["oa_identity"]["process_instance_id"])), None))
+            for index in (1, 2, 4, 5)]
+        self.assertEqual(upsert.call_args_list,
+                         [call(self.source.withdrawn_source(raw, row), maps) for raw, row in expected])
+        for sql, params in queries:
+            self.assertIn(self.source._OPERATING_FORM_VALUES + "::text AS form_component_values", sql)
+            self.assertNotIn(",form_component_values::text AS form_component_values", sql)
+            self.assertIn("corp_id=ANY(%s) AND process_instance_id=ANY(%s)", sql)
+            self.assertNotIn("corp'one", sql)
+            self.assertNotIn("instance-'", sql)
+            self.assertEqual(set(params[0]), {"corp'one", "other-corp"})
+
+    def test_reconciliation_limits_201_identities_to_three_queries_on_one_connection(self):
+        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(201)]
+        for index, row in enumerate(rows):
+            row["process_instance_id"] = "instance-" + str(index)
+        changed, queries, upsert, _ = self.reconcile(self.cached(rows), rows)
+        self.assertEqual(changed, 0)
+        upsert.assert_not_called()
+        self.assertEqual([len(params[1]) for _, params in queries], [100, 100, 1])
+        self.assertEqual([instance for _, params in queries for instance in params[1]],
+                         [row["process_instance_id"] for row in rows])
 
 
 class OriginalOperatingSourceTest(unittest.TestCase):
