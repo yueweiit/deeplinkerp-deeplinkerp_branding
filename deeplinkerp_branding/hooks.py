@@ -43,10 +43,10 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/operating_expense_drawer.js?v=0.0.17",
 	"/assets/deeplinkerp_branding/js/operating_expenses.js?v=0.0.8",
 	"/assets/deeplinkerp_branding/js/unified_purchase_list.js?v=0.0.13",
-	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.20",
+	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.21",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_interface_mode.js?v=0.0.3",
-	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.28",
-	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.4",
+	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.30",
+	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.5",
 	"/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js",
 ]
 
@@ -78,6 +78,7 @@ doctype_list_js = {
 }
 doctype_js = {"Material Request": "public/js/material_request_form.js", **{doctype: "public/js/purchase_payment_form.js" for doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice", "Payment Entry")}}
 doctype_js["OA Purchase Request"] = "public/js/oa_purchase_request.js"
+doctype_js["Item"] = "public/js/item_form.js"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 

@@ -7,9 +7,9 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
 	"use strict";
 	const SERVICE = "deeplinkerp_branding.services.purchase_source_service.";
-	const t = value => (root.__ || (text => text))(value);
+	const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]);
-	const labels = { region: "执行地区", currency: "币种", payee: "收款人", requested_amount: "申请金额", items: "需求明细", processors: "加工商明细", detail_total: "明细汇总金额", description: "采购说明", schedule_date: "交付日期", department: "申请部门", project: "项目", order_no: "来源订单编号", payments: "原单付款信息", payment_date: "原单付款日期", payment_terms: "付款条件", attachments: "关键凭证" };
+	const labels = { region: "执行地区", currency: "币种", payee: "收款人", requested_amount: "申请金额", items: "需求明细", processors: "加工商明细", detail_total: "明细汇总金额", description: t("采购说明"), schedule_date: "交付日期", department: "申请部门", project: "项目", order_no: "来源订单编号", payments: "原单付款信息", payment_date: "原单付款日期", payment_terms: "付款条件", attachments: "关键凭证" };
 	const text = value => value === undefined || value === null || value === "" ? "—" : esc(value);
 	const exactDisplay = (value, format) => value == null || value === "" ? "—" : `<span title="${esc(t("原值"))} · ${esc(value)}">${format(value)}</span>`;
 	const money = (value, currency) => exactDisplay(value, amount => root.DeepLinkERPPurchasePayments.formatMoney(amount, currency || "币种待确认"));
@@ -65,7 +65,7 @@
 		const replacesLegacy = Array.isArray(plan?.items) && Array.isArray(plan?.blocking_reasons);
 		const legacyIssues = [detail.pending_reason, ...(source.issues || [])].filter(issue => issue && !(replacesLegacy && ["采购明细待完善", "采购明细与申请金额不一致，请核对原单"].includes(issue)));
 		const issues = [...new Set([...legacyIssues, ...reasons, ...(cashier.issues || [])].filter(Boolean))];
-		return `<section class="dlp-source-evidence"><h4>${esc(t("采购来源"))} · ${text(source.business_id || detail.name)}</h4><p>${originalLink(source)} · <a href="/desk/oa-purchase-request/${encodeURIComponent(detail.name)}">${esc(t("OA 来源记录"))}</a></p><div class="dlp-source-facts">${facts.map(([label, value]) => `<div><strong>${esc(t(label))}</strong><span>${value}</span></div>`).join("")}</div><p class="text-muted">${esc(t("出纳实付是原付款证据；ERP 登记付款和核销在订单中另列。"))}</p>${issues.map(issue => `<p class="text-warning">${esc(issue)}</p>`).join("")}${adaptationHTML(plan, Boolean(detail.purchase_order))}${detail.scope_review ? `<h5>${esc(t("来源范围复核"))}</h5><p>${esc(t("原采用范围"))}：${readable(detail.scope_review.adopted_scope)}</p><p>${esc(t("本次核对范围"))}：${readable(detail.scope_review.current_scope)}</p>` : ""}<h5>${esc(t("原始采购明细（只读）"))}</h5>${table}<details><summary>${esc(t("原始申请内容"))}</summary>${readable(source.original_fields || {})}</details><details><summary>${esc(t("出纳付款证据"))}</summary>${payments}${attachments}</details></section>`;
+		return `<section class="dlp-source-evidence"><h4>${esc(t("采购来源"))} · ${text(source.business_id || detail.name)}</h4><p>${originalLink(source)} · <a href="/desk/oa-purchase-request/${encodeURIComponent(detail.name)}">${esc(t("OA 来源记录"))}</a></p><div class="dlp-source-facts">${facts.map(([label, value]) => `<div><strong>${esc(t(label))}</strong><span>${value}</span></div>`).join("")}</div><p class="text-muted">${esc(t("出纳实付是原付款证据；ERP 登记付款和核销在订单中另列。"))}</p>${issues.map(issue => `<p class="text-warning">${esc(t(issue))}</p>`).join("")}${adaptationHTML(plan, Boolean(detail.purchase_order))}${detail.scope_review ? `<h5>${esc(t("来源范围复核"))}</h5><p>${esc(t("原采用范围"))}：${readable(detail.scope_review.adopted_scope)}</p><p>${esc(t("本次核对范围"))}：${readable(detail.scope_review.current_scope)}</p>` : ""}<h5>${esc(t("原始采购明细（只读）"))}</h5>${table}<details><summary>${esc(t("原始申请内容"))}</summary>${readable(source.original_fields || {})}</details><details><summary>${esc(t("出纳付款证据"))}</summary>${payments}${attachments}</details></section>`;
 	}
 	function value(control) {
 		const raw = control?.$input?.val?.();
@@ -82,7 +82,7 @@
 		if (!shellReady()) await frappe.require("/assets/deeplinkerp_branding/js/purchase_payments.js");
 		const shell = root.DeepLinkERPPurchasePayments;
 		if (!shellReady()) { frappe.msgprint(t("采购抽屉组件版本不完整，请整页刷新后重试。")); return; }
-		const drawer = shell.createDrawer("完善/关联采购订单", true); if (!drawer) return;
+		const drawer = shell.createDrawer(t("完善/关联采购订单"), true); if (!drawer) return;
 		drawer.panel.find(".dlp-payment-body").html(`<p class="dlp-source-loading" role="status">${esc(t("正在读取采购来源…"))}</p><div class="dlp-error text-danger" role="alert"></div>`);
 		let detail, rows = [], paymentRows = [], controls = new Map(), saved = null, confirming = false, uncertain = false, freshRead = false, rulePreview = null, ruleConfirmButton;
 		const eligible = () => Boolean(detail?.source?.eligible && detail.can_write && !detail.purchase_order);
@@ -132,12 +132,12 @@
 			drawer.panel.find("footer .dlp-source-create,footer .dlp-source-associate,footer .dlp-source-reload,footer .dlp-source-reconcile,footer .dlp-source-review").remove();
 			const notice = detail.purchase_order ? `${esc(t("已关联采购订单"))} ${poLink(detail.purchase_order)}` : !detail.source.eligible ? esc(t("来源未满足当前审批条件，只可查看证据。")) : !detail.can_write ? esc(t("当前没有办理权限，或公司归属待核对，请核对系统提示。")) : !detail.can_create ? esc(t("当前没有新建采购订单权限，可以核对并关联已有订单。")) : esc(t("请确认已有公司、供应商和物料，再创建采购订单草稿。"));
 			const review = canReview() ? `<section class="dlp-source-review-fields"><h4>${esc(t("复核现有关联"))}</h4><p>${esc(t("当前采购订单"))}：${poLink(detail.purchase_order)} · ${esc(t("仅复核，不替换关联或创建订单。"))}</p></section>` : detail.purchase_order ? `<p class="text-muted">${esc(t(!detail.source.eligible ? "来源审批未满足办理条件，只可查看证据。" : !detail.can_write ? "当前没有办理权限，只可查看证据。" : "请先刷新来源，核对当前证据后再复核现有关联。"))}</p>` : "";
-			drawer.panel.find(".dlp-payment-body").html(`${evidenceHTML(detail)}<p class="text-warning">${notice}</p>${detail.reconciliation_notice ? `<p class="text-muted">${esc(detail.reconciliation_notice)}</p>` : ""}${review}${canReconcile() ? '<section class="dlp-source-reconciliation"><h4>核对历史付款</h4><p>选择已提交、已分配到本订单的原生付款单。核对仅保存对应关系。</p><div class="dlp-source-payment-entries"></div></section>' : ""}${eligible() ? '<section class="dlp-source-mapping"><h4>手工完善</h4><div class="dlp-document-fields"></div><div class="dlp-source-items"></div></section>' : ""}<div class="dlp-error text-danger" role="alert"></div>`);
-			$("<button type='button' class='btn btn-default dlp-source-reload'>刷新来源</button>").appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => load(true));
+			drawer.panel.find(".dlp-payment-body").html(`${evidenceHTML(detail)}<p class="text-warning">${notice}</p>${detail.reconciliation_notice ? `<p class="text-muted">${esc(detail.reconciliation_notice)}</p>` : ""}${review}${canReconcile() ? `<section class="dlp-source-reconciliation"><h4>${t("核对历史付款")}</h4><p>${t("选择已提交、已分配到本订单的原生付款单。核对仅保存对应关系。")}</p><div class="dlp-source-payment-entries"></div></section>` : ""}${eligible() ? `<section class="dlp-source-mapping"><h4>${t("手工完善")}</h4><div class="dlp-document-fields"></div><div class="dlp-source-items"></div></section>` : ""}<div class="dlp-error text-danger" role="alert"></div>`);
+			$(`<button type='button' class='btn btn-default dlp-source-reload'>${t("刷新来源")}</button>`).appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => load(true));
 			if (canReview()) {
-				await input($("<div></div>").appendTo(drawer.panel.find(".dlp-source-review-fields")), "correction_reason", null, null, { fieldtype: "Small Text", label: "完善/差异说明", reqd: 0 }, saved?.header?.correction_reason);
+				await input($("<div></div>").appendTo(drawer.panel.find(".dlp-source-review-fields")), "correction_reason", null, null, { fieldtype: "Small Text", label: t("完善/差异说明"), reqd: 0 }, saved?.header?.correction_reason);
 				if (!drawer.alive()) return;
-				$("<button type='button' class='btn btn-primary dlp-source-review'>复核现有关联</button>").appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("review"));
+				$(`<button type='button' class='btn btn-primary dlp-source-review'>${t("复核现有关联")}</button>`).appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("review"));
 			}
 			if (canReconcile()) await renderReconciliation();
 			if (!eligible()) return;
@@ -153,8 +153,8 @@
 			rows = saved?.items || (detail.adaptation?.items?.length ? detail.adaptation.items.map(item => ({ item_code: item.item_code, qty: item.qty, uom: item.uom, rate: item.rate })) : detail.source.items?.length ? detail.source.items.map(item => ({ item_code: item.item_code, qty: item.qty, uom: item.uom, rate: null })) : [{}]);
 			await renderItems(); if (!drawer.alive()) return;
 			if (canManageRules()) await renderRules(); if (!drawer.alive()) return;
-			if (detail.can_create) $("<button type='button' class='btn btn-primary dlp-source-create'>创建采购订单草稿</button>").appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("create"));
-			$("<button type='button' class='btn btn-default dlp-source-associate'>确认关联已有订单</button>").appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("associate"));
+			if (detail.can_create) $(`<button type='button' class='btn btn-primary dlp-source-create'>${t("创建采购订单草稿")}</button>`).appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("create"));
+			$(`<button type='button' class='btn btn-default dlp-source-associate'>${t("确认关联已有订单")}</button>`).appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("associate"));
 		}
 		async function renderReconciliation() {
 			try { await frappe.model.with_doctype("Payment Entry"); } catch (_) { throw new Error(t("付款单字段元数据读取失败，请核对安装状态和权限。")); }
@@ -163,15 +163,15 @@
 			const holder = drawer.panel.find(".dlp-source-payment-entries");
 			for (const [index, name] of paymentRows.entries()) {
 				if (!drawer.alive()) return;
-				const control = await input($("<div></div>").appendTo(holder), `payment_entry_${index}`, "Payment Entry", "amended_from", { fieldtype: "Link", options: "Payment Entry", label: "原生付款单" }, name);
+				const control = await input($("<div></div>").appendTo(holder), `payment_entry_${index}`, "Payment Entry", "amended_from", { fieldtype: "Link", options: "Payment Entry", label: t("原生付款单") }, name);
 				if (control) control.get_query = () => ({ filters: { docstatus: 1, payment_type: "Pay", ...(detail.target_company ? { company: detail.target_company } : {}) } });
 			}
-			$("<button type='button' class='btn btn-default dlp-source-add-payment'>添加付款单</button>").appendTo(holder).on("click.dlpSource", async () => {
+			$(`<button type='button' class='btn btn-default dlp-source-add-payment'>${t("添加付款单")}</button>`).appendTo(holder).on("click.dlpSource", async () => {
 				if (drawer.busy || confirming || !drawer.alive()) return;
 				saved = capture(); saved.paymentEntries.push(""); drawer.setBusy(true);
 				try { await render(); } catch (error) { if (drawer.alive()) drawer.error(error); } finally { if (drawer.alive()) drawer.setBusy(false); }
 			});
-			$("<button type='button' class='btn btn-primary dlp-source-reconcile'>确认历史付款核对</button>").appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("reconcile"));
+			$(`<button type='button' class='btn btn-primary dlp-source-reconcile'>${t("确认历史付款核对")}</button>`).appendTo(drawer.panel.find("footer")).on("click.dlpSource", () => confirm("reconcile"));
 		}
 		async function renderItems() {
 			const columns = [["item_code", "已有物料", "Link", "Item"], ["qty", "数量", "Float"], ["uom", "单位", "Link", "UOM"], ["rate", "单价", "Currency"]];
@@ -179,7 +179,7 @@
 			for (const [index, row] of rows.entries()) for (const [field, label, fieldtype, options] of columns) {
 				if (!drawer.alive()) return;
 				const proposed = field === "item_code" && detail.adaptation?.new_items?.some(item => item.item_code === row.item_code);
-				await input(drawer.panel.find(`[data-source-field="${field}_${index}"]`), `${field}_${index}`, proposed ? null : "Purchase Order Item", field, { fieldtype: proposed ? "Data" : fieldtype, options: proposed ? undefined : options, label: proposed ? "拟新增物料编码" : label, reqd: 1 }, row[field]);
+				await input(drawer.panel.find(`[data-source-field="${field}_${index}"]`), `${field}_${index}`, proposed ? null : "Purchase Order Item", field, { fieldtype: proposed ? "Data" : fieldtype, options: proposed ? undefined : options, label: proposed ? t("拟新增物料编码") : label, reqd: 1 }, row[field]);
 			}
 			const redraw = async change => {
 				if (drawer.busy || confirming || !drawer.alive()) return;
@@ -192,14 +192,14 @@
 		const ruleValues = () => Object.fromEntries(["company", "supplier", "item_group", "purchase_uom", "service_item_code", "service_item_name"].map(field => [field, String(value(controls.get(["company", "supplier"].includes(field) ? field : `rule_${field}`))).trim()]));
 		const refreshRuleConfirmation = () => ruleConfirmButton?.prop("disabled", Boolean(drawer.busy || uncertain || !rulePreview || blockers(rulePreview.plan).length || rulePreview.serialized !== JSON.stringify(ruleValues())));
 		async function renderRules() {
-			$("<section class='dlp-source-rules'><h4>同类自动接入规则</h4><p>确认精确来源范围和采购映射后，由现有定时任务接入采购订单草稿。</p><div class='dlp-source-rule-fields'></div><div class='dlp-source-rule-preview-result' aria-live='polite'></div></section>").appendTo(drawer.panel.find(".dlp-source-mapping"));
+			$(`<section class='dlp-source-rules'><h4>${t("同类自动接入规则")}</h4><p>${t("确认精确来源范围和采购映射后，由现有定时任务接入采购订单草稿。")}</p><div class='dlp-source-rule-fields'></div><div class='dlp-source-rule-preview-result' aria-live='polite'></div></section>`).appendTo(drawer.panel.find(".dlp-source-mapping"));
 			const rule = detail.adaptation?.rule || {};
 			for (const [field, fieldtype, options, label, fallback] of [["item_group", "Link", "Item Group", "规则物料组", ""], ["purchase_uom", "Link", "UOM", "规则采购单位", ""], ["service_item_code", "Data", null, "加工服务物料编码", "DLP-SVC-PROCESSING"], ["service_item_name", "Data", null, "加工服务物料名称", "加工服务"]]) {
 				if (!drawer.alive()) return;
 				await input($("<div></div>").appendTo(drawer.panel.find(".dlp-source-rule-fields")), `rule_${field}`, null, null, { fieldtype, options, label, reqd: 1 }, saved?.header?.[`rule_${field}`] ?? rule[field] ?? fallback);
 			}
 			if (!drawer.alive()) return;
-			$("<button type='button' class='btn btn-default dlp-source-rule-preview'>预览自动接入规则</button>").appendTo(drawer.panel.find(".dlp-source-rules")).on("click.dlpSource", previewRule);
+			$(`<button type='button' class='btn btn-default dlp-source-rule-preview'>${t("预览自动接入规则")}</button>`).appendTo(drawer.panel.find(".dlp-source-rules")).on("click.dlpSource", previewRule);
 		}
 		async function previewRule() {
 			if (!drawer.alive() || drawer.busy || confirming || uncertain || !canManageRules()) return;
@@ -215,7 +215,7 @@
 				drawer.panel.find(".dlp-source-rule-preview-result").html(`${adaptationHTML(plan)}${blockers(plan).map(reason => `<p class="text-warning">${esc(reason)}</p>`).join("")}`);
 				ruleConfirmButton?.remove();
 				rulePreview = { plan, serialized };
-				ruleConfirmButton = $("<button type='button' class='btn btn-primary dlp-source-rule-confirm'>确认同类规则</button>").appendTo(drawer.panel.find(".dlp-source-rules")).prop("disabled", Boolean(blockers(plan).length)).on("click.dlpSource", confirmRule);
+				ruleConfirmButton = $(`<button type='button' class='btn btn-primary dlp-source-rule-confirm'>${t("确认同类规则")}</button>`).appendTo(drawer.panel.find(".dlp-source-rules")).prop("disabled", Boolean(blockers(plan).length)).on("click.dlpSource", confirmRule);
 			} catch (error) { if (drawer.alive() && generation === drawer.loadId) drawer.error(error); }
 			finally { if (drawer.alive() && generation === drawer.loadId) { drawer.setBusy(false); refreshRuleConfirmation(); } }
 		}
@@ -254,7 +254,7 @@
 			const args = { name: detail.name, expected_version: action === "create" ? detail.creation_version || detail.version : action === "review" ? detail.recheck_version || detail.version : detail.version, ...(action === "reconcile" ? { payment_entries: JSON.stringify(paymentEntries) } : { correction_reason: header.correction_reason || "", ...(action === "create" ? { company: header.company, supplier: header.supplier, currency: header.currency, schedule_date: header.schedule_date, items: JSON.stringify(items) } : { purchase_order: action === "review" ? detail.purchase_order : header.purchase_order }) }) };
 			const summary = action === "create" ? `<p>${esc(header.company)} · ${esc(header.supplier)} · ${esc(header.currency)} · ${esc(header.schedule_date)}</p>${items.map(item => `<p>${esc(item.item_code)} · ${quantity(item.qty)} ${esc(item.uom)} × ${money(item.rate, header.currency)}</p>`).join("")}` : ["associate", "review"].includes(action) ? `<p>${esc(args.purchase_order)}</p><p>${esc(header.correction_reason || "")}</p>${detail.scope_review ? `<p>${esc(t("原采用范围"))}：${readable(detail.scope_review.adopted_scope)}</p><p>${esc(t("本次核对范围"))}：${readable(detail.scope_review.current_scope)}</p>` : ""}` : `<p>${paymentEntries.map(esc).join(" · ")}</p>`;
 			confirming = true;
-			frappe.confirm(`${esc(t(action === "create" ? "确认创建采购订单草稿？创建后请在订单核对。" : action === "associate" ? "确认将此来源关联到所选采购订单？" : action === "review" ? "确认复核现有关联？不创建或替换采购订单。" : "确认核对历史付款并保存对应关系？"))}${summary}`, async () => {
+			frappe.confirm(t("{0}{1}", [esc(t(action === "create" ? "确认创建采购订单草稿？创建后请在订单核对。" : action === "associate" ? "确认将此来源关联到所选采购订单？" : action === "review" ? "确认复核现有关联？不创建或替换采购订单。" : "确认核对历史付款并保存对应关系？")), summary]), async () => {
 				confirming = false;
 				if (!drawer.alive() || drawer.busy || uncertain || !permitted()) return;
 				drawer.setBusy(true);
@@ -265,7 +265,7 @@
 					if (!result?.name || result.doctype !== "Purchase Order") throw new Error(t("操作结果未确认，请刷新来源核对。"));
 					frappe.show_alert({ message: t(action === "create" ? "采购订单草稿已创建" : action === "review" ? "现有关联已复核" : "采购来源已关联"), indicator: "green" });
 					drawer.close(true); shell.openNative("Purchase Order", result.name);
-				} catch (error) { if (drawer.alive()) { uncertain = true; drawer.error(new Error(`${error.message || t("操作未确认")}；${t("请先刷新来源或核对采购订单，再继续办理。")}`)); } }
+				} catch (error) { if (drawer.alive()) { uncertain = true; drawer.error(new Error(t("{0}；{1}", [error.message || t("操作未确认"), t("请先刷新来源或核对采购订单，再继续办理。")]))); } }
 				finally { if (drawer.alive()) drawer.setBusy(false); }
 			}, () => { confirming = false; });
 		}

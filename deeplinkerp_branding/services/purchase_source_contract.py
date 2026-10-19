@@ -1,6 +1,13 @@
 """Purchase applications are source evidence, never orders or actual payments."""
 from __future__ import annotations
 
+try:
+    from frappe import _
+except ImportError:
+    def _(message):
+        return message
+
+
 import copy
 import json
 import re
@@ -45,7 +52,7 @@ ITEM_ALIASES = {
 
 def attachment_path(value):
     if not isinstance(value,str) or not re.fullmatch(r"/api/integrations/erp/purchase-expenses/(attachments|payment-vouchers)/[1-9][0-9]{0,18}",value):
-        raise ValueError("采购附件路径无效")
+        raise ValueError(_("采购附件路径无效"))
     return value
 
 
@@ -162,7 +169,7 @@ def normalize(row, parser=None, *, detail_rows=None, occurrences=None):
         issues.append("采购明细待完善")
     identity = {k: row.get(k) for k in ("corp_id", "process_instance_id")}
     if not all(identity.values()):
-        raise ValueError("采购来源身份缺失")
+        raise ValueError(_("采购来源身份缺失"))
     result = {"source_id": oa.application_id(row), "oa_identity": identity,
         "process_code": row.get("process_code"), "business_id": row.get("business_id"),
         "business_count": row.get("business_count", 1), "corp_id": row.get("corp_id"),
@@ -217,16 +224,16 @@ def payment_evidence(item, cashier):
 def validate_selection(source, currency, items, correction_reason=""):
     """Validate explicit human choices, without substituting missing quantity/prices."""
     if not isinstance(items, list) or not 1 <= len(items) <= 500:
-        raise ValueError("请明确填写采购物料明细")
+        raise ValueError(_("请明确填写采购物料明细"))
     if not currency or (source.get("currency") != currency and not str(correction_reason or "").strip()):
-        raise ValueError("币种与来源不符，请填写核对说明")
+        raise ValueError(_("币种与来源不符，请填写核对说明"))
     result = []
     for raw in items:
         if not isinstance(raw, dict) or not all(str(raw.get(k) or "").strip() for k in ("item_code", "uom")):
-            raise ValueError("请填写物料编码和单位")
+            raise ValueError(_("请填写物料编码和单位"))
         qty, rate = oa.exact_amount(raw.get("qty")), oa.exact_amount(raw.get("rate"))
         if qty is None or Decimal(qty) <= 0 or rate is None or Decimal(rate) < 0:
-            raise ValueError("数量必须大于零，单价必须明确且不小于零")
+            raise ValueError(_("数量必须大于零，单价必须明确且不小于零"))
         result.append({"item_code":str(raw["item_code"]).strip(), "uom":str(raw["uom"]).strip(), "qty":qty, "rate":rate})
     original = source.get("items") or []
     unchanged = len(original) == len(result) and all(
@@ -235,5 +242,5 @@ def validate_selection(source, currency, items, correction_reason=""):
         and Decimal(old["amount"]) == Decimal(new["qty"]) * Decimal(new["rate"])
         for old, new in zip(original, result))
     if (not unchanged or source.get("issues")) and not str(correction_reason or "").strip():
-        raise ValueError("采购明细待完善或与来源不符，请填写核对说明")
+        raise ValueError(_("采购明细待完善或与来源不符，请填写核对说明"))
     return result

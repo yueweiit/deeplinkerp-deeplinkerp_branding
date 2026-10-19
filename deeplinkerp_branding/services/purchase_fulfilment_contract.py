@@ -5,6 +5,13 @@ Quantities use the native stock factor; currency totals are never combined.
 """
 from __future__ import annotations
 
+try:
+    from frappe import _ as _i18n
+except ImportError:
+    def _i18n(message):
+        return message
+
+
 import hashlib
 import json
 import re
@@ -49,9 +56,9 @@ def number(value):
     try:
         result = Decimal(str(value))
     except (InvalidOperation, TypeError, ValueError):
-        raise ValueError("数量必须为有效数字") from None
+        raise ValueError(_i18n("数量必须为有效数字")) from None
     if not result.is_finite() or result <= 0:
-        raise ValueError("数量及原生换算系数必须为有限正数")
+        raise ValueError(_i18n("数量及原生换算系数必须为有限正数"))
     return result
 
 
@@ -62,28 +69,28 @@ def decimal_text(value):
             context.traps[Underflow] = True
             normalized = value.normalize()
             if not normalized.is_finite() or (value != 0 and normalized == 0):
-                raise ValueError("数值无法在当前计算精度保持有限值")
+                raise ValueError(_i18n("数值无法在当前计算精度保持有限值"))
             return format(normalized, "f")
     except DecimalException:
-        raise ValueError("数值超出当前计算精度，请核对数量或金额") from None
+        raise ValueError(_i18n("数值超出当前计算精度，请核对数量或金额")) from None
 
 
 def _allocation_text(value):
     """Positive Data140 values only; inspect length before fixed-point expansion."""
     value = value.normalize()
     if not value.is_finite() or value <= 0:
-        raise ValueError("关联数量及换算结果必须保持有限正数")
+        raise ValueError(_i18n("关联数量及换算结果必须保持有限正数"))
     _, digits, exponent = value.as_tuple()
     length = max(len(digits) + exponent, 1) + (1 - exponent if exponent < 0 else 0)
     if length > 140:  # The three allocation numeric fields are native Data/varchar(140).
-        raise ValueError("关联数量或换算结果超出原生字段存储长度，请核对数量及单位")
+        raise ValueError(_i18n("关联数量或换算结果超出原生字段存储长度，请核对数量及单位"))
     return format(value, "f")
 
 
 def native_item(order, name):
     matches = [item for item in order.get("items", []) if item.get("name") == name]
     if len(matches) != 1:
-        raise ValueError("请明确选择属于原生订单的唯一明细")
+        raise ValueError(_i18n("请明确选择属于原生订单的唯一明细"))
     return matches[0]
 
 
@@ -97,26 +104,26 @@ def validate_allocation(external, internal, proposed, existing):
             context.traps[Underflow] = True
             return _validate_allocation(external, internal, proposed, existing)
     except DecimalException:
-        raise ValueError("关联数量或换算结果超出当前计算精度，请核对原生数量及单位") from None
+        raise ValueError(_i18n("关联数量或换算结果超出当前计算精度，请核对原生数量及单位")) from None
 
 
 def _validate_allocation(external, internal, proposed, existing):
     result = dict(proposed)
     flow = result.get("flow_kind")
     if flow not in FLOW_KINDS or external["name"] != result.get("external_order"):
-        raise ValueError("采购关联类型或原生订单不符")
+        raise ValueError(_i18n("采购关联类型或原生订单不符"))
     if external["company"] != result.get("purchasing_company") or not result.get("beneficiary_company"):
-        raise ValueError("请明确采购公司及最终使用/销售公司")
+        raise ValueError(_i18n("请明确采购公司及最终使用/销售公司"))
     item = native_item(external, result.get("external_item"))
     qty = number(result.get("allocated_qty"))
     item_qty = number(item["qty"])
     if qty > item_qty:
-        raise ValueError("累计关联数量超出外部采购明细数量")
+        raise ValueError(_i18n("累计关联数量超出外部采购明细数量"))
     factor = number(item.get("conversion_factor"))
     stock_qty = qty * factor
     stock_uom = item.get("stock_uom")
     if not item.get("uom") or not stock_uom:
-        raise ValueError("原生明细缺少单位或库存单位，请先核对")
+        raise ValueError(_i18n("原生明细缺少单位或库存单位，请先核对"))
     external_allocated = Decimal(0)
     internal_allocated = Decimal(0)
     for row in existing:
@@ -128,28 +135,28 @@ def _validate_allocation(external, internal, proposed, existing):
                 internal["name"], result.get("internal_item")):
             internal_allocated += number(row.get("allocated_stock_qty"))
     if qty + external_allocated > item_qty:
-        raise ValueError("累计关联数量超出外部采购明细数量")
+        raise ValueError(_i18n("累计关联数量超出外部采购明细数量"))
     if flow == "trade_custody":
         if internal or result.get("internal_order") or result.get("internal_item"):
-            raise ValueError("贸易保管关联不形成内部应付")
+            raise ValueError(_i18n("贸易保管关联不形成内部应付"))
         if (result["beneficiary_company"] != external["company"] or
                 not result.get("custody_company") or not result.get("custody_warehouse")):
-            raise ValueError("贸易所有公司与保管公司/仓库需明确核对")
+            raise ValueError(_i18n("贸易所有公司与保管公司/仓库需明确核对"))
     else:
         if not internal or internal["name"] != result.get("internal_order"):
-            raise ValueError("请选择原生内部采购订单")
+            raise ValueError(_i18n("请选择原生内部采购订单"))
         if internal["company"] != result["beneficiary_company"]:
-            raise ValueError("内部采购订单公司必须为最终受益公司")
+            raise ValueError(_i18n("内部采购订单公司必须为最终受益公司"))
         target = native_item(internal, result.get("internal_item"))
         if item.get("item_code") != target.get("item_code") or stock_uom != target.get("stock_uom"):
-            raise ValueError("原生物料或库存单位不一致，不能猜测跨明细关联")
+            raise ValueError(_i18n("原生物料或库存单位不一致，不能猜测跨明细关联"))
         if stock_qty + internal_allocated > number(target["qty"]) * number(target.get("conversion_factor")):
-            raise ValueError("累计关联数量超出内部采购明细数量")
+            raise ValueError(_i18n("累计关联数量超出内部采购明细数量"))
         if flow == "internal_local" and (internal["name"] != external["name"] or
                 target["name"] != item["name"] or external["company"] != result["beneficiary_company"]):
-            raise ValueError("本地内部采购以当前工厂原生订单及明细为准")
+            raise ValueError(_i18n("本地内部采购以当前工厂原生订单及明细为准"))
         if flow == "external_internal" and external["company"] == internal["company"]:
-            raise ValueError("跨公司采购与内部采购公司需分别明确")
+            raise ValueError(_i18n("跨公司采购与内部采购公司需分别明确"))
     result.update(allocated_qty=_allocation_text(qty), allocated_stock_qty=_allocation_text(stock_qty),
                   allocated_uom=item["uom"], stock_uom=stock_uom, conversion_factor=_allocation_text(factor))
     return result

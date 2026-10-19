@@ -67,6 +67,12 @@
 		return normalizeIdentity(icon && (icon.name || icon.label));
 	}
 
+	function prepareSidebarMenuItem(item) {
+		if (!item || item.is_divider) return null;
+		if (item.icon || item.icon_url) return item;
+		return { ...item, icon: getNavigationIcon(item.label || item.name) };
+	}
+
 	function projectAuthorizedDesktopIcons(authorizedIcons, runtimeLayout) {
 		const authorized = new Map();
 		(authorizedIcons || []).forEach((icon) => {
@@ -637,6 +643,7 @@
 		normalizeRoute,
 		observeNativeSidebarChanges,
 		projectAuthorizedDesktopIcons,
+		prepareSidebarMenuItem,
 		rememberDesktopSidebarExpansion,
 		replaceNavigationRoot,
 		resolveItemOpen,

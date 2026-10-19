@@ -1,5 +1,6 @@
 (function (root) {
 	"use strict";
+ const translateText = (text, args = []) => String((globalThis.__ || (value => value))(text)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const route = "purchase-payables",
 		t = root.__ || ((text) => text);
 	const columns = [
@@ -44,7 +45,7 @@
 			migratePreferences:value=>value?.version===4?value:{...value,columns:provider.defaultColumns},
 			freezeUntil: "supplier",
 			sortFields: ['posting_date','name','supplier','company','grand_total','status'],
-			summary: c => `应付账户币种汇总：${(c.providerPayload?.totals || []).map(row=>`应付 ${money(row.total,row.currency)} · 已付 / 核销 ${money(row.settled,row.currency)} · 未付 ${money(row.outstanding,row.currency)}`).join(' ｜ ') || '—'}`,
+			summary: c => translateText("应付账户币种汇总：{0}", [(c.providerPayload?.totals || []).map(row=>translateText("应付 {0} · 已付 / 核销 {1} · 未付 {2}", [money(row.total,row.currency), money(row.settled,row.currency), money(row.outstanding,row.currency)])).join(' ｜ ') || '—']),
 			request: (c) => ({
 				method: "deeplinkerp_branding.services.purchase_payment_service.get_purchase_payables",
 				args: { ...c.quick, order_by:c.providerOrderBy, start: c.page * c.pageSize, page_length: c.pageSize },
@@ -54,7 +55,7 @@
 				delete args.start;delete args.page_length;
 				if(!c.root.DeepLinkERPPurchaseOrderExport?.downloadWorkbook)await c.root.frappe.require('/assets/deeplinkerp_branding/js/purchase_order_export.js');
 				const exporter=c.root.DeepLinkERPPurchaseOrderExport;
-				if(!exporter)throw new Error('导出组件加载失败，请刷新。');
+				if(!exporter)throw new Error(translateText("导出组件加载失败，请刷新。"));
 				exporter.downloadWorkbook(c.root,await exporter.fetchNativeWorkbook(c.root,args,'deeplinkerp_branding.services.purchase_payment_service.get_purchase_payables'),'采购应付');
 			},
 			renderValue: (field, doc) => {
@@ -93,7 +94,7 @@
 						)
 						.join(" ");
 				if (field === "action")
-					return `${actions.nativeAction("Purchase Invoice", doc.name, "查看应付单")}${
+					return `${actions.nativeAction("Purchase Invoice", doc.name, translateText("查看应付单"))}${
 						doc.can_pay
 							? ` <button type="button" class="btn btn-default btn-xs dlp-payable-pay" data-name="${esc(
 									doc.name
@@ -131,7 +132,7 @@
 			columns,
 			provider,
 			renderLink: (_c, _doc, value) => value,
-			emptyLabel: "没有符合条件的关联采购应付单",
+			emptyLabel: translateText("没有符合条件的关联采购应付单"),
 			pageFieldMap: {
 				total: 'grand_total', settled: 'outstanding_amount', outstanding: 'outstanding_amount',
 				orders: "items",

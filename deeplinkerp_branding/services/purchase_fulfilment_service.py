@@ -6,6 +6,9 @@ the controller rejects ordinary REST/import writes, deletion and renaming.
 """
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import json
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -87,7 +90,7 @@ def _company(name, user=None):
         if reader:
             reader.fulfilment_company_permissions = permissions
     if permissions and name not in permissions:
-        frappe.throw("无权访问此公司", frappe.PermissionError)
+        frappe.throw(_i18n("无权访问此公司"), frappe.PermissionError)
     return _read("Company", name)
 
 
@@ -112,7 +115,7 @@ def _write_permission(order):
     permitted.update(field.fieldname for field in meta.fields if field.fieldtype in ("Table", "Table MultiSelect")
                      and field.permlevel in levels)
     if not {"company", "supplier", "currency", "items"} <= permitted:
-        frappe.throw("无权核对完整采购字段", frappe.PermissionError)
+        frappe.throw(_i18n("无权核对完整采购字段"), frappe.PermissionError)
 
 
 def _order(name, *, write=False, lock=False):
@@ -146,26 +149,26 @@ def authorize_link(doc, *, write=False, external=None, internal=None, require_co
     for name in {doc.get("purchasing_company"), doc.get("beneficiary_company"), doc.get("custody_company")} - {None, ""}:
         _company(name)
     if doc.purchasing_company != external.company:
-        frappe.throw("采购关联公司与原生订单已变化")
+        frappe.throw(_i18n("采购关联公司与原生订单已变化"))
     flow = doc.flow_kind
     seller_company = external.company
     if flow in ("external_internal", "internal_local"):
         internal = internal or _order(doc.internal_order)
         if internal.company != doc.beneficiary_company:
-            frappe.throw("内部订单公司与最终受益公司不符")
+            frappe.throw(_i18n("内部订单公司与最终受益公司不符"))
         supplier = _internal_supplier(internal, external.company if flow == "external_internal" else None)
         seller_company = supplier.represents_company
         if flow == "internal_local" and (external.name != internal.name or external.company != doc.beneficiary_company):
-            frappe.throw("本地内部采购必须使用当前工厂原生订单")
+            frappe.throw(_i18n("本地内部采购必须使用当前工厂原生订单"))
     elif flow == "trade_custody":
         if doc.get("internal_order") or doc.get("internal_item") or external.company != doc.beneficiary_company:
-            frappe.throw("贸易保管不形成内部应付，所有公司应为采购公司")
+            frappe.throw(_i18n("贸易保管不形成内部应付，所有公司应为采购公司"))
         warehouse = _read("Warehouse", doc.custody_warehouse, {"company", "is_group", "disabled"})
         _company(warehouse.company)
         if warehouse.company != doc.custody_company or warehouse.is_group or warehouse.disabled:
-            frappe.throw("保管仓库与保管公司不符或不可用")
+            frappe.throw(_i18n("保管仓库与保管公司不符或不可用"))
     else:
-        frappe.throw("采购关联类型无效")
+        frappe.throw(_i18n("采购关联类型无效"))
     seller = None
     if doc.get("seller_order"):
         seller = _read("Sales Order", doc.seller_order, {"company", "customer", "currency", "grand_total", "items"})
@@ -195,11 +198,11 @@ def _authorize(doc, **kwargs):
 
 def validate_managed_link(doc, method=None):
     if not _managed.get():
-        frappe.throw("采购履行关联请使用订单进度的核对入口", frappe.PermissionError)
+        frappe.throw(_i18n("采购履行关联请使用订单进度的核对入口"), frappe.PermissionError)
 
 
 def protect_link_identity(doc, method=None, *args, **kwargs):
-    frappe.throw("采购履行关联需保留审计身份，请停用关联，不能删除或重命名", frappe.PermissionError)
+    frappe.throw(_i18n("采购履行关联需保留审计身份，请停用关联，不能删除或重命名"), frappe.PermissionError)
 
 
 def has_permission(doc, user=None, ptype=None):
@@ -256,10 +259,10 @@ def _locked_link(name, expected_modified, *, include_inactive=False):
               for key in sorted({initial.external_order, initial.get("internal_order")} - {None, ""})}
     doc = frappe.get_doc(DOCTYPE, name, for_update=True)
     if _link_identity(doc) != _link_identity(initial):
-        frappe.throw("关联身份已变化，请刷新后重新核对", LinkStateConflict)
+        frappe.throw(_i18n("关联身份已变化，请刷新后重新核对"), LinkStateConflict)
     _check_version(doc, expected_modified, "关联记录")
     if not include_inactive and not doc.active:
-        frappe.throw("关联已停用，请重新建立关联", LinkStateConflict)
+        frappe.throw(_i18n("关联已停用，请重新建立关联"), LinkStateConflict)
     external, internal, seller = _authorize(doc, write=True, external=orders[doc.external_order],
                                            internal=orders.get(doc.get("internal_order")))
     existing = _current_allocations(doc.external_order, doc.get("internal_order"))
@@ -305,20 +308,20 @@ def save_link(external_order, external_item, purchasing_company, beneficiary_com
                   "custody_warehouse": custody_warehouse, "name": name}
     if any(not isinstance(value, str) or not value.strip() or len(value) > 140 for value in required.values()) or any(
             value is not None and value != "" and (not isinstance(value, str) or len(value) > 140) for value in identities.values()):
-        frappe.throw("请提供明确的原生单据、公司及明细 ID")
+        frappe.throw(_i18n("请提供明确的原生单据、公司及明细 ID"))
     if not frappe.db.exists("DocType", DOCTYPE):
-        frappe.throw("采购履行关联元数据尚未安装，请管理员更新应用")
+        frappe.throw(_i18n("采购履行关联元数据尚未安装，请管理员更新应用"))
     initial = frappe.get_doc(DOCTYPE, name) if name else None
     if initial:
         if initial.external_order != external_order or initial.external_item != external_item:
-            frappe.throw("关联来源身份不能改写，请停用后重新建立关联")
+            frappe.throw(_i18n("关联来源身份不能改写，请停用后重新建立关联"))
         _authorize(initial, write=True)
     order_names = {external_order, internal_order, initial.get("internal_order") if initial else None} - {None, ""}
     orders = {key: _order(key, lock=True, write=key == external_order) for key in sorted(order_names)}
     old = frappe.get_doc(DOCTYPE, name, for_update=True) if name else None
     if old:
         if _link_identity(old) != _link_identity(initial):
-            frappe.throw("关联身份已变化，请刷新后重新核对")
+            frappe.throw(_i18n("关联身份已变化，请刷新后重新核对"))
         _check_version(old, expected_link_modified, "关联记录")
     old_batch = old.get("cost_batch") if old else None
     old_logistics = _json(old.get("source_versions_json")).get("logistics", {}) if old else {}
@@ -349,7 +352,7 @@ def save_link(external_order, external_item, purchasing_company, beneficiary_com
         target_item = contract.native_item({"items": [row.as_dict() if hasattr(row, "as_dict") else dict(row)
             for row in seller.items]}, seller_item)
         if source_item["item_code"] != target_item["item_code"] or source_item["stock_uom"] != target_item["stock_uom"]:
-            frappe.throw("内部销售明细物料或单位不符")
+            frappe.throw(_i18n("内部销售明细物料或单位不符"))
     existing = _current_allocations(external_order, internal_order)
     try:
         checked = contract.validate_allocation(external_data, internal_data, values, existing)
@@ -389,7 +392,7 @@ def confirm_native_price(name, expected_modified, expected_internal_modified, ex
     doc, external, internal, seller = _locked_link(name, expected_link_modified)
     _check_version(external, expected_modified, "外部采购订单")
     if not internal or doc.flow_kind == "trade_custody":
-        frappe.throw("贸易保管不形成内部价格或应付")
+        frappe.throw(_i18n("贸易保管不形成内部价格或应付"))
     _check_version(internal, expected_internal_modified, "内部采购订单")
     if seller:
         _check_version(seller, expected_seller_modified, "内部销售订单")
@@ -398,9 +401,9 @@ def confirm_native_price(name, expected_modified, expected_internal_modified, ex
     try:
         contract.number(item.get("rate")); contract.number(item.get("amount"))
     except ValueError:
-        frappe.throw("内部原生价格尚未填写，请先核对价格及币种")
+        frappe.throw(_i18n("内部原生价格尚未填写，请先核对价格及币种"))
     if not internal.currency:
-        frappe.throw("内部原生订单缺少币种")
+        frappe.throw(_i18n("内部原生订单缺少币种"))
     doc.price_confirmed_by = frappe.session.user
     doc.price_confirmed_on = frappe.utils.now_datetime()
     version = contract.price_version(data)
@@ -418,7 +421,7 @@ def confirm_native_price(name, expected_modified, expected_internal_modified, ex
 def disable_link(name, expected_link_modified, reason):
     doc, _, _, _ = _locked_link(name, expected_link_modified, include_inactive=True)
     if not str(reason or "").strip():
-        frappe.throw("请填写停用原因")
+        frappe.throw(_i18n("请填写停用原因"))
     doc.active = 0
     _audit(doc, "disable", {"reason": str(reason).strip()[:4096]})
     return _save(doc)
@@ -429,14 +432,14 @@ def disable_link(name, expected_link_modified, reason):
 def set_manual_node(name, expected_link_modified, node, note, qty=None, uom=None):
     doc, _, _, _ = _locked_link(name, expected_link_modified)
     if node not in {"domestic_dispatch", "international_dispatch", "customs", "reported_arrival", "review", "evidence"}:
-        frappe.throw("手工物流节点无效")
+        frappe.throw(_i18n("手工物流节点无效"))
     if not str(note or "").strip() or len(str(note)) > 4096:
-        frappe.throw("请填写不超过 4096 字的核对证据")
+        frappe.throw(_i18n("请填写不超过 4096 字的核对证据"))
     event = {"node": node, "note": str(note).strip(), "by": frappe.session.user,
              "on": str(frappe.utils.now_datetime()), "origin": "manual", "erp_received": False}
     if qty is not None or uom:
         if not uom:
-            frappe.throw("手工数量需明确单位，不与其他单位混加")
+            frappe.throw(_i18n("手工数量需明确单位，不与其他单位混加"))
         try:
             event.update(qty=contract.decimal_text(contract.number(qty)), uom=str(uom))
         except ValueError as error:
@@ -457,7 +460,7 @@ def add_evidence(name, expected_link_modified, note, file=None):
         doc = frappe.get_doc(DOCTYPE, name)
         if (attachment.attached_to_doctype, attachment.attached_to_name) not in {
                 (DOCTYPE, name), ("Purchase Order", doc.external_order), ("Purchase Order", doc.get("internal_order"))}:
-            frappe.throw("附件不属于此原生采购关联")
+            frappe.throw(_i18n("附件不属于此原生采购关联"))
         note = str(note or "") + "\nFile: " + file
     return set_manual_node(name, expected_link_modified, "evidence", note)
 
@@ -634,7 +637,7 @@ def get_link_candidates(external_order, beneficiary_company, flow_kind="external
     if flow_kind == "external_internal":
         filters["represents_company"] = external.company
     elif flow_kind != "internal_local":
-        frappe.throw("采购关联类型无效")
+        frappe.throw(_i18n("采购关联类型无效"))
     suppliers = frappe.get_list("Supplier", filters=filters, fields=["name"], limit_page_length=100)
     if not suppliers:
         return {"purchase_orders": [], "warnings": [MASTER_WARNING]}

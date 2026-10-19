@@ -25,7 +25,7 @@
 	const itemColumns = [["idx", "序号"], ["item_code", "品目编码"], ["item_name", "品项名"], ["custom_specifications", "颜色"], ["qty", "数量"], ["rate", "单价"], ["amount", "金额"], ["custom_item_tax_amount", "IVA 增值税"], ["delivery_date", "交付日期"], ["custom_product", "产品系列"], ["warehouse", "仓库"]];
 	const primaryItemFields = new Set(["idx", "item_code", "item_name", "custom_specifications", "qty", "rate", "amount"]);
 	const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
-	const t = (value, args) => (root.__ || ((x, values = []) => x.replace(/\{(\d+)\}/g, (_, i) => values[i] ?? "")))(value, args);
+	const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const state = value => t(statusLabels[value] || value || "—");
 	const money = (value, currency) => value === undefined || value === null ? "—" : `${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${esc(currency || "")}`;
 	const prepayment = header => header.party_account_currency && header.advance_paid !== "" && Number.isFinite(Number(header.advance_paid)) ? money(header.advance_paid, header.party_account_currency) : "—";
@@ -63,7 +63,7 @@
 		try {
 			const response = await root.frappe.call({ method: API + "make_sales_order_payment_entry", args: { sales_order: name } });
 			const [payment] = root.frappe.model.sync(response.message);
-			if (!payment) throw new Error("Missing mapped payment entry");
+			if (!payment) throw new Error(t("Missing mapped payment entry"));
 			dialog.hide();
 			root.frappe.set_route("Form", payment.doctype, payment.name);
 		} catch (_) {
@@ -243,7 +243,7 @@
 			if (button.hasClass("dlp-sales-expand") && controller.salesExpanded.has(name)) { controller.salesExpanded.delete(name); controller.list.render_list(); controller.list.set_rows_as_checked?.(); return; }
 			button.prop("disabled", true);
 			try { const detail = await call("get_sales_order_details", { sales_order: name }); if (button.hasClass("dlp-sales-expand")) { controller.salesExpanded.set(name, detail); controller.list.render_list(); controller.list.set_rows_as_checked?.(); } else {
-				const dialog = new root.frappe.ui.Dialog({ title: `${t("订单详情")} · ${name}`, size: "extra-large", fields: [{ fieldname: "details", fieldtype: "HTML", options: detailsHTML(detail) }] }); dialog.$wrapper.addClass("dlp-sales-detail-dialog"); dialog.show(); dialog.$wrapper.find(".dlp-sales-all-items").on("click", e => { const expanded = e.currentTarget.getAttribute("aria-expanded") !== "true"; e.currentTarget.setAttribute("aria-expanded", String(expanded)); e.currentTarget.textContent = t(expanded ? "收起额外字段" : "显示全部明细字段"); dialog.$wrapper.find(".dlp-sales-items").toggleClass("dlp-sales-items-overview", !expanded); });
+				const dialog = new root.frappe.ui.Dialog({ title: t("{0} · {1}", [t("订单详情"), name]), size: "extra-large", fields: [{ fieldname: "details", fieldtype: "HTML", options: detailsHTML(detail) }] }); dialog.$wrapper.addClass("dlp-sales-detail-dialog"); dialog.show(); dialog.$wrapper.find(".dlp-sales-all-items").on("click", e => { const expanded = e.currentTarget.getAttribute("aria-expanded") !== "true"; e.currentTarget.setAttribute("aria-expanded", String(expanded)); e.currentTarget.textContent = t(expanded ? "收起额外字段" : "显示全部明细字段"); dialog.$wrapper.find(".dlp-sales-items").toggleClass("dlp-sales-items-overview", !expanded); });
 				loadDetailReceipts(dialog, name);
 				dialog.$wrapper.find(".dlp-sales-payment-new").on("click", event => openSalesOrderPaymentEntry(dialog, name, root.$(event.currentTarget)));
 			} } finally { button.prop("disabled", false); }
@@ -335,7 +335,7 @@
 	const grid = engine.create({ doctype: "Sales Order", controllerKey: "dlpSalesOrderGrid", routeClass: "dlp-sales-order-grid-active", columns: COLUMNS, freezeUntil: "name", defaultColumns: presets.finance, preferenceVersion: 4, migratePreferences, keepColumnHeader: true, onSelectionChange: updateReleaseSelection, purchaseChrome: true, mainFilterFields: ["search", "customer", "financial_status", "from_date", "to_date", "company"],
 		computedFields: ["dlp_product", "dlp_quantity", "dlp_sales_person", "dlp_receipts", "dlp_sync", "dlp_last_confirmation", "dlp_actions"], extraFields: ["customer", "custom_crm_order_no", "party_account_currency"],
 		numbers: ["grand_total", "advance_paid", "per_delivered", "per_billed"], dates: ["transaction_date", "delivery_date"], moneySummary: true, quickFields: ["company", "customer"], searchFields: ["name", "custom_crm_order_no", "customer_name", "custom_odt"], optionLabels: { financial_status: financialLabels, custom_process_status: statusLabels, status: orderStatusLabels },
-		controls: [{ fieldname: "search", fieldtype: "Data", label: "订单号 / 客户 / ODT" }, { fieldname: "customer", fieldtype: "Link", options: "Customer", label: "客户" }, { fieldname: "financial_status", permission_field: "custom_process_status", fieldtype: "Select", label: "财务审核状态", emptyLabel: "全部审核状态", options: "\npending\napproved\nrejected" }, { fieldname: "from_date", permission_field: "transaction_date", fieldtype: "Date", label: "开始日期" }, { fieldname: "to_date", permission_field: "transaction_date", fieldtype: "Date", label: "结束日期" }, { fieldname: "product", permission_field: "items", fieldtype: "Link", options: "Item", label: "品目编码" }, { fieldname: "company", fieldtype: "Link", options: "Company", label: "公司" }],
+		controls: [{ fieldname: "search", fieldtype: "Data", label: t("订单号 / 客户 / ODT") }, { fieldname: "customer", fieldtype: "Link", options: "Customer", label: t("客户") }, { fieldname: "financial_status", permission_field: "custom_process_status", fieldtype: "Select", label: t("财务审核状态"), emptyLabel: t("全部审核状态"), options: "\npending\napproved\nrejected" }, { fieldname: "from_date", permission_field: "transaction_date", fieldtype: "Date", label: t("开始日期") }, { fieldname: "to_date", permission_field: "transaction_date", fieldtype: "Date", label: t("结束日期") }, { fieldname: "product", permission_field: "items", fieldtype: "Link", options: "Item", label: t("品目编码") }, { fieldname: "company", fieldtype: "Link", options: "Company", label: t("公司") }],
 		exportOptions: args => ({ columnTransforms: Object.fromEntries(args.fields.flatMap((field, index) => field === "custom_process_status" ? [[index + 2, { header: t("财务审核状态"), value: value => t(financialLabel(value)) }]] : [])) }),
 		searchConflictMessage: "现有 OR 筛选已保留；清除后可使用订单 / 客户搜索。",
 		transformQuery, onRows, onColumnsChange, mountControls, renderValue, onRequestStart: invalidateReleaseSelection,

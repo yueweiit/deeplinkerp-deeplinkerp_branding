@@ -5,7 +5,7 @@
 	"use strict";
 	const API = "deeplinkerp_branding.services.operating_expenses.",
 		route = "operating-expenses";
-	const t = (value) => (root.__ || ((text) => text))(value);
+	const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const esc = (value) =>
 		String(value ?? "").replace(
 			/[&<>"']/g,
@@ -69,7 +69,7 @@
 			["quick_tab", [...quickTabs.map(row=>row[0]), "pending_payment"], "快捷筛选"],
 		]) {
 			if (result[field] && !allowed.includes(result[field]))
-				throw new Error(t(`${label}无效`));
+				throw new Error(t("{0}无效", [label]));
 		}
 		return result;
 	}
@@ -315,7 +315,7 @@
 				onPayload: (c) => {c.updateOperatingTabs?.();fit(c);},
 			},
 			afterRender: (c) => fit(c),
-			emptyLabel: "没有符合条件的运营支出来源",
+			emptyLabel: t("没有符合条件的运营支出来源"),
 		});
 	}
 	const api = {

@@ -1,4 +1,5 @@
 if (!window.dlpPurchasePaymentFormInstalled) {
+ const translateText = (text) => (window.__ || (value => value))(text);
  window.dlpPurchasePaymentFormInstalled = true;
  for (const doctype of ["Purchase Receipt", "Purchase Order", "Purchase Invoice", "Payment Entry"]) {
   frappe.ui.form.on(doctype, {refresh: frm => DeepLinkERPPurchasePayments.formRefresh(frm)});
@@ -17,7 +18,7 @@ if (!window.dlpPurchasePaymentFormInstalled) {
   if (!supported.has(frm.doc.doctype) || window.cur_frm !== frm) return nativeSave.apply(this, arguments);
   if (frm.dlpReversalIdentity?.doctype === frm.doc.doctype && frm.dlpReversalIdentity?.name === frm.doc.name &&
       frm.dlpReversal && (frm.dlpReversal.stage !== 'completed' || frm.dlpReversal.refresh_failed)) {
-   frappe.msgprint('冲销未完成，相关操作暂缓办理。');
+   frappe.msgprint(translateText("冲销未完成，相关操作暂缓办理。"));
    return;
   }
   const snapshot = JSON.stringify(canonical(frm.doc));
@@ -37,7 +38,7 @@ if (!window.dlpPurchasePaymentFormInstalled) {
     if (response?.purchase_reversal && response.purchase_reversal.stage !== 'completed') {
      frm.dlpReversal = response.purchase_reversal;
      frm.dlpReversalIdentity = {doctype: frm.doc.doctype, name: frm.doc.name};
-     frappe.show_alert?.({message:'取消已受理，库存重算尚未完成。',indicator:'orange'});
+     frappe.show_alert?.({message:translateText("取消已受理，库存重算尚未完成。"),indicator:'orange'});
     }
     if (response && !response.exc && response.docs?.some(doc => doc.doctype === pending.doctype) && requests.get(frm) === pending) requests.delete(frm);
     return callback?.(response);

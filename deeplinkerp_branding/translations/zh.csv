@@ -136,3 +136,297 @@ Pending financial approval,待财务审核
 Excel 审核状态列必须为文本，已停止导出。,Excel 审核状态列必须为文本，已停止导出。
 Excel 共享文本索引不符合预期。,Excel 共享文本索引不符合预期。
 未选择订单,未选择订单
+物料库存明细,物料库存明细
+半成品库存明细,半成品库存明细
+成品库存明细,成品库存明细
+模具库存明细,模具库存明细
+库存库位明细,库存库位明细
+分类库存明细,分类库存明细
+物料库存明细表,物料库存明细表
+{0}表,{0}表
+正式物料编码,正式物料编码
+物料名称（双语）,物料名称（双语）
+原始库位,原始库位
+库位数量,库位数量
+总库存,总库存
+库存单位,库存单位
+物料组,物料组
+DPCI,DPCI
+外部编码,外部编码
+原始标识/别名,原始标识/别名
+参考库位,参考库位
+快照库位数量,快照库位数量
+实时库存,实时库存
+库存差异,库存差异
+库存状态,库存状态
+快照日期,快照日期
+库位待维护,库位待维护
+库存一致,库存一致
+待库存重算,待库存重算
+重算中,重算中
+校验中,校验中
+冲销完成,冲销完成
+失败待处理,失败待处理
+冲销进度待核对,冲销进度待核对
+无仓库占位行不可移动,无仓库占位行不可移动
+选择 {0},选择 {0}
+全选当前页,全选当前页
+没有符合条件的库存库位记录。,没有符合条件的库存库位记录。
+没有符合条件的库存记录。,没有符合条件的库存记录。
+盘点快照,盘点快照
+下级物料组,下级物料组
+物料编码/名称,物料编码/名称
+只看有库存,只看有库存
+每页行数,每页行数
+每页行数必须是 {0} 到 {1} 的整数。,每页行数必须是 {0} 到 {1} 的整数。
+每页行数必须是 1 到 2500 的整数。,每页行数必须是 1 到 2500 的整数。
+筛选,筛选
+清除筛选,清除筛选
+切换公司将清空已选物料，是否继续？,切换公司将清空已选物料，是否继续？
+已选物料 ({0}),已选物料 ({0})
+物料移动 ({0}),物料移动 ({0})
+正在读取库存…,正在读取库存…
+第 {0} 页,第 {0} 页
+第 {0} / {1} 页,第 {0} / {1} 页
+采购冲销未完成，物料移动暂缓办理。,采购冲销未完成，物料移动暂缓办理。
+公司信息已变化，请重新选择公司后读取库存。,公司信息已变化，请重新选择公司后读取库存。
+暂无库位快照,暂无库位快照
+盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条,盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条
+ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2},ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2}
+库存明细读取失败。,库存明细读取失败。
+正在生成 Excel…,正在生成 Excel…
+已选物料,已选物料
+清空已选,清空已选
+物料编码,物料编码
+物料名称,物料名称
+来源仓库,来源仓库
+移除,移除
+暂无已选物料,暂无已选物料
+正在重新核对实时库存…,正在重新核对实时库存…
+实时库存核对失败，请刷新库存后重试。,实时库存核对失败，请刷新库存后重试。
+物料移动（{0} 项）,物料移动（{0} 项）
+移动类型,移动类型
+统一目标仓库,统一目标仓库
+移动物料,移动物料
+物料,物料
+名称,名称
+实时可用量,实时可用量
+移动数量,移动数量
+单位,单位
+打开未保存物料移动单,打开未保存物料移动单
+该类型需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。,该类型需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。
+该移动类型还需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。,该移动类型还需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。
+库存列表或已选物料已变化，请重新打开物料移动。,库存列表或已选物料已变化，请重新打开物料移动。
+每个物料的移动数量都必须大于零。,每个物料的移动数量都必须大于零。
+正在准备标准物料移动单…,正在准备标准物料移动单…
+不支持的库存分类：{0},不支持的库存分类：{0}
+空,空
+没有权限查看库存库位快照。,没有权限查看库存库位快照。
+没有权限查看{0}。,没有权限查看{0}。
+请先选择公司或设置默认公司。,请先选择公司或设置默认公司。
+没有权限查看所选仓库。,没有权限查看所选仓库。
+物料组不存在：{0},物料组不存在：{0}
+物料组不属于{0}：{1},物料组不属于{0}：{1}
+没有创建物料移动单的权限。,没有创建物料移动单的权限。
+{0}格式不正确。,{0}格式不正确。
+{0}不能为空。,{0}不能为空。
+{0}一次不能超过 {1} 项。,{0}一次不能超过 {1} 项。
+没有权限创建物料移动单。,没有权限创建物料移动单。
+没有权限读取{0}。,没有权限读取{0}。
+物料编码不能为空。,物料编码不能为空。
+物料不可用于库存移动：{0},物料不可用于库存移动：{0}
+仓库不能为空。,仓库不能为空。
+仓库不属于当前公司：{0},仓库不属于当前公司：{0}
+不能使用分组仓库：{0},不能使用分组仓库：{0}
+已选物料超过库存范围上限,已选物料超过库存范围上限
+采购冲销未完成，相关库存移动暂缓办理。,采购冲销未完成，相关库存移动暂缓办理。
+{0}的移动数量必须是数字。,{0}的移动数量必须是数字。
+{0}的移动数量必须是有限数字。,{0}的移动数量必须是有限数字。
+{0}的移动数量必须大于零。,{0}的移动数量必须大于零。
+{0}缺少来源仓库。,{0}缺少来源仓库。
+{0}的移动数量超过来源仓实时库存 {1:g}。,{0}的移动数量超过来源仓实时库存 {1:g}。
+请选择目标仓库。,请选择目标仓库。
+{0}的来源仓库和目标仓库不能相同。,{0}的来源仓库和目标仓库不能相同。
+重复选择物料仓库组：{0} / {1},重复选择物料仓库组：{0} / {1}
+请选择移动类型。,请选择移动类型。
+移动类型未配置用途：{0},移动类型未配置用途：{0}
+重复移动物料仓库组：{0} / {1},重复移动物料仓库组：{0} / {1}
+ERP 未维护分类物料组：{0},ERP 未维护分类物料组：{0}
+A fixed native source job is queued or running,固定的本机源作业已排队或正在运行
+Accounts Settings,会计设置
+Appointment Booking Settings,预约设置
+Bulk Update,批量更新
+Buying Settings,采购设置
+CRM Settings,客户关系设置
+Container child termination is unconfirmed,容器子进程终止未经确认
+Container run identity differs,容器运行标识不同
+Created By,创建人
+Currency Exchange Settings,外币汇率设置
+DLP Framework,DLP 框架
+Dedicated source sync configuration is invalid,专用源同步配置无效
+Dedicated source sync requires maintenance off and global scheduler disabled,专用源同步需要关闭维护并禁用全局调度程序
+Deeplinkerp,Deeplinkerp
+Deeplinkerp Settings,Deeplinkerp 设置
+Deleted Documents,已删除文档
+Delivery Settings,出货设置
+Download Backups,下载备份
+Employee,员工
+Exactly one existing source Scheduled Job Type is required,只需要一种现有源计划作业类型
+Expense recognition,费用确认
+Export Data,导出数据
+Financial fingerprint,金融指纹
+Generate Purchase Order,生成采购订单
+Global Defaults,全局默认值
+Import Data,导入数据
+Invalid OA cursor,OA 光标无效
+Invalid child identity,儿童身份无效
+Invalid interface mode.,界面模式无效。
+Invalid logging evidence,无效的记录证据
+Invalid source page size,源页面大小无效
+Invalid source task or run identity,源任务或运行标识无效
+Inventory Original Location Snapshot,库存原始位置快照
+Item Variant Settings,物料多规格设置
+Logging evidence or current job identity differs,记录证据或当前工作身份不同
+Login is required to change the interface mode.,更改界面模式需要登录。
+Manufacturing Settings,生产设置
+Missing container run marker; cancellation is unconfirmed,缺少容器运行标记；取消尚未确认
+Missing mapped payment entry,缺少映射的付款条目
+Modules,模块
+Move Down,下移
+Move Up,向上移动
+OA identity missing,OA 身份缺失
+OA snapshot mismatch,OA 快照不匹配
+ODT,ODT
+Operating Expense Company Map,营业费用公司地图
+Operating Expense Event,营业费用事件
+Operating Expense Mapping,运营费用映射
+Operating Expense Payment,营业费用支付
+Operating Expense Source,营业费用来源
+Operating Expense Sync Settings,运营费用同步设置
+Operating Expense Takeover,运营费用接管
+Operating expense event,营业费用事件
+Operating expense source,营业费用来源
+Other Settings,其他设置
+Owner,制单人
+POS Settings,POS设置
+Print Settings,打印设置
+Projects Settings,项目设置
+Purchase Fulfilment Link,购买履行链接
+Purchase Source Mapping Rule,采购来源映射规则
+Quick search cannot be combined with existing OR filters.,快速搜索不能与现有的 OR 过滤器结合使用。
+Registered,已注册
+Repost Accounting Ledger Settings,过账可改科目单据设置
+Reversed,已冲销
+Run log belongs to another scheduled job,运行日志属于另一个计划作业
+Select All,全选
+Selling Settings,销售设置
+Source Scheduled Job Type differs from the dedicated contract,源预定工作类型与专用合同不同
+Source initialization exceeded the deadline,源初始化超出了截止时间
+Source initialization time limit or cancellation,源初始化时限或取消
+Source sync time limit or cancellation,源同步时间限制或取消
+Source task is already queued or this run identity was used,源任务已排队或已使用此运行标识
+Source task is not allowlisted,源任务未列入允许名单
+Source timestamp must carry timezone,源时间戳必须携带时区
+Stock Reposting Settings,物料成本价追溯调整设置
+Stock Settings,库存设置
+Subscription Settings,订阅设置
+Supplier,供应商
+Support Settings,售后支持设置
+System Settings,系统设置
+Total,总计
+Unable to load totals,无法加载总计
+amount,金额
+api token,API令牌
+applicant,申请人
+application type,应用类型
+application type raw,应用程序类型原始
+approved at,批准于
+approved by,批准者
+associate,同事
+bank account,银行账户
+bank amount,银行金额
+bank currency,银行货币
+bank reference,银行参考号
+blocked,被阻止
+cashier root,收银员根
+changed since,自从改变
+claim token,领取令牌
+claimed at,声称于
+claimed by,声称由
+company,公司
+company mappings,公司地图
+create,创建
+currency,货币
+cursor,光标
+eligible,符合资格
+enabled,已启用
+event key,事件键
+expense,费用
+expense fingerprint,费用指纹
+external_internal,external_internal
+fingerprint,指纹
+goods,货物
+history fingerprint,历史指纹
+history json,历史 json
+internal_local,internal_local
+invalid source pagination,源分页无效
+invalid source schema,无效的源架构
+issues,问题
+journal entry,日记条目
+last error,最后一个错误
+last sync at,上次同步时间为
+mapping json,映射 json
+mixed,混合的
+operation,操作
+paid amount,支付金额
+party,聚会
+party type,聚会类型
+payee name,收款人姓名
+payment,付款
+payment date,付款日期
+payment key,支付密钥
+payment source id,支付源id
+pending amount,待处理金额
+preview fingerprint,预览指纹
+processing,加工
+provenance json,出处 json
+purchase_reversal_progress,purchase_reversal_progress
+recognition,认可
+reconcile,调和
+registered by,注册者
+reimbursement,报销
+remark,备注
+request date,请求日期
+request fingerprint,请求指纹
+reversal fingerprint,反转指纹
+reversal key,反转键
+reversal reason,逆转原因
+reversed at,逆转于
+reversed by,逆转为
+review,评论
+source,来源
+source company,来源公司
+source id,源ID
+source json,源 json
+source request failed,源请求失败
+source response too large,源响应太大
+source sheet,源表
+source status,来源状态
+source system,源系统
+source version,源版本
+status,状态
+summary,总结
+terms json,术语 json
+trade_custody,trade_custody
+unclassified,未分类
+unknown reversal stage,未知逆转阶段
+until,直到
+updated at,更新于
+{0} {1} {2} {3} {4}。{5},{0} {1} {2} {3} {4}。{5}
+{0} {1} {2} · {3} {4} {5},{0} {1} {2} · {3} {4} {5}
+{0} {1} {2} · {3} {4} {5} · {6} {7} {8},{0} {1} {2} · {3} {4} {5} · {6} {7} {8}
+{0} {1} · {2} {3},{0} {1} · {2} {3}
+{0} · {1},{0} · {1}
+{0}{1},{0}{1}
+{0}；{1},{0}；{1}
+Sent via Deeplinkerp,通过 Deeplinkerp 发送

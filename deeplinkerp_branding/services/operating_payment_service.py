@@ -4,6 +4,9 @@ The cashier owns history until it atomically freezes a logical application root.
 Thereafter history is immutable and local records are summed once under a source
 row lock. Batch list overlay is O(N + P), with no upstream requests per row.
 """
+
+from frappe import _ as _i18n
+
 import json
 import os
 import re
@@ -35,7 +38,7 @@ def _takeover(doc, for_update=False):
         return None
     record = expenses._read(TAKEOVER, doc.name, {"source", "company"}, for_update=for_update)
     if record.source != doc.name or record.company != doc.company:
-        frappe.throw("付款接管公司或申请关联不符，请管理员核查")
+        frappe.throw(_i18n("付款接管公司或申请关联不符，请管理员核查"))
     return record
 
 
@@ -53,7 +56,7 @@ def _records(doc, for_update=False):
         total=frappe.db.count(PAYMENT,filters)
     rows=[dict(row) for row in rows]
     if len(rows) != total or any(row["company"] != doc.company for row in rows):
-        raise ValueError("本申请存在不可读取或公司不符的付款，余额待核对，不能登记新付款")
+        raise ValueError(_i18n("本申请存在不可读取或公司不符的付款，余额待核对，不能登记新付款"))
     return rows
 
 
@@ -72,7 +75,7 @@ def _oa_identity(item, doc=None):
     identity = item.get("oa_identity")
     if (not isinstance(identity, dict) or set(identity) != {"corp_id", "process_instance_id"}
             or any(not isinstance(value, str) or not value.strip() or value != value.strip() or len(value) > 200 for value in identity.values())):
-        frappe.throw("OA 公司及审批实例身份缺失，请重新同步")
+        frappe.throw(_i18n("OA 公司及审批实例身份缺失，请重新同步"))
     canonical = "oa:" + digest([identity["corp_id"], identity["process_instance_id"]])
     # A previously joined cashier root keeps its existing ERP document identity.
     root = item.get("cashier_source_id")
@@ -82,7 +85,7 @@ def _oa_identity(item, doc=None):
         persisted_alias = (cached.get("source_system") == "dingtalk-oa" and cached.get("source_id") == doc.source_id
                            and cached.get("oa_identity") == identity)
     if item.get("source_id") != canonical and not (root and item.get("source_id") == root) and not persisted_alias:
-        frappe.throw("OA 来源标识与审批实例不一致，请重新同步")
+        frappe.throw(_i18n("OA 来源标识与审批实例不一致，请重新同步"))
     return identity, canonical
 
 
@@ -103,7 +106,7 @@ def payment_context(doc, item=None, for_update=False, *, strict=False, check_int
         history = _history(record)
         context["history"] = history
         if check_intent and not _intent_matches(record.expense_fingerprint, item if item is not None else json.loads(doc.source_json)):
-            raise ValueError("接管后的申请财务事实已变化，请管理员复核；既有付款不会删除")
+            raise ValueError(_i18n("接管后的申请财务事实已变化，请管理员复核；既有付款不会删除"))
         context["balance"] = balance(history, records)
     except (ValueError, TypeError, KeyError) as error:
         if strict:
@@ -120,7 +123,7 @@ def _checked_write_detail(doc, operation, expected=None, item=None, *, reversal_
     try:
         context = payment_context(doc, item, for_update=True, strict=True, check_intent=operation != "reverse")
         if not context["record"] or not context["balance"]:
-            frappe.throw("付款接管或余额写后校验失败，请刷新并核查")
+            frappe.throw(_i18n("付款接管或余额写后校验失败，请刷新并核查"))
         if expected:
             stage = "payment_record"
             record = (context["record"] if expected["doctype"] == TAKEOVER
@@ -154,7 +157,7 @@ def _checked_reversal_events(doc, payment, *, completed=False, expected_names=No
     if frappe.db.get_value(expenses.EVENT, expected_key, "name", for_update=True) and not any(row.name == expected_key for row in rows):
         rows.append(frappe._dict(name=expected_key))
     if expected_names is not None and {row.name for row in rows} != set(expected_names):
-        frappe.throw("付款凭证事件写后缺失或变化，请人工复核")
+        frappe.throw(_i18n("付款凭证事件写后缺失或变化，请人工复核"))
     events = []
     for row in rows:
         event = expenses._read(expenses.EVENT, row.name, {"source", "company", "operation", "payment_source_id"}, for_update=True)
@@ -164,20 +167,20 @@ def _checked_reversal_events(doc, payment, *, completed=False, expected_names=No
             voided = json.loads(event.provenance_json or "{}").get("voided_draft")
             if voided:
                 if not isinstance(voided, dict) or not isinstance(voided.get("document"), dict):
-                    frappe.throw("付款草稿弃用审计不完整，请人工复核")
+                    frappe.throw(_i18n("付款草稿弃用审计不完整，请人工复核"))
                 saved = voided["document"]
                 expenses._assert_financial_fields(event, {"journal_entry": None}, "付款草稿弃用后关联仍存在，请人工复核")
                 expenses._assert_financial_fields(saved, {"doctype": "Journal Entry", "name": voided.get("journal_entry"),
                     "company": doc.company, "docstatus": 0, "custom_operating_event_key": event.name,
                     "custom_operating_source": doc.name}, "付款草稿弃用审计关联不一致，请人工复核")
                 if not voided.get("journal_entry") or frappe.db.get_value("Journal Entry", voided["journal_entry"], "name", for_update=True):
-                    frappe.throw("付款草稿弃用后原生凭证仍存在，请人工复核")
+                    frappe.throw(_i18n("付款草稿弃用后原生凭证仍存在，请人工复核"))
             elif event.journal_entry:
                 journal = expenses._read("Journal Entry", event.journal_entry, {"company", "docstatus"}, for_update=True)
                 if journal.company != doc.company or journal.docstatus != 2:
-                    frappe.throw("撤销付款仍有关联未取消凭证，请人工复核")
+                    frappe.throw(_i18n("撤销付款仍有关联未取消凭证，请人工复核"))
             else:
-                frappe.throw("付款凭证关联缺失且无弃用审计，请人工复核")
+                frappe.throw(_i18n("付款凭证关联缺失且无弃用审计，请人工复核"))
         events.append(event)
     return events
 
@@ -256,9 +259,9 @@ def overlay_rows(rows):
         try:
             history = histories[row["name"]]
             if len(payments[row["name"]]) != all_counts[row["name"]]:
-                raise ValueError("存在不可读取的付款")
+                raise ValueError(_i18n("存在不可读取的付款"))
             if not _intent_matches(history.expense_fingerprint, json.loads(facts[row["name"]])):
-                raise ValueError("申请事实已变化")
+                raise ValueError(_i18n("申请事实已变化"))
             row.update(balance(json.loads(history.history_json), payments[row["name"]]))
         except (ValueError, TypeError, KeyError):
             row.update(paid_amount=None, pending_amount=None, source_status="付款待核对")
@@ -268,11 +271,11 @@ def _fresh_base(doc):
     item = expenses._fresh(doc, include_payments=False)
     cached = json.loads(doc.source_json)
     if item.get("source_id") != doc.source_id or item.get("source_system") != cached.get("source_system"):
-        frappe.throw("申请来源身份已变化，请重新同步并复核")
+        frappe.throw(_i18n("申请来源身份已变化，请重新同步并复核"))
     if item.get("source_system") == "dingtalk-oa":
         identity, _ = _oa_identity(item, doc)
         if identity != _oa_identity(cached, doc)[0]:
-            frappe.throw("OA 公司或审批实例身份已变化，请重新同步并复核")
+            frappe.throw(_i18n("OA 公司或审批实例身份已变化，请重新同步并复核"))
     decision = payment_decision(item)
     # Every write rechecks current approval evidence; historical payments remain.
     if not doc.company or decision.get("can_register_payment") is not True:
@@ -288,7 +291,7 @@ def _root(item, doc=None):
     if not root and item.get("source_system") == "dingtalk-oa":
         return _oa_identity(item, doc)[1]
     if not root:
-        frappe.throw("尚未找到唯一出纳申请及完整付款历史，请先同步并核对")
+        frappe.throw(_i18n("尚未找到唯一出纳申请及完整付款历史，请先同步并核对"))
     return identifier(root)
 
 
@@ -299,23 +302,23 @@ def _source_match(item, history, root, schema_version, doc=None):
         if (schema_version != 2 or history.get("oa_identity") != identity
                 or any(history.get(key) is not None and history.get(key) != value for key, value in identity.items())
                 or history.get("source_request_id") != item.get("cashier_source_id")):
-            frappe.throw("出纳历史与 OA 公司、审批实例或原付款主单不一致，请先核对")
+            frappe.throw(_i18n("出纳历史与 OA 公司、审批实例或原付款主单不一致，请先核对"))
         decision = payment_decision(item)
         returned = history.get("payment_eligibility")
         if (not isinstance(returned, dict) or returned.get("can_register_payment") is not True
                 or returned.get("evidence_fingerprint") != decision.get("evidence_fingerprint")):
-            frappe.throw("审批证据已变化，请重新预览付款接管")
+            frappe.throw(_i18n("审批证据已变化，请重新预览付款接管"))
     elif schema_version != 1:
-        frappe.throw("出纳历史协议无效，请先核对")
+        frappe.throw(_i18n("出纳历史协议无效，请先核对"))
     if (history.get("source_id") != expected or history.get("currency") != item.get("currency")
             or money(history.get("amount")) != money(item.get("amount"))):
-        frappe.throw("出纳历史与本申请身份、币种或金额不一致，请先核对")
+        frappe.throw(_i18n("出纳历史与本申请身份、币种或金额不一致，请先核对"))
     _checked(balance, history, [])
 
 
 def _confirmation(value):
     if value not in (True, False, 1, 0, "true", "false", "1", "0"):
-        frappe.throw("确认值无效")
+        frappe.throw(_i18n("确认值无效"))
     return value in (True, 1, "true", "1")
 
 
@@ -328,20 +331,20 @@ def _takeover_payload(item, confirmed, doc):
         payload.update(identity)
         if not item.get("cashier_source_id"):
             if item.get("source_id") != canonical:
-                frappe.throw("旧出纳主单关联待核对，不能改按零历史接管，请先同步并核对")
+                frappe.throw(_i18n("旧出纳主单关联待核对，不能改按零历史接管，请先同步并核对"))
             if item.get("payments"):
-                frappe.throw("已有付款历史尚未定位原出纳主单，请先同步并核对")
+                frappe.throw(_i18n("已有付款历史尚未定位原出纳主单，请先同步并核对"))
             if not confirmed:
-                frappe.throw("请明确确认未发现历史付款，再接管 OA 申请；不会自动按零历史登记")
+                frappe.throw(_i18n("请明确确认未发现历史付款，再接管 OA 申请；不会自动按零历史登记"))
     return payload
 
 
 def _eligibility_fingerprint(item, expected=None):
     value = payment_decision(item).get("evidence_fingerprint")
     if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
-        frappe.throw("审批证据指纹缺失，请重新同步并预览")
+        frappe.throw(_i18n("审批证据指纹缺失，请重新同步并预览"))
     if expected is not None and (not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected) or expected != value):
-        frappe.throw("审批证据已变化，请重新预览付款接管")
+        frappe.throw(_i18n("审批证据已变化，请重新预览付款接管"))
     return value
 
 
@@ -358,7 +361,7 @@ def preview_takeover(source_id, zero_history_confirmed=False):
     fingerprint = _eligibility_fingerprint(item) if item.get("source_system") == "dingtalk-oa" else None
     response = expenses._request(CLAIM_PATH + "takeover-preview", data=payload)
     if len(response["items"]) != 1:
-        frappe.throw("付款历史返回不唯一")
+        frappe.throw(_i18n("付款历史返回不唯一"))
     history = response["items"][0]
     _source_match(item, history, payload["source_id"], response.get("schema_version"), doc)
     return {"existing": False, "source_version": item["version"], "history_version": history["version"],
@@ -374,7 +377,7 @@ def claim_takeover(source_id, expected_source_version, expected_history_version,
         return {"existing": True, **_checked_write_detail(doc, "claim")}
     item = _fresh_base(doc)
     if item["version"] != expected_source_version:
-        frappe.throw("申请事实已变化，请重新预览")
+        frappe.throw(_i18n("申请事实已变化，请重新预览"))
     identifier(request_id)
     # Stable identity lets a retry recover a successful upstream lock even if our
     # transaction failed after the HTTP response. Never automatically unlock.
@@ -384,16 +387,16 @@ def claim_takeover(source_id, expected_source_version, expected_history_version,
     payload.update(expected_version=identifier(expected_history_version), request_id=claim_request)
     if item.get("source_system") == "dingtalk-oa":
         if expected_eligibility_fingerprint is None:
-            frappe.throw("审批证据指纹缺失，请重新预览付款接管")
+            frappe.throw(_i18n("审批证据指纹缺失，请重新预览付款接管"))
         payload["expected_eligibility_fingerprint"] = _eligibility_fingerprint(item, expected_eligibility_fingerprint)
     response = expenses._request(CLAIM_PATH + "takeover-claim", data=payload)
     if len(response["items"]) != 1:
-        frappe.throw("接管返回不唯一；对应出纳申请可能已锁定，请管理员核查")
+        frappe.throw(_i18n("接管返回不唯一；对应出纳申请可能已锁定，请管理员核查"))
     history = response["items"][0]
     claim = history.get("takeover", {})
     _source_match(item, history, payload["source_id"], response.get("schema_version"), doc)
     if claim.get("owner") != "deeplinkerp" or not claim.get("claim_token") or not claim.get("history_fingerprint"):
-        frappe.throw("来源未确认付款锁定，ERP 登记仍关闭")
+        frappe.throw(_i18n("来源未确认付款锁定，ERP 登记仍关闭"))
     values = {"doctype": TAKEOVER, "source": doc.name, "company": doc.company, "cashier_root": payload["source_id"],
                         "history_json": json.dumps(history, ensure_ascii=False), "claim_token": claim["claim_token"],
                         "history_fingerprint": claim["history_fingerprint"], "expense_fingerprint": digest(payment_intent_facts(item)),
@@ -407,37 +410,37 @@ def _values(doc, item, values):
     values = frappe.parse_json(values) if isinstance(values, str) else values
     allowed = {"amount", "bank_amount", "payment_date", "bank_account", "party_type", "party", "bank_reference", "remark", "bank_exchange_rate", "source_exchange_rate", "exchange_difference_account", "cost_center", "project", "advance_account"}
     if not isinstance(values, dict) or set(values) - allowed:
-        frappe.throw("付款字段格式无效")
+        frappe.throw(_i18n("付款字段格式无效"))
     bank = expenses._account(values.get("bank_account"), doc.company, {"Bank", "Cash"})
     expenses._party(item, {**values, "company": doc.company, "application_type": doc.effective_application_type})
     for field, maximum in (("bank_reference", 140), ("remark", 1000)):
         if not isinstance(values.get(field) or "", str) or len(values.get(field) or "") > maximum:
-            frappe.throw("付款备注或流水号过长")
+            frappe.throw(_i18n("付款备注或流水号过长"))
     # Validate configured references now, not after financial information leaks.
     base = expenses._read("Company",doc.company,{"default_currency"}).default_currency
     if values.get("exchange_difference_account"):
         fx=expenses._account(values["exchange_difference_account"],doc.company)
         if fx.account_currency!=base or fx.root_type not in {"Income","Expense"}:
-            frappe.throw("汇兑差额科目必须为本位币损益科目")
+            frappe.throw(_i18n("汇兑差额科目必须为本位币损益科目"))
     for field, doctype in (("cost_center", "Cost Center"), ("project", "Project")):
         if values.get(field):
             ref = expenses._read(doctype, values[field], {"company","is_group"} if doctype=="Cost Center" else {"company"})
             if (ref.company and ref.company != doc.company) or (doctype=="Cost Center" and ref.is_group):
-                frappe.throw("辅助核算公司不一致")
+                frappe.throw(_i18n("辅助核算公司不一致"))
     for field in ("source_exchange_rate", "bank_exchange_rate"):
         if values.get(field) is not None:
             rate=_checked(money,values[field],precision=9,positive=True)
             rate_currency=item["currency"] if field=="source_exchange_rate" else bank.account_currency
             if rate_currency==base and rate!=1:
-                frappe.throw("本位币汇率必须为 1")
+                frappe.throw(_i18n("本位币汇率必须为 1"))
     if bank.account_currency != item["currency"] and (not values.get("bank_exchange_rate") or not values.get("source_exchange_rate")):
-        frappe.throw("跨币种付款必须明确银行实付金额及两种币种的本位币汇率")
+        frappe.throw(_i18n("跨币种付款必须明确银行实付金额及两种币种的本位币汇率"))
     if values.get("advance_account"):
         advance = expenses._account(values["advance_account"], doc.company)
         if advance.root_type not in {"Asset", "Liability"} or advance.account_currency != item["currency"] or advance.account_type in {"Bank","Cash"}:
-            frappe.throw("预付款科目须为同申请币种的资产／往来科目，不能使用费用或付款银行科目")
+            frappe.throw(_i18n("预付款科目须为同申请币种的资产／往来科目，不能使用费用或付款银行科目"))
         if not values.get("source_exchange_rate") or not values.get("bank_exchange_rate"):
-            frappe.throw("生成预付款草稿前须明确申请币种及银行币种的本位币汇率")
+            frappe.throw(_i18n("生成预付款草稿前须明确申请币种及银行币种的本位币汇率"))
     return values, bank
 
 
@@ -448,9 +451,9 @@ def _register_payment(source_id, values, expected_source_version, request_id):
     values, bank = _values(doc, item, values)
     takeover = _takeover(doc,for_update=True)
     if not takeover:
-        frappe.throw("请先核对并接管完整历史付款，不能按零历史登记")
+        frappe.throw(_i18n("请先核对并接管完整历史付款，不能按零历史登记"))
     if not _intent_matches(takeover.expense_fingerprint, item):
-        frappe.throw("接管后的申请财务事实已变化，请管理员复核；既有付款不会删除")
+        frappe.throw(_i18n("接管后的申请财务事实已变化，请管理员复核；既有付款不会删除"))
     key = digest([frappe.local.site, doc.name, frappe.session.user, identifier(request_id)])
     fingerprint = digest(values)
     existing = frappe.db.get_value(PAYMENT, key, ["request_fingerprint", "source"], as_dict=True,for_update=True)
@@ -460,7 +463,7 @@ def _register_payment(source_id, values, expected_source_version, request_id):
                  "registered_by": frappe.session.user, "request_fingerprint": fingerprint, "terms_json": values}
     if existing:
         if existing.source != doc.name or existing.request_fingerprint != fingerprint:
-            frappe.throw("相同付款请求不能变更金额或字段")
+            frappe.throw(_i18n("相同付款请求不能变更金额或字段"))
         normalized = _checked(registration, values, values.get("amount"), same_currency=bank.account_currency == item["currency"])
         return {"payment_id": key, "existing": True, **_checked_write_detail(doc, "register", {**persisted, **normalized}, item)}
     cached_intent=(expected_source_version==doc.source_version and
@@ -469,7 +472,7 @@ def _register_payment(source_id, values, expected_source_version, request_id):
     # Accept only the exact displayed cache version with identical current facts;
     # Changed financial facts still fail above, and live approval is rechecked.
     if item["version"] != expected_source_version and not cached_intent:
-        frappe.throw("申请事实已变化，请刷新后重新确认付款")
+        frappe.throw(_i18n("申请事实已变化，请刷新后重新确认付款"))
     context = payment_context(doc, item, for_update=True, strict=True)
     normalized = _checked(registration, values, context["balance"]["pending_amount"], same_currency=bank.account_currency == item["currency"])
     persisted.update(status="Registered", **normalized, source_version=item["version"])
@@ -489,7 +492,7 @@ def register_payment(source_id, values, expected_source_version, request_id):
         except frappe.QueryDeadlockError:
             frappe.db.rollback()
             if attempt==2:
-                frappe.throw("同期财务操作发生冲突，请刷新后重试")
+                frappe.throw(_i18n("同期财务操作发生冲突，请刷新后重试"))
 
 
 @frappe.whitelist(methods=["POST"])
@@ -498,31 +501,31 @@ def reverse_payment(source_id, payment_id, reason, request_id, discard_drafts=Fa
     doc = expenses._source(source_id, write=True)
     payment = expenses._read(PAYMENT, identifier(payment_id), set(PAYMENT_FIELDS), for_update=True)
     if payment.source != doc.name or payment.company != doc.company:
-        frappe.throw("付款不属于本申请")
+        frappe.throw(_i18n("付款不属于本申请"))
     if not isinstance(reason, str) or not 1 <= len(reason.strip()) <= 1000:
-        frappe.throw("必须填写撤销原因")
+        frappe.throw(_i18n("必须填写撤销原因"))
     key = digest([frappe.session.user, identifier(request_id)])
     fingerprint = digest([payment.name, reason.strip()])
     expected = {"doctype": PAYMENT, **{field: payment.get(field) for field in PAYMENT_FIELDS}}
     if payment.status == "Reversed":
         if payment.reversal_key != key or payment.reversal_fingerprint != fingerprint:
-            frappe.throw("付款已撤销，请刷新；不能更改原撤销原因")
+            frappe.throw(_i18n("付款已撤销，请刷新；不能更改原撤销原因"))
         return _checked_write_detail(doc, "reverse", expected)
     discard_drafts = _confirmation(discard_drafts)
     events = _checked_reversal_events(doc, payment)
     for event in events:
         journal = expenses._read("Journal Entry", event.journal_entry, {"company", "docstatus"}, for_update=True)
         if journal.company != doc.company:
-            frappe.throw("关联凭证公司不符，请核查")
+            frappe.throw(_i18n("关联凭证公司不符，请核查"))
         if journal.docstatus == 2:
             continue
         if journal.docstatus != 0:
-            frappe.throw("已有记账凭证，请先在原生凭证流程取消；本页不会自动冲账")
+            frappe.throw(_i18n("已有记账凭证，请先在原生凭证流程取消；本页不会自动冲账"))
         if not discard_drafts:
-            frappe.throw("关联凭证尚为草稿，请明确确认弃用草稿再撤销登记；不需要提交或记账")
+            frappe.throw(_i18n("关联凭证尚为草稿，请明确确认弃用草稿再撤销登记；不需要提交或记账"))
         journal.check_permission("delete")
         if journal.get("custom_operating_event_key") != event.name or journal.get("custom_operating_source") != doc.name:
-            frappe.throw("只能弃用本申请对应付款生成的原生草稿")
+            frappe.throw(_i18n("只能弃用本申请对应付款生成的原生草稿"))
         provenance=json.loads(event.provenance_json or "{}")
         provenance["voided_draft"]={"journal_entry":journal.name,"document":journal.as_dict(),"reason":reason.strip(),"by":frappe.session.user,"at":str(now_datetime())}
         event.journal_entry=None
@@ -553,26 +556,26 @@ def get_approval_timeline(source_id):
         params = {"source_id": identifier(root)}
     response = expenses._request(CLAIM_PATH + "workflow", params=params)
     if len(response["items"]) != 1 or response["items"][0].get("source_id") != root:
-        frappe.throw("审批缓存身份不唯一，请核对钉钉原单")
+        frappe.throw(_i18n("审批缓存身份不唯一，请核对钉钉原单"))
     row = response["items"][0]
     if is_oa and (response.get("schema_version") != 2 or row.get("oa_identity") != identity
                   or any(row.get(key) != value for key, value in identity.items())):
-        frappe.throw("审批缓存公司或实例身份不符，请核对钉钉原单")
+        frappe.throw(_i18n("审批缓存公司或实例身份不符，请核对钉钉原单"))
     events = row.get("events")
     if not isinstance(events, list) or len(events) > 5000:
-        frappe.throw("审批缓存格式无效")
+        frappe.throw(_i18n("审批缓存格式无效"))
     fields = {"id", "stage", "operator", "operator_id", "time", "time_provenance", "result", "comment", "current", "active", "attachments", "images"}
     result = {"lookup_status": row.get("lookup_status"), "last_synced_at": row.get("last_synced_at"),
               "events": [{key: event[key] for key in fields if key in event} for event in events if isinstance(event, dict)]}
     if is_oa:
         tasks = row.get("current_tasks")
         if not isinstance(tasks, list) or len(tasks) > 5000:
-            frappe.throw("当前审批任务格式无效")
+            frappe.throw(_i18n("当前审批任务格式无效"))
         task_fields = {"id", "stage", "status", "activity_id", "entered_at"}
         result["current_tasks"] = []
         for task in tasks:
             if not isinstance(task, dict) or not isinstance(task.get("assignees"), list) or len(task["assignees"]) > 5000:
-                frappe.throw("当前审批任务格式无效")
+                frappe.throw(_i18n("当前审批任务格式无效"))
             result["current_tasks"].append({**{key: task[key] for key in task_fields if key in task},
                                              "assignees": [{key: person[key] for key in ("id", "name") if key in person}
                                                            for person in task["assignees"] if isinstance(person, dict)]})
@@ -610,7 +613,7 @@ def _save_proof(filename, content, payment_id):
                                    "attached_to_doctype":PAYMENT,"attached_to_name":payment_id,
                                    "is_private":1}).insert(ignore_permissions=True)
         except PdfReadError:
-            frappe.throw("回单文件已损坏或无法读取，请重新上传有效 PDF")
+            frappe.throw(_i18n("回单文件已损坏或无法读取，请重新上传有效 PDF"))
 
 
 @frappe.whitelist(methods=["POST"])
@@ -622,23 +625,23 @@ def upload_payment_proof(source_id=None, payment_id=None):
     # before saving anything, and never accepts a different parent type.
     if payment_id is None:
         if frappe.form_dict.doctype not in (None, PAYMENT):
-            frappe.throw("回单父记录类型无效")
+            frappe.throw(_i18n("回单父记录类型无效"))
         payment_id = frappe.form_dict.docname
     payment = expenses._read(PAYMENT, identifier(payment_id), {"source", "company", "status"})
     doc = expenses._source(source_id or payment.source, write=True)
     payment = expenses._read(PAYMENT, payment.name, {"source", "company", "status"}, for_update=True)
     if payment.source != doc.name or payment.company != doc.company or payment.status != "Registered":
-        frappe.throw("付款不属于本申请或已撤销")
+        frappe.throw(_i18n("付款不属于本申请或已撤销"))
     content = getattr(frappe.local, "uploaded_file", None)
     filename = getattr(frappe.local, "uploaded_filename", None)
     remote = getattr(frappe.local, "uploaded_file_url", None)
     if remote or not isinstance(content, bytes) or not 1 <= len(content) <= 10 * 1024 * 1024 or not isinstance(filename, str):
-        frappe.throw("仅支持上传不超过 10 MB 的本地 PDF 或图片回单")
+        frappe.throw(_i18n("仅支持上传不超过 10 MB 的本地 PDF 或图片回单"))
     filename = os.path.basename(filename.replace("\\", "/"))
     extension = os.path.splitext(filename)[1].lower()
     signatures = {".pdf": b"%PDF-", ".png": b"\x89PNG\r\n\x1a\n", ".jpg": b"\xff\xd8\xff", ".jpeg": b"\xff\xd8\xff"}
     if len(filename) > 140 or extension not in signatures or not content.startswith(signatures[extension]):
-        frappe.throw("回单格式与文件内容不符，仅支持 PDF、PNG、JPG")
+        frappe.throw(_i18n("回单格式与文件内容不符，仅支持 PDF、PNG、JPG"))
     file = _save_proof(filename, content, payment.name)
     return {"name": file.name, "file_name": file.file_name, "is_private": 1}
 
@@ -648,7 +651,7 @@ def validate_payment_file(file, method=None):
     if file.attached_to_doctype == PAYMENT or old_parent == PAYMENT:
         expenses.validate_managed_document(file)
         if not file.is_private or file.attached_to_doctype != PAYMENT or not str(file.file_url or "").startswith("/private/files/"):
-            frappe.throw("ERP 付款回单必须保留私有附件关联")
+            frappe.throw(_i18n("ERP 付款回单必须保留私有附件关联"))
 
 
 @frappe.whitelist()
@@ -658,7 +661,7 @@ def download_payment_proof(source_id, payment_id, file_id):
     file = expenses._read("File", identifier(file_id), {"is_private", "attached_to_doctype", "attached_to_name", "file_name", "file_url"})
     if (payment.source != doc.name or payment.company != doc.company or not file.is_private or file.attached_to_doctype != PAYMENT
             or file.attached_to_name != payment.name or not str(file.file_url or "").startswith("/private/files/")):
-        frappe.throw("回单不存在或无权读取", frappe.PermissionError)
+        frappe.throw(_i18n("回单不存在或无权读取"), frappe.PermissionError)
     # PDF/image bytes must not enter File's text-encoding guessing loop.
     frappe.response.update(filename=file.file_name, filecontent=file.get_content(encodings=[]), type="download")
 
@@ -667,20 +670,20 @@ def voucher_mapping(doc, payment_id=None, for_update=False):
     if payment_id and payment_id.startswith("erp-payment:"):
         payment = expenses._read(PAYMENT, identifier(payment_id.removeprefix("erp-payment:")), set(PAYMENT_FIELDS), for_update=for_update)
         if payment.source != doc.name or payment.company != doc.company or payment.status != "Registered":
-            frappe.throw("ERP 付款记录无效或已撤销")
+            frappe.throw(_i18n("ERP 付款记录无效或已撤销"))
         values = json.loads(payment.terms_json)
         bank = expenses._account(payment.bank_account, doc.company, {"Bank", "Cash"})
         if bank.account_currency != payment.bank_currency:
-            frappe.throw("实际付款银行币种已变化，请核对；不会重新解释原付款金额")
+            frappe.throw(_i18n("实际付款银行币种已变化，请核对；不会重新解释原付款金额"))
         if values.get("advance_account"):
             return {"advance": True}
         mapping = expenses._mapping(doc, for_update=for_update)
         if (mapping.get("party_type"), mapping.get("party")) != (payment.party_type, payment.party):
-            frappe.throw("费用应付往来方与实际付款不一致，请核对；不会改换付款对象")
+            frappe.throw(_i18n("费用应付往来方与实际付款不一致，请核对；不会改换付款对象"))
         base = expenses._read("Company", doc.company, {"default_currency"}).default_currency
         bank_rate = values.get("bank_exchange_rate") or ("1" if payment.bank_currency == base else None)
         if not bank_rate:
-            frappe.throw("实际付款的银行币种汇率未明确，请先核对")
+            frappe.throw(_i18n("实际付款的银行币种汇率未明确，请先核对"))
         # Actual bank facts are immutable. The payable debit uses the original
         # recognized book rate, not a later spot rate or an editable duplicate.
         accounting=mapping.get("payments",{}).get(payment_id,{})
@@ -695,16 +698,16 @@ def voucher_mapping(doc, payment_id=None, for_update=False):
 def advance_preview(doc, item, payment_id):
     """Use the same native draft/event pipeline, but never recognize an expense."""
     if not isinstance(payment_id, str) or not payment_id.startswith("erp-payment:"):
-        frappe.throw("预付款仅使用本申请的 ERP 实际付款记录")
+        frappe.throw(_i18n("预付款仅使用本申请的 ERP 实际付款记录"))
     payment = expenses._read(PAYMENT, identifier(payment_id.removeprefix("erp-payment:")), set(PAYMENT_FIELDS))
     if payment.source != doc.name or payment.company != doc.company or payment.status != "Registered":
-        frappe.throw("ERP 付款记录无效或已撤销")
+        frappe.throw(_i18n("ERP 付款记录无效或已撤销"))
     claim = _takeover(doc)
     if not claim or not _intent_matches(claim.expense_fingerprint, item):
-        frappe.throw("接管后的来源财务事实变化，不能生成预付款凭证")
+        frappe.throw(_i18n("接管后的来源财务事实变化，不能生成预付款凭证"))
     values, bank = _values(doc, item, json.loads(payment.terms_json))
     if not values.get("advance_account"):
-        frappe.throw("预付款科目未明确配置，不会猜测费用或科目")
+        frappe.throw(_i18n("预付款科目未明确配置，不会猜测费用或科目"))
     account = expenses._account(values["advance_account"], doc.company)
     mapping = {"company": doc.company}
     party = (values["party_type"], values["party"]) if account.account_type in {"Payable", "Receivable"} else None
@@ -715,12 +718,12 @@ def advance_preview(doc, item, payment_id):
         fx = expenses._account(values.get("exchange_difference_account"), doc.company)
         base = expenses._read("Company", doc.company, {"default_currency"}).default_currency
         if fx.account_currency != base or fx.root_type not in {"Income", "Expense"}:
-            frappe.throw("汇兑差额科目必须为本位币损益科目")
+            frappe.throw(_i18n("汇兑差额科目必须为本位币损益科目"))
         rows.append(expenses._line(fx, str(abs(difference)), "debit" if difference > 0 else "credit", mapping, "1", cost_center=values.get("cost_center")))
     expenses._balanced(rows)
     evidence = next((row for row in item["payments"] if row["source_id"] == payment_id), None)
     if not evidence:
-        frappe.throw("实际付款证据已撤回")
+        frappe.throw(_i18n("实际付款证据已撤回"))
     return {"event_key": expenses._event_key(doc, payment_id), "fingerprint": digest({"expense": expense_facts(item), "payment": payment_facts(evidence), "advance_terms": values}),
             "source_version": item["version"], "company": doc.company, "posting_date": str(payment.payment_date), "accounts": rows,
             "recognition": None, "settlement_state": "预付款 · 未核销", "base_rounding": []}

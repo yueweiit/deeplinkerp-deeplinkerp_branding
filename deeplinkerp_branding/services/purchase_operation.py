@@ -7,6 +7,9 @@ Redis is deliberately absent from this authority. External writes cannot join it
 
 from __future__ import annotations
 
+from frappe import _
+
+
 import hashlib
 import json
 import re
@@ -400,7 +403,7 @@ def run(request_id, payload, operation, replay, *, digest=None, acknowledge_vali
 
 def protect_audit(doc, method=None, *args, **kwargs):
 	if doc.get("integration_request_service") == SERVICE:
-		frappe.throw("采购操作审计需永久保留，不能删除或改写", frappe.PermissionError)
+		frappe.throw(_("采购操作审计需永久保留，不能删除或改写"), frappe.PermissionError)
 	from .purchase_native_intent import guard
 
 	guard(doc, proposed={"name": args[1]} if method == "before_rename" and len(args) >= 2 else None)

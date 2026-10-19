@@ -422,6 +422,7 @@ def connect_native_queries(monkeypatch, boundary, *, workflow_field=None, fieldt
 			get_field=lambda name: next((df for df in fields if df.fieldname == name), None))
 	monkeypatch.setattr(boundary, "get_meta", get_meta, raising=False)
 	monkeypatch.setattr(boundary, "whitelist", lambda **kwargs: lambda fn: fn, raising=False)
+	monkeypatch.setattr(boundary, "_", lambda text: text, raising=False)
 	monkeypatch.setitem(sys.modules, "frappe", boundary)
 	monkeypatch.setitem(sys.modules, "frappe.model", SimpleNamespace(get_permitted_fields=boundary.permitted_fields))
 	monkeypatch.setitem(sys.modules, "frappe.utils", SimpleNamespace(getdate=lambda value: value, nowdate=lambda: "2026-10-06"))

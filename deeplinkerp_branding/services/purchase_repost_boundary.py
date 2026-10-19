@@ -7,6 +7,9 @@ Instance wrappers leave native database/controller implementations unchanged.
 
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import hashlib
 import inspect
 import json
@@ -644,10 +647,10 @@ def check_pointer(doc, old, *, creating=False):
 	incoming, previous = value(doc), value(old)
 	if creating:
 		if incoming is not None:
-			frappe.throw("新单据不能继承库存保护指针", frappe.PermissionError)
+			frappe.throw(_i18n("新单据不能继承库存保护指针"), frappe.PermissionError)
 		return
 	if incoming != previous:
-		frappe.throw("库存保护指针不能由普通单据写入、清除或替换", frappe.PermissionError)
+		frappe.throw(_i18n("库存保护指针不能由普通单据写入、清除或替换"), frappe.PermissionError)
 
 
 def fence_key():
@@ -1431,13 +1434,13 @@ class PointerBoundary:
 
 	def db_set(self, fieldname, *args, **kwargs):
 		if fieldname == POINTER or (isinstance(fieldname, dict) and POINTER in fieldname):
-			frappe.throw("库存保护指针不能由普通单据写入、清除或替换", frappe.PermissionError)
+			frappe.throw(_i18n("库存保护指针不能由普通单据写入、清除或替换"), frappe.PermissionError)
 		if self.doctype == "Repost Item Valuation":
 			from .purchase_native_repost import _task_fields
 
 			fields = {fieldname} if isinstance(fieldname, str) else set(fieldname)
 			if fields & _task_fields(self).keys():
-				frappe.throw("原生重算范围必须通过单据保存核查，不能直接改写", frappe.PermissionError)
+				frappe.throw(_i18n("原生重算范围必须通过单据保存核查，不能直接改写"), frappe.PermissionError)
 			return self._pointer_call(super().db_set, fieldname, *args, **kwargs)
 		return super().db_set(fieldname, *args, **kwargs)
 

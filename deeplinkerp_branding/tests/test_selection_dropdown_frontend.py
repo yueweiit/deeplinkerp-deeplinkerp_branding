@@ -355,7 +355,7 @@ def test_selection_bundle_is_registered_in_global_desk_assets():
 	assets = ast.literal_eval(assignment.value)
 	assets = [assets] if isinstance(assets, str) else assets
 	selection = "/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js"
-	inventory = "/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.4"
+	inventory = "/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.5"
 	assert assets.count(selection) == 1
 	assert assets.count(inventory) == 1
 	compact = next(asset for asset in assets if asset.startswith("/assets/deeplinkerp_branding/js/compact_list.js?"))

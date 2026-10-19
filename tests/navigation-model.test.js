@@ -13,6 +13,19 @@ const modulePath = path.join(
 );
 const navigation = fs.existsSync(modulePath) ? require(modulePath) : {};
 
+test("sidebar compatibility skips dividers and supplies icons without changing actions", () => {
+	assert.equal(navigation.prepareSidebarMenuItem({ is_divider: true }), null);
+	const onClick = () => {};
+	const item = { name: "reload", label: "Reload", onClick, condition: () => false };
+	const result = navigation.prepareSidebarMenuItem(item);
+	assert.equal(result.icon, "layout-grid");
+	assert.equal(result.onClick, onClick);
+	assert.equal(result.condition, item.condition);
+	assert.equal(item.icon, undefined);
+	const image = { label: "App", icon_url: "/assets/app/logo.svg" };
+	assert.equal(navigation.prepareSidebarMenuItem(image), image);
+});
+
 function productionFunction(name) {
 	assert.equal(typeof navigation[name], "function", `${name} must be exported by the navigation model`);
 	return navigation[name];
@@ -872,9 +885,9 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
-	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.20/);
+	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.21/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
-	assert.match(hooks, /deeplinkerp_branding\.js\?v=0\.0\.28/);
+  assert.match(hooks, /deeplinkerp_branding\.js\?v=0\.0\.30/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);
 });
 

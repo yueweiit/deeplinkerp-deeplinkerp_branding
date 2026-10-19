@@ -39,6 +39,11 @@ html.dlp-interface-mode-dl-pending body .centered.splash {
 	display: none !important;
 }
 
+body:not(.dlp-mes-navigation-enabled) .desktop-container .desktop-icon > .icon-caption {
+	width: 100%;
+	min-width: 0;
+}
+
 body.dlp-mes-navigation-enabled {
 	--sidebar-width: 220px;
 	overflow-x: hidden;

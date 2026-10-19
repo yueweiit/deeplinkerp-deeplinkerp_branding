@@ -10,6 +10,9 @@ constant. All native parent hydration uses the existing request-local reader.
 """
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import json
 from contextlib import contextmanager
 from decimal import Decimal
@@ -52,7 +55,7 @@ class _FieldScope(set):
         doctype, fields, parenttype = key
         self.permitted(doctype, parenttype)
         if not fields <= self.allowed[doctype, parenttype]:
-            frappe.throw("无权查看完整关联或金额字段", frappe.PermissionError)
+            frappe.throw(_i18n("无权查看完整关联或金额字段"), frappe.PermissionError)
         self.add(key)
         return True
 
@@ -558,5 +561,5 @@ def _get_order_progress_batch(names, include_items=False, *, tolerate_restricted
 def get_order_progress(purchase_orders, include_items=False):
     names = json.loads(purchase_orders) if isinstance(purchase_orders, str) else purchase_orders
     if not isinstance(names, list) or not 1 <= len(names) <= 100 or any(not isinstance(name, str) or not name for name in names):
-        frappe.throw("每次仅支持 1 至 100 张采购订单")
+        frappe.throw(_i18n("每次仅支持 1 至 100 张采购订单"))
     return _get_order_progress_batch(names, include_items, tolerate_restricted=False)

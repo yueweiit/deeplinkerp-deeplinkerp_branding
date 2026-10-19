@@ -10,7 +10,7 @@
  ].map(([fieldname, label, width]) => ({ fieldname, label, width }));
  const provider = unified.configure(COLUMNS);
  const esc = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const t = value => (root.__ || (x=>x))(value);
+ const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
  const numeric = value => value==null || value==='' || typeof value==='boolean' || !Number.isFinite(Number(value)) ? '—' : Number(value).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
  const itemFields = new Set(['warehouse','item_code','item_name','qty','uom','rate','amount','received_qty']);
  const payments = c => c?.root?.DeepLinkERPPurchasePayments || root.DeepLinkERPPurchasePayments;
@@ -41,9 +41,9 @@
  }
  function orderValue(c,doc,field) {
   if(field==='name') {
-   if(doc.row_type==='oa_request')return `<button type="button" class="btn btn-link btn-xs" data-purchase-source="${esc(doc.oa_name || doc.name)}">${esc(`待完善 · ${doc.oa_number || doc.name}`)}</button>`;
+   if(doc.row_type==='oa_request')return `<button type="button" class="btn btn-link btn-xs" data-purchase-source="${esc(doc.oa_name || doc.name)}">${esc(t("待完善 · {0}", [doc.oa_number || doc.name]))}</button>`;
    const refs=(doc.oa_references || []).map(ref=>`<a class="dlp-po-provenance" title="${esc(ref.number || ref.name)}" href="/desk/oa-purchase-request/${encodeURIComponent(ref.name)}">${esc(ref.number || ref.name)}</a>`).join('');
-   return `<a title="${esc(doc.name)}" href="${esc(unified.formLink(doc))}" data-name="${esc(doc.name)}">${esc(doc.name)}</a>${refs || (doc.source==='OA'?'<span class="dlp-po-provenance">钉钉</span>':'')}`;
+   return `<a title="${esc(doc.name)}" href="${esc(unified.formLink(doc))}" data-name="${esc(doc.name)}">${esc(doc.name)}</a>${refs || (doc.source==='OA'?`<span class="dlp-po-provenance">${t("钉钉")}</span>`:'')}`;
   }
   if(field==='supplier_name') {
    const warning=[!doc.supplier?'供应商待确认':'',doc.oa_warning,...(doc.role_context?.role_warnings || []),...(doc.order_progress?.progress_warnings || [])].filter(Boolean);
@@ -55,7 +55,7 @@
   if(field==='receipt_action') {
    if(doc.row_type==='oa_request')return provider.renderValue(field,doc,{},esc);
    if(payments(c)?.reversalBlocked(doc.reversal))return payments(c).reversalHTML(doc.reversal);
-   const related=doc.order_progress?.state==='restricted'?'<span class="text-warning">关联进度受限，请核对权限</span>':['internal','logistics'].map((tab,i)=>`<button type="button" class="btn btn-xs btn-default dlp-crossborder-open" data-crossborder-order="${esc(doc.name)}" data-crossborder-tab="${tab}">${t(i?'物流证据':'内部关联')}</button>`).join('');
+   const related=doc.order_progress?.state==='restricted'?`<span class="text-warning">${t("关联进度受限，请核对权限")}</span>`:['internal','logistics'].map((tab,i)=>`<button type="button" class="btn btn-xs btn-default dlp-crossborder-open" data-crossborder-order="${esc(doc.name)}" data-crossborder-tab="${tab}">${t(i?'物流证据':'内部关联')}</button>`).join('');
    return `<span class="dlp-po-row-actions">${payments(c)?.orderReceiptAction(doc) || ''}<details class="dlp-po-row-more"><summary class="btn btn-xs btn-default">${t('更多')}</summary><span class="dlp-po-row-more-menu">${related}</span></details></span>`;
   }
   return provider.renderValue(field,doc,{},esc) ?? grid.renderValue(field,doc,{allowed:c.allowed,translate:c.translate,number:(value,field)=>grid.formatNumber(c.root,value,field),date:value=>c.root.frappe.datetime?.str_to_user?.(value) || value});
@@ -69,8 +69,8 @@
   if(expanded){
    const permitted=new Set(detail.item_fields || []),items=detail.state!=='restricted' && permitted.has('name')?(detail.items || []).filter(item=>item.name):[];
    const definitions=[['item_code','物料编码'],['item_name','物料名称'],['warehouse','仓库'],['qty','数量'],['uom','单位'],['rate','单价'],['amount','金额'],['received_qty','已收数量']].filter(([field])=>permitted.has(field));
-   const contents=detail.state==='restricted'?'<span class="text-warning">物料明细不可见，请核对权限</span>':engine.detailTable({columns:definitions,items,escape:esc,translate:c.translate,wrapperClass:'dlp-purchase-detail-scroll',tableClass:'dlp-purchase-detail-table',columnClass:field=>['qty','rate','amount','received_qty'].includes(field)?'dlp-po-number':'',format:(field,item)=>['qty','rate','amount','received_qty'].includes(field)?numeric(item[field]):esc(item[field] ?? '—')});
-   extra=`<tr class="dlp-purchase-expanded"><td colspan="${cols.length+2}">${contents || '暂无可读物料明细'}</td></tr>`;
+   const contents=detail.state==='restricted'?`<span class="text-warning">${t("物料明细不可见，请核对权限")}</span>`:engine.detailTable({columns:definitions,items,escape:esc,translate:c.translate,wrapperClass:'dlp-purchase-detail-scroll',tableClass:'dlp-purchase-detail-table',columnClass:field=>['qty','rate','amount','received_qty'].includes(field)?'dlp-po-number':'',format:(field,item)=>['qty','rate','amount','received_qty'].includes(field)?numeric(item[field]):esc(item[field] ?? '—')});
+   extra=`<tr class="dlp-purchase-expanded"><td colspan="${cols.length+2}">${contents || t("暂无可读物料明细")}</td></tr>`;
   }
   return `<tbody class="list-row-container dlp-purchase-order-body" data-dlp-detail-name="${esc(doc.name)}" data-order-name="${esc(doc.name)}" tabindex="0"><tr class="${selectable?'level list-row ':''}dlp-po-grid-row" data-order-name="${esc(doc.name)}">${cell('td','_select',check,1,36)}${cell('td','_sequence',arrow,1,40)}${cols.map(col=>cell('td',col.fieldname,orderValue(c,doc,col.fieldname),1,col,` title="${esc(typeof doc[col.fieldname]==='object'?'':doc[col.fieldname] ?? '')}"`)).join('')}</tr>${extra}</tbody>`;
  }
@@ -79,10 +79,10 @@
   if(!c.getSelectedPurchaseOrders)return;
   const selected=c.getSelectedPurchaseOrders(),names=new Set(selected.map(row=>row.name));
   const blocked=c.providerRows.filter(row=>names.has(row.name) && !row.receipt_eligibility?.allowed);
-  c.$purchaseActions?.find('.dlp-purchase-selected-count').text(c.translate(`已选 ${selected.length} 张订单`));
+  c.$purchaseActions?.find('.dlp-purchase-selected-count').text(c.translate(t("已选 {0} 张订单", [selected.length])));
   c.$purchaseActions?.find('[data-purchase-action="receipt"]').prop('disabled',!selected.length || blocked.length>0);
-  const reasons=blocked.map(doc=>`${doc.name}：${doc.receipt_eligibility?.reason || '收货资格未知，请刷新'}`);
-  c.$purchaseActions?.find('.dlp-purchase-action-notice').text(blocked.length?`${reasons.slice(0,3).join('；')}${blocked.length>3?`；另有 ${blocked.length-3} 张不可入库`:''}`:selected.length>1?c.translate('默认逐单入库，可选择合并。'):'').attr('title',reasons.join('；'));
+  const reasons=blocked.map(doc=>`${doc.name}：${doc.receipt_eligibility?.reason || t("收货资格未知，请刷新")}`);
+  c.$purchaseActions?.find('.dlp-purchase-action-notice').text(blocked.length?`${reasons.slice(0,3).join('；')}${blocked.length>3?t("；另有 {0} 张不可入库", [blocked.length-3]):''}`:selected.length>1?c.translate('默认逐单入库，可选择合并。'):'').attr('title',reasons.join('；'));
  }
  function clearSelection(c) {
   c.list.clear_checked_items?.();
@@ -132,9 +132,9 @@
    for(const doc of c.providerRows)if(doc.row_type==='purchase_order' && (!targets || targets.has(doc.name)) && doc.order_progress){delete doc.order_progress.items;delete doc.order_progress.item_fields;}
    c.list.render_list();c.list.set_rows_as_checked?.();
   };
-  c.$purchaseTabs=c.root.$('<nav class="dlp-purchase-scope-tabs" role="tablist" aria-label="采购来源视图"><button type="button" class="btn btn-default btn-sm" role="tab" data-purchase-scope="orders">采购订单</button><button type="button" class="btn btn-default btn-sm" role="tab" data-purchase-scope="oa">钉钉待完善</button></nav>').appendTo(c.$toolbar);
+  c.$purchaseTabs=c.root.$(`<nav class="dlp-purchase-scope-tabs" role="tablist" aria-label="${t('采购来源视图')}"><button type="button" class="btn btn-default btn-sm" role="tab" data-purchase-scope="orders">${t("采购订单")}</button><button type="button" class="btn btn-default btn-sm" role="tab" data-purchase-scope="oa">${t("钉钉待完善")}</button></nav>`).appendTo(c.$toolbar);
   c.$purchaseTabs.on('click.dlpPurchaseScope','[data-purchase-scope]',event=>c.setProviderScope(event.currentTarget.dataset.purchaseScope));
-  c.$purchaseActions=c.root.$('<div class="dlp-purchase-selection-actions"><span class="dlp-purchase-selected-count" aria-live="polite"></span><button type="button" class="btn btn-primary btn-sm" data-purchase-action="receipt" disabled>入库</button><span class="text-muted dlp-purchase-action-notice" aria-live="polite"></span></div>').prependTo(c.$toolbar);
+  c.$purchaseActions=c.root.$(`<div class="dlp-purchase-selection-actions"><span class="dlp-purchase-selected-count" aria-live="polite"></span><button type="button" class="btn btn-primary btn-sm" data-purchase-action="receipt" disabled>${t("入库")}</button><span class="text-muted dlp-purchase-action-notice" aria-live="polite"></span></div>`).prependTo(c.$toolbar);
   c.$purchaseActions.on('click.dlpPurchaseAction','[data-purchase-action]',event=>c.runPurchaseAction(event.currentTarget.dataset.purchaseAction));
   scopeChanged(c);selectionChanged(c);
  }
@@ -144,14 +144,14 @@
   onRequestStart:c=>{cancelPending(c);clearSelection(c);},onPageChange:clearSelection,onScopeChange:scopeChanged,onSelectionChange:selectionChanged,mountControls:mount,renderHeader:c=>`<table class="dlp-purchase-table">${header(c)}</table>`,renderRow:row,renderTable:table,
   afterRender:c=>{selectionChanged(c);fit(c);},onRouteChange:fit,controllerKey:'dlpPurchaseOrderGrid',routeClass:'dlp-purchase-order-grid-active',freezeUntil:'supplier_name',moneySummary:true,
   numbers:['grand_total','advance_paid','per_received','per_billed'],dates:['transaction_date','schedule_date'],quickFields:['company','status','advance_payment_status'],searchFields:['name','supplier_name','project'],extraFields:['supplier','party_account_currency','docstatus'],optionLabels:{progress_phase:{supplier_unpaid:'供应商未付',internal_unsettled:'内部待结算',factory_pending:'工厂待入库'}},controls:[
-   {fieldname:'search',fieldtype:'Data',label:'订单/审批/项目/供应商'},
-   {fieldname:'from_date',fieldtype:'Date',label:'订单开始日期',permission_field:'transaction_date'},
-   {fieldname:'to_date',fieldtype:'Date',label:'订单结束日期',permission_field:'transaction_date'},
-   {fieldname:'company',fieldtype:'Link',options:'Company',label:'采购付款公司'},
-   {fieldname:'status',fieldtype:'Select',label:'订单状态'},
-   {fieldname:'beneficiary_company',fieldtype:'Link',options:'Company',label:'最终归属公司',permission_field:'company'},
-   {fieldname:'progress_phase',fieldtype:'Select',label:'进度阶段',permission_field:'name',options:'\nsupplier_unpaid\ninternal_unsettled\nfactory_pending',emptyLabel:'全部进度'},
-   {fieldname:'review_only',fieldtype:'Check',label:'待核对',permission_field:'name'},
+   {fieldname:'search',fieldtype:'Data',label:t("订单/审批/项目/供应商")},
+   {fieldname:'from_date',fieldtype:'Date',label:t("订单开始日期"),permission_field:'transaction_date'},
+   {fieldname:'to_date',fieldtype:'Date',label:t("订单结束日期"),permission_field:'transaction_date'},
+   {fieldname:'company',fieldtype:'Link',options:'Company',label:t("采购付款公司")},
+   {fieldname:'status',fieldtype:'Select',label:t("订单状态")},
+   {fieldname:'beneficiary_company',fieldtype:'Link',options:'Company',label:t("最终归属公司"),permission_field:'company'},
+   {fieldname:'progress_phase',fieldtype:'Select',label:t("进度阶段"),permission_field:'name',options:'\nsupplier_unpaid\ninternal_unsettled\nfactory_pending',emptyLabel:t("全部进度")},
+   {fieldname:'review_only',fieldtype:'Check',label:t("待核对"),permission_field:'name'},
   ]});
  function engineRoute(c){const route=c.root.frappe.get_route?.() || [];return String(route[0]).toLowerCase()==='list' && route[1]==='Purchase Order';}
  if(typeof module==='object' && module.exports)module.exports=grid;

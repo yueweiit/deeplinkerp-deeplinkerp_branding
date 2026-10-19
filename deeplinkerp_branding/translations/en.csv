@@ -1,0 +1,1842 @@
+物料库存明细,Material Inventory Detail
+半成品库存明细,Semi-finished Inventory Detail
+成品库存明细,Finished Goods Inventory Detail
+模具库存明细,Mold Inventory Detail
+库存库位明细,Inventory Location Detail
+分类库存明细,Inventory by Category
+物料库存明细表,Material inventory table
+{0}表,{0} table
+正式物料编码,Item Code
+物料名称（双语）,Item Name (Bilingual)
+仓库,Warehouse
+原始库位,Original Location
+库位数量,Location Quantity
+总库存,Total Stock
+库存单位,Stock UOM
+物料组,Item Group
+DPCI,DPCI
+外部编码,External Code
+原始标识/别名,Original Identifier / Alias
+参考库位,Reference Location
+快照库位数量,Snapshot Location Quantity
+实时库存,Live Stock
+库存差异,Stock Difference
+库存状态,Inventory Status
+快照日期,Snapshot Date
+库位待维护,Location Not Maintained
+库存一致,Stock Matches
+待库存重算,Awaiting Stock Recalculation
+重算中,Recalculating
+校验中,Verifying
+冲销完成,Reversal Completed
+失败待处理,Failed - Action Required
+冲销进度待核对,Reversal Progress Needs Verification
+无仓库占位行不可移动,Rows without a warehouse cannot be moved
+选择 {0},Select {0}
+全选当前页,Select All on This Page
+没有符合条件的库存库位记录。,No inventory location records match the filters.
+没有符合条件的库存记录。,No inventory records match the filters.
+公司,Company
+盘点快照,Inventory Snapshot
+下级物料组,Child Item Group
+物料编码/名称,Item Code / Name
+只看有库存,Only Items in Stock
+每页行数,Rows per Page
+每页行数必须是 {0} 到 {1} 的整数。,Rows per page must be an integer from {0} to {1}.
+每页行数必须是 1 到 2500 的整数。,Rows per page must be an integer from 1 to 2500.
+筛选,Filter
+清除筛选,Clear Filters
+导出 Excel,Export to Excel
+切换公司将清空已选物料，是否继续？,Changing the company will clear selected items. Continue?
+已选物料 ({0}),Selected Items ({0})
+物料移动 ({0}),Material Movement ({0})
+正在读取库存…,Loading inventory…
+上一页,Previous
+下一页,Next
+第 {0} 页,Page {0}
+第 {0} / {1} 页,Page {0} / {1}
+采购冲销未完成，物料移动暂缓办理。,Purchase reversal is incomplete. Material movement is temporarily blocked.
+公司信息已变化，请重新选择公司后读取库存。,Company information has changed. Select the company again to load inventory.
+暂无库位快照,No location snapshot
+盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条,Inventory snapshot {0} · {1} item/warehouse groups · {2} rows shown
+ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2},Live ERP stock · {0} item/warehouse groups · {1} rows shown · Reference snapshot {2}
+库存明细读取失败。,Unable to load inventory details.
+正在生成 Excel…,Generating Excel…
+已选物料,Selected Items
+清空已选,Clear Selection
+物料编码,Item Code
+物料名称,Item Name
+来源仓库,Source Warehouse
+移除,Remove
+暂无已选物料,No items selected
+正在重新核对实时库存…,Rechecking live stock…
+实时库存核对失败，请刷新库存后重试。,Unable to verify live stock. Refresh inventory and try again.
+物料移动（{0} 项）,Material Movement ({0} Items)
+移动类型,Movement Type
+统一目标仓库,Common Target Warehouse
+移动物料,Items to Move
+物料,Item
+名称,Name
+实时可用量,Live Available Quantity
+移动数量,Movement Quantity
+单位,UOM
+打开未保存物料移动单,Open Unsaved Stock Entry
+该类型需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。,"This type requires additional fields in the standard Stock Entry form, such as work order, BOM, batch, serial number or item role."
+该移动类型还需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。,"This movement type requires additional fields in the standard Stock Entry form, such as work order, BOM, batch, serial number or item role."
+库存列表或已选物料已变化，请重新打开物料移动。,The inventory list or selection has changed. Open Material Movement again.
+每个物料的移动数量都必须大于零。,The movement quantity must be greater than zero for every item.
+正在准备标准物料移动单…,Preparing the standard Stock Entry…
+不支持的库存分类：{0},Unsupported inventory category: {0}
+空,Empty
+没有权限查看库存库位快照。,You do not have permission to view inventory location snapshots.
+没有权限查看{0}。,You do not have permission to view {0}.
+请先选择公司或设置默认公司。,Select a company or set a default company first.
+没有权限查看所选仓库。,You do not have permission to view the selected warehouse.
+物料组不存在：{0},Item group does not exist: {0}
+物料组不属于{0}：{1},Item group does not belong to {0}: {1}
+没有创建物料移动单的权限。,You do not have permission to create a Stock Entry.
+{0}格式不正确。,Invalid format for {0}.
+{0}不能为空。,{0} cannot be empty.
+{0}一次不能超过 {1} 项。,{0} cannot exceed {1} items per request.
+没有权限创建物料移动单。,You do not have permission to create a Stock Entry.
+没有权限读取{0}。,You do not have permission to read {0}.
+物料编码不能为空。,Item code cannot be empty.
+物料不可用于库存移动：{0},Item cannot be used for stock movement: {0}
+仓库不能为空。,Warehouse cannot be empty.
+仓库不属于当前公司：{0},Warehouse does not belong to the current company: {0}
+不能使用分组仓库：{0},Group warehouse cannot be used: {0}
+已选物料超过库存范围上限,Selected items exceed the inventory limit
+采购冲销未完成，相关库存移动暂缓办理。,Purchase reversal is incomplete. Related stock movements are temporarily blocked.
+{0}的移动数量必须是数字。,Movement quantity for {0} must be a number.
+{0}的移动数量必须是有限数字。,Movement quantity for {0} must be finite.
+{0}的移动数量必须大于零。,Movement quantity for {0} must be greater than zero.
+{0}缺少来源仓库。,Source warehouse is missing for {0}.
+{0}的移动数量超过来源仓实时库存 {1:g}。,Movement quantity for {0} exceeds live stock of {1:g} in the source warehouse.
+请选择目标仓库。,Select a target warehouse.
+{0}的来源仓库和目标仓库不能相同。,Source and target warehouses for {0} must be different.
+重复选择物料仓库组：{0} / {1},Duplicate item/warehouse selection: {0} / {1}
+请选择移动类型。,Select a movement type.
+移动类型未配置用途：{0},No purpose is configured for movement type: {0}
+重复移动物料仓库组：{0} / {1},Duplicate item/warehouse movement: {0} / {1}
+ERP 未维护分类物料组：{0},ERP item group is not configured for this category: {0}
+ · 共享整单, · Share the entire order
+ · 进度刷新失败, · Progress refresh failed
+ 单位待核对, Unit to be verified
+ ｜ {0} 条 OA 币种待确认（未计合计）, ｜{0} items OA currency to be confirmed (not included in total)
+CRM / ERP 订单号,CRM / ERP order number
+CRM 订单号,CRM order number
+CRM/MES 同步中,CRM/MES synchronizing
+CRM/MES 同步失败,CRM/MES synchronization failed
+ERP / MES申请号,ERP/MES application number
+ERP 业务状态,ERP business status
+ERP 付款回单必须保留私有附件关联,ERP Payment receipt must retain private attachment association
+ERP 付款记录无效或已撤销,ERP Payment record is invalid or revoked
+ERP 付款记录身份或状态有冲突,ERP Payment record identity or status conflict
+ERP 创建人,Created by ERP
+ERP 客户编码,ERP customer code
+ERP 已付：{0},ERP Paid: {0}
+ERP 更新人,ERP updated by
+ERP 标题,ERP Title
+ERP 订单号,ERP order number
+ERP 订单金额,ERP order amount
+ERP 预付款汇总,ERP Advance payment summary
+ERP申请号,ERP application number
+Excel ZIP CRC 校验失败，文件已损坏。,Excel ZIP CRC Verification failed and the file is damaged.
+Excel ZIP 压缩或加密格式不受支持。,Excel ZIP Compressed or encrypted format is not supported.
+Excel ZIP 大小过大；请缩小筛选范围后导出。,Excel ZIP size is too large; please narrow the filter range and export.
+Excel ZIP 扩展数据已损坏。,Excel ZIP extended data is corrupted.
+Excel ZIP 数据不完整或已损坏。,Excel ZIP The data is incomplete or corrupted.
+Excel ZIP 文件位置已损坏。,Excel ZIP The file location is corrupted.
+Excel ZIP 文件名不符合原生导出格式。,Excel ZIP file name does not conform to the native export format.
+Excel ZIP 文件名重复。,Excel ZIP Duplicate file name.
+Excel ZIP 文件头已损坏。,Excel ZIP The file header is corrupted.
+Excel ZIP 文件数量不受支持。,Excel ZIP Unsupported number of files.
+Excel ZIP 文件结构不符合原生导出格式。,Excel ZIP file structure does not conform to the native export format.
+Excel ZIP 文件范围已损坏。,Excel ZIP The file range is corrupted.
+Excel ZIP 目录已损坏。,Excel ZIP directory is corrupted.
+Excel 共享文本索引不符合预期。,Excel shared text index does not behave as expected.
+Excel 列数量不符合预期。,The number of Excel columns is not as expected.
+Excel 列样式范围不符合预期。,Excel column style range is not as expected.
+Excel 单元格引用不符合预期。,Excel cell reference does not work as expected.
+Excel 单元格结构不符合原生导出格式。,Excel cell structure does not conform to the native export format.
+Excel 审核状态列必须为文本，已停止导出。,"Excel Audit Status column must be text, Export Stopped."
+Excel 导出必须使用同源 origin 请求。,Excel exports must use the same origin request.
+Excel 导出组件加载失败，请刷新页面后重试。,"The Excel export component failed to load, please refresh the page and try again."
+Excel 尾列不是预期 owner / 创建人，已停止导出。,Excel last column is not the expected owner/creator and the export has been stopped.
+Excel 尾列含额外引用，已停止导出。,The Excel tail column contains extra references and the export has been stopped.
+Excel 工作表 column shape 不符合预期。,Excel worksheet column shape is not as expected.
+Excel 工作表 column shape 不符合预期，已停止导出。,The column shape of the Excel worksheet is not as expected and the export has been stopped.
+Excel 工作表数据结构不符合预期。,The Excel worksheet data structure is not as expected.
+Excel 工作表数量不符合单表原生导出格式。,The number of Excel worksheets does not comply with the single-sheet native export format.
+Excel 工作表格式不符合原生导出结构。,The Excel worksheet format does not conform to the native export structure.
+Excel 工作表行结构不符合预期。,The Excel worksheet row structure is not as expected.
+Excel 工作表行范围不符合预期。,Excel worksheet row range is not as expected.
+Excel 数据大小过大。,Excel data size is too large.
+Excel 数据大小过大；请缩小筛选范围后导出。,The Excel data size is too large; please narrow the filter range and export.
+Excel 文件大小过大；请缩小筛选范围后导出。,The Excel file size is too large; please narrow the filter range before exporting.
+Excel 行范围不符合预期。,Excel row range is not as expected.
+Excel 解压数据大小过大；请缩小筛选范围后导出。,The size of the Excel decompressed data is too large; please narrow the filter range and export.
+IVA 增值税,IVA Value-added tax
+MES申请号,MES application number
+MES申请号: {0},MES application number: {0}
+OA 公司及审批实例身份缺失，请重新同步,"OA The company and approval instance identities are missing, please resynchronize."
+OA 公司或审批实例身份已变化，请重新同步并复核,"OA The identity of the company or approval instance has changed, please resynchronize and review"
+OA 归档只能通过授权附件标识读取,OA archive can only be read with authorized attachment ID
+OA 来源单,OA source list
+OA 来源标识与审批实例不一致，请重新同步,"OA The source identifier is inconsistent with the approval instance, please resynchronize."
+OA 来源记录,OA source record
+OA 返回身份不符，请管理员核查,"OA The returned identity does not match, please check with the administrator."
+ai 助手,ai assistant
+{0} · {1} · 外部明细 {2} · 内部 {3} / {4} · 数量 {5} {6} · 版本 {7},{0} · {1} · External details {2} · Internal {3} / {4} · Quantity {5} {6} · Version {7}
+{0} · 分配 {1} {2} {3},{0} · Distribution {1} {2} {3}
+{0} · 实际采购公司：{1} · {2},{0} · Actual purchasing company: {1} · {2}
+{0} · 最新未付 {1},{0} · Latest unpaid {1}
+{0} · 订单 {1} · {2} · 待入货品金额 {3}（不含税）,{0} · Order {1} · {2} · Amount of goods to be received {3} (excluding tax)
+{0}无效,{0} is invalid
+{0}：{1}（不是采购核销合计）,{0}: {1} (not the total purchase of Reconciliation)
+上传失败,Upload failed
+上传未确认,Upload not confirmed
+上次付款响应未确认，请核对后重试同一操作。,"The last payment response was not confirmed, please check and try the same operation again."
+上次同步,Last sync
+上次响应不确定，内容已改变。请先核对记录并刷新，不要重复建单。,The last response was indeterminate and the content has changed. Please check the record first and refresh it. Do not create orders again.
+上次响应未确认，请核对记录后重试同一批次内容。,"The last response was not confirmed, please check the record and try again with the same batch of content."
+不含税,excluding tax
+不支持 ZIP64 Excel；请缩小筛选范围后导出。,ZIP64 Excel is not supported; please narrow the filter range and export.
+不支持分卷 Excel ZIP 文件。,Volumetric Excel ZIP files are not supported.
+不支持此来源和目标单据,This source and destination document is not supported
+不支持此父单据字段；明细筛选请在原生高级列表处理,This parent document field is not supported; please handle detailed filtering in the native advanced list
+不支持此采购订单明细字段。,This Purchase Order detail field is not supported.
+不支持的采购导出列。,Unsupported purchasing export column.
+不支持的采购排序。,Unsupported purchasing sort.
+不支持的采购来源。,Unsupported purchasing source.
+不支持的采购查看范围。,Unsupported purchasing view scope.
+不支持的采购进度阶段。,Unsupported procurement progress stage.
+不支持跨单据筛选,Cross-document filtering is not supported
+不能关联已取消、关闭或暂停的订单,"Canceled, closed or suspended orders cannot be associated"
+业务单元和归档表不代表法律公司，请明确映射。,"Business units and filing tables do not represent legal firms, please map clearly."
+业务负责人,Business leader
+个,a
+中国财务,China Finance
+临时结算供应商待核对，请更换为实际结算供应商后再提交采购订单,The provisional settlement Supplier is pending verification. Please replace it with the actual settlement Supplier and then submit Purchase Order.
+主要字段,Main fields
+交付日期,Delivery date
+交付状态,delivery status
+产品,Products
+产品系列,Product series
+人工节点：{0}{1},Artificial node: {0}{1}
+仅可为已审批且未生成订单的采购申请确认同类规则,Similar rules can only be confirmed for purchase requisitions that have been approved and have not generated an order.
+仅复核，不替换关联或创建订单。,"Only review, not replace associations or create orders."
+仅支持 XLSX 导出,Only supports XLSX export
+仅支持上传不超过 10 MB 的本地 PDF 或图片回单,Only supports uploading local PDF or image replies no more than 10 MB
+仅支持采购订单和采购入库,Only supports Purchase Order and procurement warehousing
+仅生成原生凭证草稿，未记账,"Only native Voucher drafts are generated, not Posting"
+仅登记已发生的付款，不向银行转账，不自动记账。回单可稍后补传。,"Only registered payments have occurred, no transfer to the bank, no automatic Posting. The reply can be sent later."
+仅登记已发生的付款，不向银行转账；凭证另行保存草稿。,"Only the payment that has occurred is registered, no transfer is made to the bank; Voucher saves the draft separately."
+仅系统管理员可管理同步,Only system administrators can manage synchronization
+仅预付／往来，不确认费用；凭证保持草稿，未核销。,"Only prepayment/current payment, no fee confirmation; Voucher remains in draft, not Reconciliation."
+仅预览前 100 条，来源还有更多记录。,"Preview only first 100 records, sources have many more records."
+仓库必须为同公司明细仓库,The warehouse must be a detailed warehouse of the same company
+付款,payment
+付款 / 继续付款,Pay / Continue to pay
+付款不属于本申请,Payment is not part of this application
+付款不属于本申请或已撤销,The payment does not belong to this application or has been withdrawn
+付款元数据读取失败，请刷新或核对权限。,"Failed to read payment metadata, please refresh or check permissions."
+付款公司和供应商必须与来源一致,The payment company and Supplier must be consistent with the source
+付款凭证,Payment Voucher
+付款凭证事件写后缺失或变化，请人工复核,"The payment Voucher event is missing or changed after writing, please review manually."
+付款凭证关联缺失且无弃用审计，请人工复核,The payment Voucher association is missing and there is no deprecation audit. Please review manually.
+付款单号,Payment order number
+付款单号 / 供应商,Payment order number / Supplier
+付款单字段元数据读取失败，请核对安装状态和权限。,"Failed to read payment order field metadata, please check the installation status and permissions."
+付款单已改变，请刷新,"The payment order has changed, please refresh"
+付款单必须为本公司、本供应商、同币种的已提交付款,"The payment order must be the submitted payment of our company, Supplier, and the same currency."
+付款单没有明确核销当前采购订单或对应应付,The payment order does not specify Reconciliation as the current Purchase Order or the corresponding payable
+付款历史返回不唯一,Payment history returned is not unique
+付款口径待核对,Payment caliber needs to be verified
+付款备注或流水号过长,The payment note or serial number is too long
+付款字段格式无效,Payment field format is invalid
+付款已提交,Payment submitted
+付款已提交，余额刷新失败。请刷新来源或查看本次付款，勿重复提交。,"Payment submitted, balance refresh failed. Please refresh the source or view this payment and do not submit again."
+付款已提交，附件读取失败。请打开付款单核对。,"The payment has been submitted, but the attachment failed to be read. Please open the payment slip for verification."
+付款已提交，页面刷新失败。请查看付款记录，勿重复提交。,"Payment has been submitted, page refresh failed. Please check your payment records and do not submit again."
+付款已提交，页面刷新失败。请查看本次付款，勿重复提交。,"Payment has been submitted, page refresh failed. Please review this payment and do not submit it twice."
+付款已撤销，请刷新；不能更改原撤销原因,"The payment has been canceled, please refresh; the original reason for cancellation cannot be changed."
+付款开始日期,Payment start date
+付款待审批，尚未计已付。,The payment is pending approval and has not yet been paid.
+付款待核对,Payment pending verification
+付款接管公司或申请关联不符，请管理员核查,"The payment acceptance company or application association does not match, please check with the administrator."
+付款接管或余额写后校验失败，请刷新并核查,"Payment takeover or post-write verification of balance failed, please refresh and verify"
+付款日期,payment date
+付款明细,Payment details
+付款映射字段无效,Payment mapping field is invalid
+付款未提交，请核对后重试。,"The payment was not submitted, please check and try again."
+付款未确认：请核对系统提示；相同内容可重试，响应不确定时先查看本次付款。,"Payment is not confirmed: Please check the system prompts; you can try again with the same content. If the response is uncertain, check this payment first."
+付款条件,payment terms
+付款状态,Payment status
+付款状态无效,Payment status is invalid
+付款状态筛选无效,Payment status filter is invalid
+付款申请,Payment application
+付款结束日期,Payment end date
+付款草稿尚未核销，不能设置原生已核销引用,"Payment draft has not yet been Reconciliation, cannot set native reference to Reconciliation"
+付款草稿已保存，尚未计已付。,The payment draft has been saved and has not yet been paid.
+付款草稿弃用后原生凭证仍存在，请人工复核,"After the payment draft is deprecated, the original Voucher still exists, please review it manually."
+付款草稿弃用审计不完整，请人工复核,"The payment draft abandonment audit is incomplete, please review manually."
+付款草稿状态异常,Payment draft status abnormal
+付款证据不可见,Proof of payment not visible
+付款证据状态,Payment proof status
+付款账户,payment account
+付款账户尚未配置，请先维护当前公司的银行或现金账户。,The payment account has not been configured yet. Please maintain the current company's bank or cash account first.
+付款进度,Payment progress
+付款进度不可见,Payment progress is not visible
+付款金额必须完整分配到原生引用,The payment amount must be fully allocated to the native reference
+付款金额超过最新原生余额或不是正数,The payment amount exceeds the latest native balance or is not a positive number
+以上为已取得的审批历史；完整记录以钉钉原单为准。,The above is the approval history obtained; the complete record shall be subject to the original DingTalk order.
+件,pieces
+价格待确认；未形成应付,Price to be confirmed; no payable has been formed
+价格需重新核对；未形成应付,The price needs to be rechecked; no payable has been formed
+任一条件,any condition
+任一条件（OR）,Any condition (OR)
+会计,accounting
+会计与高级设置,Accounting and advanced settings
+供应商,Supplier
+供应商/采购付款公司,Supplier/Purchase and Payment Company
+供应商付款,Supplier payment
+供应商付款待核对,Supplier payment pending verification
+供应商名称,Supplier name
+供应商已停用,Supplier has been deactivated
+供应商待核对,Supplier to be verified
+供应商待确认,Supplier to be confirmed
+供应商未付,SupplierUnpaid
+供应商未唯一匹配可访问的已有记录,Supplier does not uniquely match an accessible existing record
+供应商票据号,Supplier bill number
+供应商缺失或不唯一，请明确选择已有供应商,"Supplier is missing or not unique, please clearly select the existing Supplier"
+保存,save
+保存付款映射,Save payment mapping
+保存付款草稿,Save draft payment
+保存付款记录,Save payment history
+保存全部草稿,Save all drafts
+保存关联,Save association
+保存后上传付款回单（可选）,Save and upload the payment receipt (optional)
+保存后累计已付,Accumulated paid after saving
+保存失败：相同内容可重试；若响应不确定请核对记录。版本改变时刷新抽屉。,"Failed to save: You can try again with the same content; if the response is uncertain, please check the record. Refresh the drawer when the version changes."
+保存必须保持草稿状态,Save must remain in draft state
+保存法律公司,save law firm
+保存草稿,Save Draft
+保存补充证据,Save additional evidence
+保存设置会停用同步，并使已有同步预览失效。密钥留空则保留原密钥。,Saving settings will disable sync and invalidate existing sync previews. Leave the key blank to retain the original key.
+保存设置并停用同步,Save settings and disable sync
+保存财务映射,Save financial mapping
+保存预付款凭证草稿,Save draft of advance payment Voucher
+保留已有批次：{0},Keep the existing batch: {0}
+保管仓库与保管公司不符或不可用,The storage warehouse does not match the storage company or is unavailable
+保管公司,safekeeping company
+保管公司（贸易品保管）,Storage company (storage of trade goods)
+保管关系；不形成内部应付,Custody relationship; no internal dealings
+保管原生仓库（贸易品保管）,Maintain original warehouse (storage of trade goods)
+修改内容必须为对象,The modified content must be an object
+候选读取受限或主数据尚未配置，请核对原生公司、内部 Supplier 和权限。,"The candidate read is restricted or the master data has not been configured, please check the native company, internal Supplier and permissions."
+借方,Debit
+借方 {0}\u3000贷方 {1},Debit {0}\u3000Credit {1}
+停用关联,Disable association
+停用原因,Reason for deactivation
+停用同步,Disable sync
+允许生产（{0}单）,Production allowed ({0} order)
+先保存费用映射并生成或关联费用确认凭证，再逐笔维护银行科目与汇率。此处不登记或执行付款。,"First save the expense mapping and generate or associate expense confirmation Voucher, and then maintain bank accounts and exchange rates one by one. No payment is registered or executed here."
+先处理订单草稿,Process the order draft first
+先核对数量与金额并保存草稿，再明确提交确认应付；不会自动付款。,"First check the quantity and amount and save the draft, then submit it clearly to confirm the payment; there will be no automatic payment."
+入库,Warehouse
+入库 → 确认应付 → 部分 / 合并付款。提交付款才计已付；高级关联筛选可切换原生视图。,Warehouse → Confirm Payable → Partial/Consolidated Payment. Payment will be counted only after payment is submitted; advanced association filtering can switch to native view.
+入库单号 / 供应商名称,Warehousing order number / Supplier name
+入库已确认,Warehousing confirmed
+入库开始日期,Warehousing start date
+入库数量,Inbound quantity
+入库方式,Warehousing method
+入库日期,Storage date
+入库物料明细,Inbound material details
+入库状态,Inbound status
+入库结束日期,Storage end date
+入库视图,Inbound view
+入库金额,Storage amount
+入库金额：{0} ｜ 余额按关联应付币种；共享整单余额不作入库合计,Storage amount: {0} ｜ The balance is based on the associated payable currency; the balance of the entire shared order is not included in the storage total
+全部审核状态,All review status
+全部条件（AND）,All conditions (AND)
+全部来源,All sources
+全部申请,All Requests
+全部订单,All orders
+全部进度,All progress
+公司不可见,Company is not visible
+公司待确认,Company to be confirmed
+公司映射字段无效,Company mapping field is invalid
+公司映射格式无效,Invalid company mapping format
+共享 / 混合,Share/Mix
+共享 / 混合应付整单,Shared / mixed payment for the entire order
+共享、退货或未提交应付不能核对为本订单历史付款,"Shared, returned or unsubmitted payables cannot be reconciled as payment history for this order."
+共享应付待核对,Shared to be checked
+共享应付整单余额,Share the balance of the entire order payable
+共享应付整单余额，不是本张入库的已付金额,"The balance of the entire payable order is shared, not the paid amount of this order."
+关联付款与凭证（最多 100 条）,Associate payment with Voucher (maximum 100 items)
+关联付款视图,Linked payment view
+关联修改未保存，原生价格确认待重新核对；请先保存并重新打开,"The associated modification has not been saved, and the original price confirmation needs to be rechecked; please save and reopen first."
+关联凭证公司不符，请核查,"The associated company Voucher does not match, please check"
+关联凭证尚为草稿，请明确确认弃用草稿再撤销登记；不需要提交或记账,"The association Voucher is still in draft, please confirm clearly to abandon the draft and then cancel the registration; no need to submit or Posting"
+关联凭证科目、往来方、金额或汇率与确认不符,"The associated Voucher account, counterparty, amount or exchange rate does not match the confirmation"
+关联审计事件,Associated audit events
+关联已保存，请重新打开并确认原生价格。,"The association has been saved, please reopen and confirm the native price."
+关联已停用，请重新建立关联,"The association has been deactivated, please re-establish the association."
+关联已有 ERP 凭证,Already associated ERP Voucher
+关联已有采购订单,Already associated with Purchase Order
+关联已记账,Associated Posting
+关联库存单位数量,Associated Stock UOM quantity
+关联应付余额,Associated balance payable
+关联收款记录,Associated payment records
+关联数量,Number of associations
+关联数量及换算结果必须保持有限正数,The associated quantities and conversion results must remain finite positive numbers
+关联数量或换算结果超出原生字段存储长度，请核对数量及单位,The associated quantity or conversion result exceeds the storage length of the native field. Please check the quantity and unit.
+关联数量或换算结果超出当前计算精度，请核对原生数量及单位,The associated quantity or conversion result exceeds the current calculation accuracy. Please check the original quantity and unit.
+关联来源 / 明细身份不能改写，请填写原因停用后新建关联。,The association source/detailed identity cannot be rewritten. Please fill in the reason for deactivation and create a new association.
+关联来源不符,The associated source does not match
+关联来源身份不能改写，请停用后重新建立关联,"The association source identity cannot be rewritten, please deactivate and re-establish the association."
+关联缺失或无权读取，请核对原生权限。,"The association is missing or you have no permission to read, please check the native permissions."
+关联身份已变化，请刷新后重新核对,"The associated identity has changed, please refresh and check again."
+关联进度受限，请核对权限,"The association progress is limited, please check the permissions"
+关联采购应付单,Related purchase and payable documents
+关联需重新核对,The association needs to be rechecked
+关键凭证,Key Voucher
+关键词无效,Invalid keyword
+关闭,Close
+其他来源,other sources
+内部关联,internal correlation
+内部关联待核对；未认定应付,Internal relationships need to be verified; payable has not been recognized
+内部关联未确认,Internal connection not confirmed
+内部原生价格尚未填写，请先核对价格及币种,"The internal native price has not been filled in, please check the price and currency first"
+内部原生订单缺少币种,Internal native order is missing currency
+内部原生采购明细 ID,Internal native purchasing details ID
+内部原生采购订单,Internal native Purchase Order
+内部应付：{0},Internal handling: {0}
+内部待结算,Internal pending settlement
+内部结算待核对,Internal settlement to be verified
+内部订单公司与最终受益公司不符,The internal order company does not match the ultimate beneficiary company
+内部订单草稿；未形成应付,Internal order draft; not payable yet
+内部采购明细 ID,Internal purchasing details ID
+内部采购订单公司必须为最终受益公司,Internal Purchase Order company must be the ultimate beneficiary company
+内部销售明细 ID,Internal sales details ID
+内部销售明细物料或单位不符,Internal sales detailed materials or units do not match
+冲销,Reversal
+冲销凭证 {0},ReversalVoucher {0}
+冲销未完成，相关库存与采购后续操作暂缓办理。,"Reversal has not been completed, and the related inventory and procurement follow-up operations are temporarily suspended."
+冲销未完成，相关操作暂缓办理。,Reversal is not completed and related operations are suspended.
+凭证,Voucher
+凭证事件与原生凭证关联不一致，请人工复核,The Voucher event is inconsistent with the original Voucher association. Please review manually.
+凭证公司、状态或运营费用关联不符,"VoucherCompany, status or operating expense association does not match"
+凭证公司或状态写后校验不一致，请人工复核,"Voucher company or status verification is inconsistent after writing, please review manually"
+凭证待同步,Voucher to be synchronized
+凭证日期,VoucherDate
+凭证本位币借贷不平，请明确汇率和汇兑差额,"Voucher The standard currency loan is not equal, please clarify the exchange rate and exchange difference"
+凭证状态,Voucher status
+凭证记账日期与财务确认不符,VoucherPosting date does not match financial confirmation
+凭证预览无效，请刷新后复核,"Voucher preview is invalid, please refresh and check again"
+出纳付款结算,Cashier payment settlement
+出纳付款证据,Cashier payment evidence
+出纳付款证据未确认，不能核对为已入账,The cashier's payment evidence has not been confirmed and cannot be verified as having been recorded in the account.
+出纳历史与 OA 公司、审批实例或原付款主单不一致，请先核对,"The cashier history is inconsistent with OA company, approval instance or original payment master order, please check first"
+出纳历史与本申请身份、币种或金额不一致，请先核对,"The cashier history is inconsistent with the identity, currency or amount of this application, please check first"
+出纳历史付款证据,Cashier payment history evidence
+出纳历史协议无效，请先核对,"The cashier history agreement is invalid, please check first"
+出纳原付款状态,Cashier’s original payment status
+出纳实付是原付款证据；ERP 登记付款和核销在订单中另列。,The cashier's actual payment is evidence of the original payment; ERP registered payment and Reconciliation are listed separately in the order.
+出纳实付证据；ERP 登记付款和核销另列,Cashier's actual payment evidence; ERP registered payment and Reconciliation are listed separately
+出纳实付（证据）,Cashier actual payment (evidence)
+出纳审批状态原文,Cashier approval status original text
+出纳审批结果原文,Cashier approval result original text
+出纳已付,cashier paid
+出纳待付,cashier to pay
+出纳总经理审批,Cashier General Manager Approval
+出纳来源分页未前进,Cashier source pagination does not advance
+出纳来源包含重复根标识,Cashier source contains duplicate root id
+出纳来源地址暂不可用，请稍后重试,"The cashier's source address is temporarily unavailable, please try again later."
+出纳来源暂不可用或协议无效，请稍后重试,The cashier source is temporarily unavailable or the agreement is invalid. Please try again later.
+出纳来源超过本次接入上限，请管理员核查,"The cashier source exceeds the access limit, please check with the administrator."
+出纳证据：{0},Cashier evidence: {0}
+出纳负责人确认,Confirmation by cashier in charge
+出纳财务主管审批,Cashier Financial Supervisor Approval
+出纳财务审批,Cashier financial approval
+分页参数必须在 {0} 到 {1} 之间。,Paging parameters must be between {0} and {1}.
+分页参数必须是整数。,Paging parameters must be integers.
+分页参数无效,Invalid pagination parameter
+切换方式会丢弃未保存的输入，继续？,"Switching modes will discard unsaved input, continue?"
+列表筛选无效,List filter is invalid
+列设置,Column settings
+创建人,Creator
+创建时间,creation time
+创建采购订单草稿,Create Purchase Order draft
+刷新,Refresh
+刷新会丢弃尚未保存的输入，继续？,"Refresh discards unsaved input, continue?"
+刷新抽屉,Refresh drawer
+刷新未完成，请核对权限或原生单据后重试。,"The refresh is not completed, please check the permissions or original documents and try again."
+刷新来源,refresh source
+刷新核对内容,Refresh verification content
+刷新设置,Refresh settings
+剩余待付,remaining to be paid
+办理,handle
+加工商,processor
+加工商明细,Processor details
+加工商明细字段重复或不唯一，请核对原单,"The processor details field is duplicated or not unique, please check the original order"
+加工商明细来源行标识不一致，请核对原单,"The source line identification of the processor details is inconsistent, please check the original order"
+加工商明细格式不支持，请核对原单结构,"The processor details format is not supported, please check the original order structure."
+加工商明细格式不支持，请核对原单行,"The processor details format is not supported, please check the original order line"
+加工商明细格式需要现有钉钉表格解析器,Processor details format requires existing DingTalk table parser
+加工服务,Processing services
+加工服务物料,Processing service materials
+加工服务物料名称,Processing service Item Name
+加工服务物料编码,Processing service Item Code
+加工材料,Processing materials
+加工采购,Processing and purchasing
+包,package
+包含不支持的付款字段,Contains unsupported payment fields
+包含不支持的字段，请在原生单据处理,"Contains unsupported fields, please process them in the native document"
+包含不支持的明细字段,Contains unsupported detail fields
+半成品申请,Application for semi-finished products
+单价,unit price
+单价不能为负数,Unit price cannot be negative
+单据字段元数据读取失败，请刷新或在原生单据核对。,"Failed to read document field metadata, please refresh or check in the original document."
+单据已改变，请刷新抽屉后重试,"The document has changed, please refresh the drawer and try again"
+单据日期,Document date
+单据法律公司请在对应申请中核对，不能通过同步设置覆盖,Please check the document legal company in the corresponding application. It cannot be overwritten through synchronization settings.
+单据状态,Document status
+单据类型,Document type
+卷,volume
+历史付款,Payment history
+历史付款已核对,Historical payments verified
+历史付款待核对，请核对钉钉原单和请款记录后确认。,Historical payments need to be verified. Please check the original DingTalk payment record and the payment record before confirming.
+历史付款明细与已付、待付合计不一致,Historical payment details are inconsistent with the total of paid and unpaid
+历史付款证据不完整，请先核对，不能按零付款接管,"The historical payment evidence is incomplete, please check first. You cannot take over with zero payment."
+历史付款身份、证据或币种有冲突,"Historical payment identity, evidence or currency conflicts"
+原交付日期,original delivery date
+原值,original value
+原值 {0},Original value {0}
+原凭证 {0},Original Voucher {0}
+原单、映射或物料状态已变化，请重新预览,"The original order, mapping or material status has changed, please preview again"
+原单付款信息,Original payment information
+原单付款日期,Original payment date
+原单位,original unit
+原单物料编码 {0} 是占位值，缺少可靠物料编码，不能自动创建物料,The original order Item Code {0} is a placeholder value. It lacks reliable Item Code and cannot automatically create materials.
+原单缺少可靠物料编码，不能自动创建物料,The original order lacks reliable Item Code and materials cannot be automatically created.
+原单链接待核对,Original link to be verified
+原始审批编号,Original approval number
+原始批准金额,Original approved amount
+原始来源信息,original source information
+原始来源请求编号,Original source request number
+原始物流证据（只读）,Original logistics evidence (read only)
+原始申请内容,Original application content
+原始申请类型,Original application type
+原始采购明细（只读）,Original purchase details (read only)
+原始钉钉实例编号,Original DingTalk instance number
+原收款人,original payee
+原数量,Original quantity
+原料申请,Raw material application
+原明细金额,Original detailed amount
+原物料名称,Original Item Name
+原物料编码,Original Item Code
+原生 Excel 导出失败（HTTP {0}），请检查导出权限和筛选条件。,"Native Excel export failed (HTTP {0}), please check the export permissions and filter conditions."
+原生 Excel 导出返回错误响应，已停止下载。,Native Excel export returns error response and download has stopped.
+原生付款包含扣款或跨币种设置，请打开原生付款单处理,"Native payment includes deduction or cross-currency settings, please turn on native payment order processing"
+原生付款单,Native payment slip
+原生付款引用发生变化，请在原生单据处理,"The original payment reference has changed, please process it in the original document"
+原生价格 / 订单版本已变化，请重新确认,"The original price/order version has changed, please reconfirm"
+原生价格尚未确认,Original price has not yet been confirmed
+原生价格表启用自动更新，自动草稿需先人工核对；不会覆盖已有物料价格,"The native price list enables automatic updating, and the automatic draft needs to be manually checked first; existing material prices will not be overwritten."
+原生价格表未匹配已有有效价格，自动草稿需先人工核对；不会新建物料价格,"The original price list does not match the existing valid price, and the automatic draft needs to be manually checked first; no new material price will be created."
+原生保存必须保持草稿状态,Native saves must remain in draft status
+原生保管仓库,Native storage warehouse
+原生内部价格确认人,Native internal price confirmer
+原生内部价格确认时间,Native internal price confirmation time
+原生内部采购订单,Native internal Purchase Order
+原生内部销售订单,Native internal Sales Order
+原生凭证关联与历史,Native Voucher association and history
+原生凭证已返回，刷新失败。请核对已显示凭证，勿重复办理。,Native Voucher has been returned and the refresh failed. Please check that Voucher is displayed and do not apply again.
+原生及来源版本,Native and source versions
+原生库存单位,Native Stock UOM
+原生库存同步复合索引定义冲突，未修改现有定义,"Native inventory synchronization composite index definition conflict, existing definition is not modified"
+原生库存同步复合索引缺少已核查生成列,Native inventory synchronization composite index is missing verified generated columns
+原生库存同步审计不支持按创建时间重建日志表，请使用受保护的常规日志清理,"Native inventory sync auditing does not support rebuilding log tables by creation time, please use protected regular log cleanup"
+原生库存同步审计不能由普通操作创建、改写或清理,"Native inventory sync audits cannot be created, overwritten, or cleaned up by normal operations"
+原生库存同步生成索引定义冲突，未修改现有定义,Native inventory synchronization generates index definition conflicts and the existing definitions are not modified.
+原生库存同步索引不能在业务事务内安装,Native inventory synchronization index cannot be installed within a business transaction
+原生库存同步索引列名称定义冲突，未修改现有定义,"Native inventory synchronization index column name definition conflict, existing definition is not modified"
+原生库存同步索引安装未通过实际定义核查,Native inventory synchronization index installation fails actual definition check
+原生库存同步索引所需列定义未经核查,The column definitions required for the native inventory synchronization index are not verified
+原生库存换算系数,Native inventory conversion factor
+原生操作已完成,Native operation completed
+原生操作已完成，但页面刷新失败。请刷新抽屉或核对原生单据，不要重复提交。,"The native operation completed, but the page refresh failed. Please refresh the drawer or check the original document and do not submit it repeatedly."
+原生明细缺少单位或库存单位，请先核对,"The original details are missing units or Stock UOM, please check first"
+原生物料或库存单位不一致，不能猜测跨明细关联,"The original material or Stock UOM is inconsistent, and cross-detail correlation cannot be guessed."
+原生筛选 / 批量操作,Native filtering/batch operations
+原生筛选条件必须为列表或对象,Native filters must be lists or objects
+原生筛选条件必须为列表或对象。,Native filters must be lists or objects.
+原生筛选条件格式无效,Invalid native filter format
+原生订单公司保持只读；公司或来源明细需变更时，请停用旧关联后明确新建。保存关联后必须重新确认原生价格。报价草稿不形成应付。,"The original order company remains read-only; if the company or source details need to be changed, please deactivate the old association and create a new one explicitly. The original price must be reconfirmed after saving the association. Draft quotations do not form payables."
+原生订单已取消,Original order has been canceled
+原生订单已提交；应付以原生已提交发票为准,The original order has been submitted; the payable amount shall be based on the original submitted invoice.
+原生详情,Native details
+原生采购单位：{0},Original purchasing unit: {0}
+原生采购币种或明细与来源不符，待人工核对,The original purchase currency or details do not match the source and need to be manually verified.
+原生采购明细 ID,Original purchasing details ID
+原生采购明细精度或金额与来源不符，待人工核对,The accuracy or amount of the original purchase details does not match the source and needs to be manually verified.
+原生采购舍入金额与来源不符，待人工核对,The original purchase rounding amount does not match the source and needs to be manually verified.
+原生采购订单,Native Purchase Order
+原生重算范围必须通过单据保存核查，不能直接改写,The original recalculation range must be verified through document saving and cannot be directly rewritten.
+原生销售订单或明细无权读取，请核对已有单据；不会自动生成销售单。,"The original Sales Order or details do not have permission to read, please check the existing documents; the sales order will not be automatically generated."
+原生销售订单版本不可见,The native Sales Order version is not visible
+原生默认税费、折扣或采购金额与来源不符，待人工核对,"The native default tax, discount or purchase amount does not match the source and needs to be manually verified."
+原申请组织仅为采购公司建议；更正采购公司请填写核对说明,"The original applicant organization is only a suggestion for the purchasing company; when correcting the purchasing company, please fill in the verification instructions"
+原申请组织或采购类型已变化，请先复核来源关联,"The original application organization or procurement type has changed, please review the source association first"
+原申请组织或采购类型已变化，请填写核对说明,"The original applicant organization or procurement type has changed, please fill in the verification instructions"
+原采用范围,Original scope of adoption
+发起人,initiator
+取消,Cancel
+取消已受理，库存重算尚未完成。,"The cancellation has been processed, but the inventory recalculation has not yet been completed."
+只能保存草稿,Only drafts can be saved
+只能对待分类来源明确指定付款申请或费用报销,Only payment requests or expense reimbursements can be treated if the classification source is explicitly specified
+只能弃用本申请对应付款生成的原生草稿,Only the native draft generated by this application for payment can be discarded.
+只能提交草稿,Only drafts can be submitted
+只能明确待分类来源的申请类型,Only the application type of the source to be classified can be specified
+可下载证据,Downloadable evidence
+可发货,Available for shipment
+可多选,Multiple selections possible
+台,Taiwan
+合并付款的应付账户、币种或原生汇率设置不一致，请打开原生付款单处理,"The payable account, currency or native exchange rate settings of the consolidated payment are inconsistent, please open the native payment order processing"
+合并付款要求同公司、供应商和币种,"The combined payment requirements are the same company, Supplier and currency"
+合并入库,Merge into database
+合并入库要求公司、供应商、币种及原生税费/表头设置一致；请逐单或在原生单据处理,"Merging into the database requires the company, Supplier, currency and original tax/header settings to be consistent; please process them one by one or in the original document"
+合并应付付款,Consolidate payments payable
+合并采购应付付款,Consolidated Purchase Payables
+同一物料 {0} 的名称、单位或属性冲突,"Name, unit or attribute conflicts for the same material {0}"
+同币种付款金额与抵扣申请金额必须一致,The payment amount and the deduction application amount in the same currency must be consistent
+同币种费用行金额必须等于来源分摊金额,The amount of the same currency expense line must be equal to the source allocation amount
+同币种银行金额必须等于实际付款金额,The bank amount in the same currency must be equal to the actual payment amount
+同期财务操作发生冲突，请刷新后重试,"There is a conflict in financial operations during the same period, please refresh and try again."
+同步到当前边界,Sync to current boundary
+同步密钥,sync key
+同步密钥未配置,Sync key not configured
+同步密钥格式无效,Invalid sync key format
+同步尚未启用，或设置存在未保存修改,"Sync is not enabled, or there are unsaved changes to settings"
+同步提示,Sync tips
+同步未启用,Sync is not enabled
+同步未启用，不能确认财务数据,Sync is not enabled and financial data cannot be confirmed
+同步状态,Sync status
+同步设置,Sync settings
+同步设置已变化，请刷新后复核,"The synchronization settings have changed, please refresh and review"
+同步钉钉,Sync DingTalk
+同步预览无效，请重新预览,"Synchronization preview is invalid, please preview again"
+同类自动接入规则,Similar automatic access rules
+后续节点尚未同步，请在钉钉查看完整流程。,"Subsequent nodes have not yet been synchronized, please view the complete process at DingTalk."
+启用后，对应申请在请款网站不能再登记付款。确认接管？,"After activation, the corresponding application can no longer be registered for payment on the payment collection website. Confirm takeover?"
+品目编码,Item code
+品项名,Item name
+响应不确定，请刷新订单并核对现有关联；新建已锁定，勿重复建立关联。,"The response is uncertain, please refresh the order and check the existing association; the new one is locked, do not establish the association again."
+回到顶部,back to top
+回单不存在或无权读取,The reply does not exist or does not have permission to read
+回单待补,Reply to be replenished
+回单文件已损坏或无法读取，请重新上传有效 PDF,"The reply file is damaged or cannot be read, please re-upload a valid one PDF"
+回单格式与文件内容不符，仅支持 PDF、PNG、JPG,"The reply format does not match the file content. Only PDF, PNG, and JPG are supported."
+回单父记录类型无效,The parent record type of the reply order is invalid
+固定来源,Fixed source
+固定税费、整单折扣或付款计划需在原生入库单核对；可选择逐单入库,"Fixed taxes, whole order discounts or payment plans need to be checked on the original warehousing order; you can choose to put them into warehousing one by one"
+国内发运,Domestic shipping
+国际发运,International shipping
+国际物流成本批次未安装或无权读取，当前不可选择；不绑定成本仍可核对。,"The international logistics cost batch has not been installed or has no permission to read, and is currently unselectable; the cost can still be verified without binding it."
+处理入库草稿,Process inbound drafts
+备注,Remarks
+备注（可选）,Remarks (optional)
+复杂税费、共享来源、跨币种、退款和付款计划沿用原生单据；此处不改变业务规则。,"Complex taxes, shared sources, cross-currency, refunds and payment plans continue to use native documents; no business rules are changed here."
+复核现有关联,Review existing associations
+外部付款不适用,Not applicable for external payments
+外部原生采购明细 ID,External native procurement details ID
+外部采购 / 内部结算,External Procurement/Internal Settlement
+失效,Invalid
+套,set
+委外,outsourcing
+字段分组,Field grouping
+存在不可读取的付款,There is an unreadable payment
+完善/关联,perfect/relevant
+完善/关联采购订单,Complete/Associate Purchase Order
+完善/差异说明,Improvement/difference description
+完成,Complete
+实物及加工采购,Physical and processing procurement
+实物采购,physical purchase
+实际付款日期无效,Actual payment date is invalid
+实际付款日期缺失或无效，不能生成付款凭证,"Actual payment date is missing or invalid, payment Voucher cannot be generated"
+实际付款的银行币种汇率未明确，请先核对,"The actual bank currency exchange rate for payment is not clear, please check first"
+实际付款证据,Evidence of actual payment
+实际付款证据不足、已撤回或币种冲突,"Insufficient evidence of actual payment, withdrawal or currency conflict"
+实际付款证据已撤回,Evidence of actual payment withdrawn
+实际付款超过费用确认金额，需要人工复核,The actual payment exceeds the fee confirmation amount and requires manual review
+实际付款金额必须大于零，不能抵减其他付款或生成付款凭证,The actual payment amount must be greater than zero and cannot be deducted from other payments or generated payment Voucher
+实际付款银行 / 现金科目,Actual payment bank/cash account
+实际付款银行币种已变化，请核对；不会重新解释原付款金额,"The actual payment bank currency has changed, please check; the original payment amount will not be re-explained"
+实际付款附件,Actual payment attachment
+实际原生单价（只读）：{0}{1},Actual native unit price (read-only): {0}{1}
+实际采购付款公司,Actual purchase and payment company
+审批中,Under review
+审批信息缺失,Missing approval information
+审批尚未通过，暂不能启用付款登记。,"The approval has not yet been passed, and payment registration cannot be enabled for the time being."
+审批已终止,Approval has been terminated
+审批已结束,Approval has ended
+审批来源企业或实例身份不符，请核对,"The identity of the approval source company or instance does not match, please check"
+审批来源唯一标识不符，请核对,"The unique identifier of the approval source does not match, please check"
+审批来源返回身份或数量不符，请核对,"The identity or quantity returned by the approval source does not match, please check"
+审批模板,Approval template
+审批流,Approval flow
+审批流程,Approval process
+审批状态,Approval status
+审批状态原文,Approval status original text
+审批状态筛选无效,Approval status filter is invalid
+审批结果原文,Original approval result
+审批缓存公司或实例身份不符，请核对钉钉原单,"The identity of the approval caching company or instance does not match, please check the original order DingTalk"
+审批缓存格式无效,Approval cache format is invalid
+审批缓存身份不唯一，请核对钉钉原单,"The approval cached identity is not unique, please check the original order DingTalk"
+审批节点,Approval node
+审批证据已变化，请重新预览付款接管,"The approval evidence has changed, please preview the payment takeover again"
+审批证据指纹缺失，请重新同步并预览,"Approval evidence fingerprint is missing, please re-synchronize and preview"
+审批证据指纹缺失，请重新预览付款接管,"The approval evidence fingerprint is missing, please preview the payment takeover again"
+审批身份冲突，请在钉钉原单核对,"If there is a conflict in approval identity, please check on the original document DingTalk"
+客户,Customer
+密度,Density
+对应凭证,Corresponds to Voucher
+导出列无效,Invalid export column
+导出失败,Export failed
+导出失败，请重试。,"Export failed, please try again."
+导出格式无效,Invalid export format
+导出组件加载失败，请刷新。,"The export component failed to load, please refresh."
+导出组件加载失败，请刷新重试。,"The export component failed to load, please refresh and try again."
+尚无关联原生凭证,No association yet for native Voucher
+尚无历史付款证据,No evidence of payment history yet
+尚无可核实的实际付款证据。,There is no verifiable evidence of actual payments.
+尚无已提交应付，请先从采购入库确认应付,There is no payable submitted yet. Please confirm the payable from the purchasing warehouse first.
+尚未关联国际物流来源,Not yet associated with international logistics sources
+尚未匹配到唯一出纳申请或钉钉原单，请先同步并核对历史付款。,The unique cashier application or DingTalk original order has not yet been matched. Please synchronize and check historical payments first.
+尚未形成应付 / 余额不可见,Not payable yet/Balance not visible
+尚未找到唯一出纳申请及完整付款历史，请先同步并核对,The unique cashier application and complete payment history have not been found. Please synchronize and check first.
+展开,Expand
+展开 / 收起入库物料明细,Expand/collapse warehousing material details
+展开产品明细,Expand product details
+展开产品行或查看明细；左右滚动查看全部字段。,Expand product rows or view details; scroll left or right to view all fields.
+展开全部审批节点,Expand all approval nodes
+展开物料明细,Expand material details
+履行关系,fulfill relationship
+工厂入库待核对,Factory warehouse pending verification
+工厂待入库,Factory to be stocked
+差额不足 0.01,The difference is less than 0.01
+差额（舍入后 - 精确）,Difference (after rounding - exact)
+已上传,Uploaded
+已交付,Delivered
+已付,Paid
+已付 / 核销,Paid / Reconciliation
+已付款,paid
+已付清,paid in full
+已付清或当前审批／权限待核对，不能登记新付款。,New payments cannot be registered if the payment has been paid in full or the current approval/authority is pending.
+已保存应付账面汇率,Account payable exchange rate saved
+已保存草稿,Draft saved
+已入 {0} / 待入 {1} {2},Already received {0} / To be received {1} {2}
+已入库,Already in stock
+已入库数量,Quantity in stock
+已入库：{0},Already in stock: {0}
+已关联,Already linked
+已关联采购订单,Linked to Purchase Order
+已关闭,Closed
+已冲销,Already Reversal
+已创建的准确关联 ID,Exact association created ID
+已创建：选择核对过的现有关联,Created: Select an existing association that has been checked
+已发料/履行%,Materials issued/performed %
+已取消,Cancelled
+已取消 · 需复核,Canceled · Needs review
+已受理采购冲销的原生任务不能由普通操作重置或改写,The native task of the accepted purchase Reversal cannot be reset or overwritten by ordinary operations.
+已同意,Agreed
+已启用,Active
+已完成,Completed
+已应用的筛选条件,Filters applied
+已开票,Invoiced
+已开票%,Invoiced%
+已拒绝,Rejected
+已接入的采购来源需保留审计身份，不能重命名或删除,The accessed procurement sources must retain their audit status and cannot be renamed or deleted.
+已接入采购来源超过核对上限，请管理员核对,"The accessed procurement source exceeds the verification limit, please ask the administrator to verify"
+已提交,Submitted
+已提交订单的来源范围变化，请先按原生流程处理后再核对,The source scope of the submitted order has changed. Please handle it according to the original process first and then check.
+已撤回,Withdrawn
+已撤销,Revoked
+已支付金额,Amount paid
+已收数量,Quantity received
+已收货%,Received%
+已收齐,Already collected
+已放行生产,Released for production
+已暂停,Suspended
+已有付款历史尚未定位原出纳主单，请先同步并核对,There is already payment history and the original cashier master order has not been located. Please synchronize and check first.
+已有付款草稿，请核对金额、账户与采购引用后选择继续处理。,"There is a payment draft. Please check the amount, account and purchase reference before choosing to continue processing."
+已有供应商,Already have Supplier
+已有入库或应付草稿，请选择继续编辑；新建另一张需明确确认,"There is already a draft in storage or payable, please choose to continue editing; creating another requires explicit confirmation."
+已有关联原生应付，请核对实际应付后继续付款。,"There is already an associated native payable, please check the actual payable before proceeding with payment."
+已有内部销售明细 ID（可选）,Already have internal sales details ID (optional)
+已有内部销售订单（可选）,Already internal Sales Order (optional)
+已有凭证关联，费用确认不可覆盖；请人工复核调整,"Voucher is already associated, and the fee confirmation cannot be covered; please manually review and adjust"
+已有原生 File ID（可选）,Already have native File ID (optional)
+已有原生凭证关联，费用确认不可覆盖。,"There is already a native Voucher association, and the fee confirmation cannot be covered."
+已有国际物流成本批次（可选）,Already have international logistics cost batches (optional)
+已有应付草稿，请选择继续编辑,"There is already a draft due, please choose to continue editing."
+已有待确认付款,Payment is pending
+已有待确认付款，请核对后继续。,"Payment is pending, please verify before continuing."
+已有物料,Already have materials
+已有独立入库草稿包含人工值，请选择逐单继续；合并需在原生单据处理，整批未修改,"There is already an independent warehousing draft that contains manual values, please choose to continue one by one; the merge needs to be processed in the original document, and the entire batch has not been modified."
+已有草稿。仍要明确新建另一张入库草稿？请确认不是重复收货。,Already have a draft. Do you still want to create another draft? Please confirm that it is not a duplicate receipt.
+已有草稿未提交。仍要明确新建另一张入库草稿？请先确认不是重复收货。,There is a draft that has not yet been submitted. Do you still want to create another draft? Please confirm first that it is not a duplicate receipt.
+已有草稿还包含未选择的来源，请打开原生草稿核对；整批未修改,"The existing draft also contains unselected sources, please open the original draft to check; the entire batch has not been modified."
+已有记账凭证，请先在原生凭证流程取消；本页不会自动冲账,"Already have PostingVoucher, please cancel in the original Voucher process first; this page will not automatically reverse the account"
+已有财务确认，不可改变法律公司,Financial confirmation has been made and the legal company cannot be changed.
+已核对 ERP 付款,Payment ERP verified
+已核对历史,Checked history
+已核对历史付款,Payment history reconciled
+已核对原生价格,Original price checked
+已核对完整历史，确认这笔申请此前没有实际付款,The full history has been checked to confirm that this application has not been previously paid.
+已核对采购来源版本,Procurement source version verified
+已知,known
+已确认启用,Confirmed to enable
+已确认报价；待开应付,Quotation confirmed; pending payment
+已确认现有 ERP 覆盖，请关联现有凭证，不得再生成费用,The existing ERP coverage has been confirmed. Please associate the existing Voucher and no more charges will be generated.
+已确认采购公司与原单采购公司冲突,Conflict between the purchasing company and the original purchasing company has been confirmed
+已确认采购项目,Procurement items confirmed
+已终止,terminated
+已记录,Recorded
+已记录原生价格确认,Native price confirmation recorded
+已记账,Already Posting
+已选 {0} 张入库,Selected {0} sheets are stored in the warehouse
+已选 {0} 张订单,{0} orders selected
+已选择：{0} · 可放行：{1} · 不可放行：{2},Selected: {0} · Can be released: {1} · Cannot be released: {2}
+已选择：{0}；正在核验…,Selected: {0}; Verifying...
+已选择：{0}；每次最多核验 100 单,Selected: {0}; a maximum of 100 orders can be verified each time
+已通过,Passed
+已配置,configured
+已采用采购明细与规则,Purchasing details and rules adopted
+已预付,Prepaid
+已驳回,Dismissed
+币种,Currency
+币种与来源不符，请填写核对说明,"The currency does not match the source, please fill in the verification instructions"
+币种待核对,Currency to be verified
+币种待确认,Currency to be confirmed
+币种未明确,Currency not specified
+幂等键,idempotent keys
+序号,serial number
+库存,Inventory
+库存保护指针不能由普通单据写入、清除或替换,"Inventory protection pointers cannot be written, cleared or replaced by ordinary documents"
+库存属性待确认,Inventory attributes to be confirmed
+库存物料,Stock item
+库存调账,Inventory reconciliation
+应付,Payable
+应付 {0} · 已付 / 核销 {1} · 未付 {2},Payable {0} · Paid / Reconciliation {1} · Unpaid {2}
+应付付款计划无法完整分配本次金额，请在原生付款单处理,"The payable payment plan cannot fully allocate this amount, please process it in the native payment order"
+应付元数据读取失败，请刷新或核对权限。,"Failed to read metadata, please refresh or check permissions."
+应付冲减必须沿用费用确认的账面汇率，差额应明确计入汇兑损益,"The book exchange rate for expense recognition must be used for write-offs payable, and the difference should be clearly included in exchange gains and losses."
+应付单不属于所选真实采购链或当前不可付款,The payable order does not belong to the selected real purchasing chain or is not currently payable
+应付单不得重复且每笔付款金额必须大于0,Payable orders cannot be repeated and the amount of each payment must be greater than 0
+应付单与当前采购单据没有明确关联,The payable document is not clearly related to the current purchasing document
+应付单号,Payable order number
+应付单号 / 供应商,Payable order number / Supplier
+应付单未提交、为退货或已暂停付款,"The payable order has not been submitted, is a return, or payment has been suspended"
+应付原币金额,Amount payable in original currency
+应付开始日期,Payable start date
+应付日期,Payable date
+应付未付：{0},Payable and unpaid: {0}
+应付来源状态、公司或供应商已改变,"Payable source status, company or Supplier has changed"
+应付核销币种与所选来源不一致，请在原生付款单处理,The currency payable Reconciliation is inconsistent with the selected source. Please process it in the native payment order.
+应付款公司,Accounts Payable Company
+应付状态,coping status
+应付科目,Accounts payable
+应付科目币种必须匹配来源币种,Payable account currency must match source currency
+应付结束日期,Payable end date
+应付账户币种无法安全换算，请打开原生应付单核对,The currency of the payable account cannot be safely converted. Please open the native payable document for verification.
+应付账户币种汇总：{0},Summary of currency of accounts payable: {0}
+应付账面汇率,Account payable exchange rate
+应付金额,Amount payable
+建单时拟新增物料,Plan to add new materials when creating an order
+建单时适配明细（只读）,Adaptation details when creating an order (read-only)
+建议采购公司,Suggested purchasing company
+开始日期,start date
+异常付款,Unusual payment
+张,Zhang
+张可见入库草稿。请明确选择继续编辑，避免重复建单。,Zhang can see the draft in storage. Please clearly choose to continue editing to avoid repeated order creation.
+归属待核对,Attribution to be verified
+归档校验信息缺失或无效，请在钉钉原单核对,"The archive verification information is missing or invalid, please check it on the original document DingTalk"
+归档附件暂不可读取，请在钉钉原单核对,"The archive attachment is temporarily unreadable, please check the original document at DingTalk"
+归档附件来源身份不符,The source of the archive attachment does not match the identity
+归档附件校验不一致，请在钉钉原单核对,"The archive attachment verification is inconsistent, please check it in the original document DingTalk"
+当前,current
+当前单据已处理，可返回原列表继续采购流程。,The current document has been processed and you can return to the original list to continue the purchasing process.
+当前审批人,Current approver
+当前审批任务格式无效,The current approval task format is invalid
+当前审批节点不能登记付款。,Payment cannot be registered at the current approval node.
+当前审批节点尚未同步，请查看钉钉原单,"The current approval node has not been synchronized yet, please check the original order of DingTalk"
+当前应付单已不可快捷付款，请刷新并核对来源。,"The current payable order is no longer available for quick payment, please refresh and check the source."
+当前未连接 Frappe。,Frappe is not currently connected.
+当前权限不能办理付款登记。,The current permissions cannot handle payment registration.
+当前来源金额,Current source amount
+当前没有办理权限，只可查看证据。,"Currently, there is no processing authority, only evidence can be viewed."
+当前没有办理权限，或公司归属待核对，请核对系统提示。,"There is currently no processing authority, or the company ownership needs to be verified, please check the system prompts."
+当前没有可快捷付款的应付余额，请打开原生应付单处理。,There is currently no payable balance that can be quickly paid. Please turn on native payable document processing.
+当前没有提交或审批权限。,There are currently no submission or approval permissions.
+当前没有新建采购订单权限，可以核对并关联已有订单。,"Currently, there is no permission to create a new Purchase Order. You can check and associate existing orders."
+当前没有采购订单写入权限，可查看核对证据。,There is currently no write permission for Purchase Order. You can check the verification evidence.
+当前浏览器不支持 Excel 解压，请使用支持 DecompressionStream 的新版浏览器。,"The current browser does not support Excel decompression, please use a newer version of the browser that supports DecompressionStream."
+当前用户没有导出权限。,The current user does not have export permissions.
+当前站点没有 Workspace Sidebar，已跳过。,The current site does not have a Workspace Sidebar and has been skipped.
+当前筛选,Current filter
+当前账套未启用运营费用，不能设置运营费用凭证关联,"Operating expenses are not enabled in the current account set, and the operating expense Voucher association cannot be set."
+当前采购订单,CurrentPurchase Order
+当前需复核或缺少财务权限，来源仍可查看。,"Currently requires review or lacks financial permissions, the source can still be viewed."
+录入第一笔付款,Enter first payment
+往来方,Correspondence
+往来方类型,Correspondent type
+待交付,To be delivered
+待交付及开票,Pending delivery and invoicing
+待付,To be paid
+待付款金额,Amount to be paid
+待入库：{0},Awaiting storage: {0}
+待分类,To be classified
+待办理,To be processed
+待同步,To be synchronized
+待处理,Pending
+待完善,To be improved
+待完善 · {0},To be improved · {0}
+待完善来源,Source to be improved
+待尾款确认,Awaiting final payment confirmation
+待开票,To be invoiced
+待核对,To be verified
+待核对筛选必须是布尔值。,The filter to be checked must be a Boolean value.
+待确认,To be confirmed
+待财务审核,Pending financial review
+待财务放行,Waiting for Financial Release
+待选择明细,Details to be selected
+必要审批已通过，待出纳办理。,The necessary approvals have been passed and are awaiting processing by the cashier.
+必须填写撤销原因,Reason for cancellation is required
+必须明确来源法律公司,The source legal firm must be clearly identified
+必须明确费用/税额分摊行,Fee/tax allocation lines must be identified
+必须明确费用记账日期,The fee Posting date must be specified
+必须确认费用实际发生及现有 ERP 覆盖情况,It is necessary to confirm the actual expenses incurred and the existing ERP coverage
+快捷筛选,Quick filter
+快捷筛选无效,Quick filter is invalid
+快照标识,Snapshot ID
+总经理审批,General manager approval
+总金额,total amount
+恢复推荐列,Restore recommendation column
+成本中心,cost center
+成本中心公司或状态无效,Invalid cost center company or status
+我已核对来源类型和法律公司映射，确认启用同步,I've checked the source type and legal firm mapping to confirm that sync is enabled
+我的订单,my order
+我确认原请求已结束，并已人工核对上述结果,I confirm that the original request has been completed and have manually checked the above results
+所选付款核销金额与出纳实付不一致，请先核对，不自动补记或分摊,The selected payment amount Reconciliation is inconsistent with the actual payment made by the cashier. Please check first. It will not be automatically added or apportioned.
+所选应付已结清或不可付款，请刷新,"The selected payable has been settled or cannot be paid, please refresh"
+所选来源已有入库或应付草稿，请先预览并明确继续已有草稿；整批未修改,The selected source already has a draft in the database or is due to be processed. Please preview and clearly continue the existing draft; the entire batch has not been modified.
+所选来源必须已提交且非退货,Selected source must have been submitted and not returned
+所选来源有多张草稿，请从原生单据明确选择；整批未修改,"There are multiple drafts from the selected source, please select clearly from the original document; the entire batch has not been modified."
+所选采购链尚无已提交应付；多订单预付款请逐单或在原生付款单处理,The selected procurement chain has not yet been submitted for payment; please process advance payments for multiple orders one by one or in the native payment order.
+手动同步并刷新,Manually sync and refresh
+手工完善,Perfected by hand
+手工报告数量（可选）,Manual reporting quantity (optional)
+手工数量需明确单位及有限正数；空数量只记录证据。,Manual quantities need to have clear units and limited positive numbers; empty quantities only record evidence.
+手工数量需明确单位，不与其他单位混加,The manual quantity must be in clear units and not mixed with other units.
+手工核对节点,Manually check nodes
+手工核对节点（独立保留）,Manually check nodes (reserved independently)
+手工物流节点无效,Manual logistics node is invalid
+手工节点,Manual nodes
+打开原生付款单,Open native payment slip
+打开原生单据,Open native document
+打开原生来源,Open native source
+打开原生订单,Open native order
+打开原生订单编辑,Open native order editing
+打开来源单据,Open source document
+执行地区,Execution area
+批量采购入库,Bulk purchasing and warehousing
+批量预览未完成，请核对原生单据。,"The batch preview is not completed, please check the original documents."
+抄送,CC
+报价草稿不形成应付,Draft quotation does not form payable
+报告到货（非 ERP 入库）,Report arrival (not ERP warehousing)
+报销员工公司不符,The company does not comply with the reimbursement of employees
+抽屉已关闭,Drawer is closed
+拖放文件,Drag and drop files
+拟新增物料,Materials to be added
+拟新增物料编码,Plan to add Item Code
+按实际付款生成结算草稿,Generate billing draft based on actual payments
+按真实应付整单余额核销，共享应付只列一次。金额为0的应付不参加本次付款。,"According to the actual payable balance of the whole order, Reconciliation, the shared payable is only listed once. Payables with an amount of 0 will not participate in this payment."
+按订单承诺计算，非应付余额,"Calculated by order commitment, non-payable balance"
+排序字段无效,Invalid sort field
+接管后的来源财务事实变化，不能生成预付款凭证,"The source financial facts changed after the takeover, and the advance payment Voucher cannot be generated"
+接管后的申请财务事实已变化，请管理员复核；既有付款不会删除,The financial facts of the application have changed after the takeover. Please review it with the administrator; existing payments will not be deleted.
+接管返回不唯一；对应出纳申请可能已锁定，请管理员核查,"The takeover return is not unique; the corresponding cashier application may be locked, please check with the administrator."
+提交并记账,Submit and Posting
+提交未完成：请核对系统提示；版本改变时先刷新抽屉。,Submission is not completed: please check the system prompts; refresh the drawer first when the version changes.
+摘要,Summary
+撤销付款仍有关联未取消凭证，请人工复核,"The canceled payment is still associated with Voucher, please review it manually."
+撤销付款登记,Cancel payment registration
+撤销原因,Reason for withdrawal
+撤销登记,Cancel registration
+操作,Operation
+操作冲突，法律公司未保存，请稍后重试。,"Operation conflict, the legal firm was not saved, please try again later."
+操作响应未确认,Operation response not confirmed
+操作失败，请核对系统提示。,"The operation failed, please check the system prompts."
+操作未确认,Operation not confirmed
+操作未确认，请刷新后核对原生记录与版本。,"The operation is not confirmed, please refresh and check the original record and version."
+操作未确认：相同内容可重试；响应不确定时先核对付款记录。,"The operation is not confirmed: You can try again with the same content; if the response is uncertain, check the payment record first."
+操作结果未确认，请刷新来源核对。,"The operation result is not confirmed, please refresh the source to verify."
+操作被拒绝，请核对权限、版本或原生单据。,"The operation is denied, please check the permissions, version or original document."
+支,branch
+收款与订单关联异常，请联系财务核对。,"There is an abnormality in the relationship between payment and order, please contact finance for verification."
+收款与订单关联异常，请财务核对。,"There is an abnormal connection between the payment and the order, please check with the finance department."
+收款与预付,Collection and Advance Payment
+收款人,Payee
+收款记录不可用，请打开原生订单核对。,"The payment record is unavailable, please open the native order to check."
+收款记录暂不可用，请打开原生订单核对。,"The payment record is temporarily unavailable, please open the original order to check."
+收款记录未录入不代表未收款；定金由财务按线下约定判断。,The fact that the payment record is not entered does not mean that the payment has not been received; the deposit will be judged by the finance department according to the offline agreement.
+收款记录读取失败，请刷新重试。,"Failed to read the payment record, please refresh and try again."
+收款记录读取失败，请打开原生订单核对。,"Failed to read the payment record, please open the native order for verification."
+收货物流,Receiving logistics
+收货资格已变化，请刷新,"Receiving qualifications have changed, please refresh"
+收货资格未知，请刷新,"Receiving eligibility is unknown, please refresh"
+收货进度,Receipt progress
+收货进度不可见,Receipt progress is not visible
+收起,close
+收起物料明细,Collapse material details
+收起额外字段,Collapse extra fields
+放行资格核验失败，请重新选择或刷新后重试。,"The release qualification verification failed, please select again or refresh and try again."
+数值无法在当前计算精度保持有限值,The numerical value cannot be kept finite at the current computational precision.
+数值超出当前计算精度，请核对数量或金额,"The value exceeds the current calculation accuracy, please check the quantity or amount"
+数量,Quantity
+数量 / 当前剩余,Quantity / Current Remaining
+数量单位（填写数量时必选）,Quantity unit (required when filling in quantity)
+数量及原生换算系数必须为有限正数,The quantity and native conversion factor must be finite positive numbers
+数量和单价须明确填写；缺失值保持空白。,Quantity and unit price must be filled in clearly; missing values remain blank.
+数量必须为有效数字,Quantity must be a valid figure
+数量必须大于零，单价必须明确且不小于零,"The quantity must be greater than zero, and the unit price must be clear and not less than zero."
+数量超过最新剩余数量或不是正数，请刷新,"The quantity exceeds the latest remaining quantity or is not a positive number, please refresh"
+整单金额,Whole order amount
+整张付款单银行币种金额,Bank currency amount of the entire payment note
+新单据不能继承库存保护指针,New documents cannot inherit the inventory protection pointer
+新增付款,Add new payment
+新增公司映射,Add company mapping
+新增收款,Add new payment
+新增费用分摊,New cost sharing
+新建关联响应不确定，请刷新订单并核对现有关联。本次新建已锁定，请确认结果后再办理，勿重复建立关联。,"The response to the new association is uncertain, please refresh the order and check the existing association. This new creation has been locked. Please confirm the result before processing. Do not establish the association again."
+新建凭证事件不得变更为历史关联，请人工复核,"The newly created Voucher event cannot be changed to historical association, please review manually."
+新建草稿,Create a new draft
+新物料 {0} 的名称、物料组、单位或公司待确认,"The name of the new material {0}, Item Group, unit or company is to be confirmed"
+新的同步密钥（可选）,New sync key (optional)
+新确认费用,New confirmation fee
+无,None
+无匹配的原生保管仓库，请核对公司与权限。,"There is no matching native storage warehouse, please check the company and permissions."
+无匹配的原生内部订单，请先核对内部 Supplier、公司与权限。,"There is no matching native internal order, please check the internal Supplier, company and authority first."
+无权查看产品明细,No permission to view product details
+无权查看完整关联或金额字段,Don't have permission to view the full association or amount fields
+无权查看财务审核状态，请联系管理员。,"Do not have permission to view financial review status, please contact the administrator."
+无权核对完整采购字段,Not authorized to check complete purchasing fields
+无权访问此公司,No access to this company
+无权读取或凭证不可用，请核对系统提示。,"No permission to read or Voucher is unavailable, please check the system prompts."
+无权读取或加载失败，请核对系统提示。,"No permission to read or loading failed, please check the system prompts."
+无法入库,Unable to store
+无法新建收款，请检查订单状态和收款权限。,"Unable to create a new payment, please check the order status and payment permissions."
+无法读取付款信息，请核对系统提示。,"Unable to read payment information, please check the system prompts."
+无法读取采购履行信息，请核对原生公司、内部 Supplier、权限或关联元数据安装状态。,"Unable to read procurement fulfillment information, please check the native company, internal Supplier, permissions or associated metadata installation status."
+无法预览，请核对权限、剩余数量或关联单据。已有草稿请在列表继续编辑。,"Unable to preview, please check the permissions, remaining quantity or associated documents. If you already have a draft, please continue editing in the list."
+无税费,No taxes
+无舍入差额,No rounding differences
+旧出纳主单关联待核对，不能改按零历史接管，请先同步并核对,The old cashier master order association needs to be verified. It cannot be changed to take over with zero history. Please synchronize and verify it first.
+旧出纳来源身份冲突，请管理员核查,The identity of the old cashier source conflicts. Please check with the administrator.
+旧采购来源企业身份不唯一，不能自动绑定,The identity of the old procurement source enterprise is not unique and cannot be automatically bound.
+旧采购来源身份冲突,Old purchasing source identity conflict
+时区,time zone
+明确关联已有凭证,Explicitly associated with Voucher
+明确关联的海外成本批次,Explicitly associated overseas cost batches
+明确刷新来源物流证据,Explicitly refresh source logistics evidence
+明确新建关联,Explicitly create a new association
+明确新建另一张剩余入库草稿,Explicitly create another remaining draft
+明确法律公司,clear law firm
+明确申请类型,Specify application type
+明细修改必须为列表,Detail modification must be a list
+明细已更新，请刷新列表后查看。,"The details have been updated, please refresh the list to view."
+明细已更新，请刷新后重试。,"The details have been updated, please refresh and try again."
+明细待选择,Details to be selected
+明细汇总金额,Detailed summary amount
+明细读取失败，请重试。,"Detailed reading failed, please try again."
+映射字段无效,Mapping field is invalid
+是,Yes
+显示 ERP 已同步字段；负责人来自销售团队，创建人是 ERP 账户。,Displays the ERP synchronized field; the person in charge is from the sales team and the creator is the ERP account.
+显示全部明细字段,Show all detail fields
+暂无关联收款记录,There is currently no associated collection record
+暂无可核对的审批节点，请查看钉钉原单,"There is currently no verification node for approval, please check the original order of DingTalk"
+暂无可核对的来源评论。,There is no verified source comment yet.
+暂无可读物料明细,No reading details available yet
+暂无已归档附件，请在原单核对。,"There are currently no archived attachments, please check in the original order."
+暂无手工节点。,There are no manual nodes yet.
+暂无附件,No attachments yet
+更多,More
+更多筛选,More filters
+更新时间,Update time
+最后同步,last sync
+最多,most
+最多 100 行费用分摊,Up to 100 lines of charge sharing
+最多 200 行公司映射,Up to 200 lines of company mapping
+最多可付,The most you can pay
+最多读取2500张订单,Read up to 2500 orders
+最终使用 / 销售公司,End use / sales company
+最终使用/销售公司,End use/sales company
+最终公司,final company
+最终归属公司,Ultimately owned by the company
+最终归属：{0},Final ownership: {0}
+最近确认人 / 时间,Last confirmed person/time
+有效关联,Effective association
+服务器未返回有效 Excel ZIP 文件。,The server did not return a valid Excel ZIP file.
+服务物料编码或名称过长,Service Item Code or name is too long
+未付,unpaid
+未付余额,unpaid balance
+未付款,Unpaid
+未关联 OA,Not associated OA
+未分类,Uncategorized
+未创建：已核对原请求与原生记录,Not created: The original request and the original record have been checked
+未启用,Not enabled
+未找到可见的关联收款记录,No visible associated payment record found
+未找到库存 Workspace Sidebar。,Inventory Workspace Sidebar not found.
+未收货,Not received
+未核对 ERP,Not checked ERP
+未确认,Not confirmed
+未计入正常余额,Not included in normal balance
+未选择订单,No order selected
+未配置,Not configured
+本位币借方,Standard currency Debit
+本位币汇率必须为 1,The local currency exchange rate must be 1
+本位币科目汇率必须为 1,Functional currency account exchange rate must be 1
+本位币舍入差额,Functional currency rounding difference
+本位币贷方,Standard currency Credit
+本地内部供货；外部付款不适用,Local in-house supply; external payments not applicable
+本地内部采购,local internal procurement
+本地内部采购以当前工厂原生订单及明细为准,Local internal procurement is subject to the current factory original orders and details.
+本地内部采购必须使用当前工厂原生订单,Local internal procurement must use the current factory native order
+本地采购来源实例重复，不能自动选取关联；请管理员核对,The local procurement source instance is duplicated and the association cannot be automatically selected; please check with the administrator.
+本批已回滚，请修改或重新预览。,"This batch has been rolled back, please modify or preview again."
+本次付款,This payment
+本次付款超过待付金额,This payment exceeds the amount to be paid
+本次付款金额,Amount of this payment
+本次付款金额 ({0}),Amount of this payment ({0})
+本次关联数量,The number of connections this time
+本次同步记录,This synchronization record
+本次抵扣金额须大于零且不超过待付金额,The amount of this deduction must be greater than zero and not exceed the amount to be paid
+本次授权读取未发现有效关联，请人工核对原请求与原生记录。,No valid association was found during this authorized read. Please manually check the original request and the original record.
+本次新建结果核对,Checking the results of this new creation
+本次核对范围,The scope of this verification
+本次核销金额,This time Reconciliation amount
+本次结果（必须人工选择）,This result (must be selected manually)
+本次补建范围仅限2026年9月25日起的采购申请,"The scope of this supplementary construction is limited to purchase applications starting from September 25, 2026"
+本次金额必须大于0,This amount must be greater than 0
+本次金额超过最新未付余额，请刷新,"This amount exceeds the latest unpaid balance, please refresh"
+本申请存在不可读取或公司不符的付款，余额待核对，不能登记新付款,There is a payment that cannot be read or the company does not match. The balance needs to be verified. New payments cannot be registered.
+本笔结算已记账、已取消或存在问题，只能查看。,"This settlement has been Posting, has been canceled or has problems, and can only be viewed."
+本页不提供批量付款,Bulk payments are not available on this page
+条,records
+来源,Source
+来源 / 物料,Source/Material
+来源 SHA-256,Source SHA-256
+来源 {0},Source {0}
+来源 {0} {1} {2},Source {0} {1} {2}
+来源与进度,Source and Progress
+来源主机必须解析为公开网络地址,The source host must resolve to a public network address
+来源付款已撤回,Source payment withdrawn
+来源付款状态,Source payment status
+来源企业,Source company
+来源元数据读取失败，请刷新或核对权限。,"Failed to read source metadata, please refresh or check permissions."
+来源公司,Source company
+来源公司与采购订单公司不一致,The source company is inconsistent with the Purchase Order company
+来源公司待确认，请由管理员核对,"The source company needs to be confirmed, please check it with the administrator."
+来源公司或供应商不一致,Source company or Supplier is inconsistent
+来源协议无效,Invalid source agreement
+来源单据无效,Source document is invalid
+来源单据重复,Duplicate source documents
+来源原始编码,Source original encoding
+来源及采购关联请使用采购订单列表的核对入口,Please use the verification portal of the Purchase Order list for source and procurement relationships.
+来源失效,Source invalid
+来源字段冲突，待核对,"Source field conflict, pending verification"
+来源审批与待处理问题,Source Approval and Pending Issues
+来源审批中,Source under approval
+来源审批未满足办理条件，只可查看证据。,"If the source approval does not meet the processing conditions, you can only view the evidence."
+来源审批状态,Source approval status
+来源审批通过,Source approved
+来源工作表,Source worksheet
+来源已关联采购订单，请先核对现有关联,"The source has been associated with Purchase Order, please check the existing association first"
+来源已变化,Source has changed
+来源已撤回或已移出允许范围，请重新同步,"The source has been withdrawn or moved out of the allowed range, please resynchronize"
+来源已撤回，请重新同步,"The source has been withdrawn, please resynchronize"
+来源已改变，请刷新后重试,"The source has changed, please refresh and try again"
+来源币种无效，请核查,"The source currency is invalid, please check"
+来源归档表,Source archive table
+来源待完善,Source to be improved
+来源待完善；ERP 付款未知,Source to be improved; ERP payment unknown
+来源待完善；收货待核对,The source needs to be improved; the receipt needs to be verified
+来源待完善；未形成内部应付,The source needs to be improved; internal coping has not been formed.
+来源待核对,Source to be verified
+来源待核对（仅建议）：{0},Source to be verified (recommended only): {0}
+来源待核对：{0},Source to be verified: {0}
+来源待核对：建议 {0},Source to be verified: Suggestion {0}
+来源待确认,Source to be confirmed
+来源必须为已提交且非退货的采购单据,The source must be a submitted and non-returned purchase document
+来源必须已提交且非退货,Source must have been submitted and not returned
+来源快照时间无效,The source snapshot time is invalid
+来源或付款证据已变化，请刷新后重新核对,"The source or payment evidence has changed, please refresh and check again."
+来源或币种存在冲突，请先核对原单。,"There is a conflict in source or currency, please check the original order first."
+来源数据过大,Source data is too large
+来源数据过大或格式无效,The source data is too large or has an invalid format
+来源文件,source file
+来源明细,Source details
+来源明细无效,Source details are invalid
+来源明细无效或重复,Source details are invalid or duplicate
+来源明细标识重复,Duplicate source details identifier
+来源明细格式无效,Source details format is invalid
+来源明细金额,Source details amount
+来源更新时间,Source update time
+来源未满足当前审批条件，只可查看证据。,"The source does not meet the current approval conditions, only evidence can be viewed."
+来源未确认付款锁定，ERP 登记仍关闭,"Source Unconfirmed Payment Lock, ERP Registration Still Closed"
+来源标识不符，请重新同步,"The source identifier does not match, please resynchronize."
+来源标识无效,Invalid source identifier
+来源法律公司映射已变化，请重新同步并复核,"Source legal firm mapping has changed, please resync and review"
+来源法律标识,Source legal identification
+来源法律标识 → ERP 法律公司,Source Legal Identification → ERP Law Firm
+来源版本,Source version
+来源版本已变化，请刷新后复核,"The source version has changed, please refresh and check again."
+来源版本已变化，请刷新抽屉后重新预览。,"The source version has changed, please refresh the drawer and preview again."
+来源申请金额,Source application amount
+来源筛选,Source filtering
+来源组织,Source organization
+来源缓存,Source cache
+来源范围,Source range
+来源范围复核,Source scope review
+来源行,source row
+来源订单版本已变化，请刷新后重新核对明细及价格。,"The source order version has changed, please refresh and recheck the details and price."
+来源订单编号,Source order number
+来源财务事实已变化，请重新确认；已有凭证不能覆盖,"The source financial facts have changed, please reconfirm; Voucher already exists and cannot be overwritten."
+来源财务事实已变化，需要复核,Source financial facts have changed and require review
+来源金额,Source amount
+来源锁定身份不符,Source lock identity does not match
+来源附件,Source attachment
+来源附件事实格式无效，请核对原单,"The source attachment fact format is invalid, please check the original document"
+来源页包含重复标识,The source page contains duplicate identifiers
+来源：ERP 登记,Source: ERP Registration
+来源：{0} · {1} · {2} · {3} · {4},Source: {0} · {1} · {2} · {3} · {4}
+来源：历史付款,Source: Historical Payments
+查看 OA 申请及钉钉原单,View OA application and DingTalk original order
+查看原生内部订单,View native internal orders
+查看原生采购订单,View native Purchase Order
+查看审批,View approvals
+查看应付单,View Payable Notes
+查看明细,View details
+查看来源,View source
+查看来源单据,View source documents
+标准,Standard
+核对历史付款,Check payment history
+核对历史付款后，后续付款可在 ERP 登记。,"After checking historical payments, subsequent payments can be registered at ERP."
+核对本次收货数量和仓库后确认入库；保存草稿不会改变库存。,Confirm the receipt after checking the quantity and warehouse; saving the draft will not change the inventory.
+核对每行数量和仓库。保存草稿不改变库存；确认对本批全部单据执行原生提交。,Check each line quantity and warehouse. Save the draft without changing the inventory; confirm the native submission of all documents in this batch.
+核对状态未知,Check status unknown
+核对记录已保存，请重新打开读取最新版本。,"The verification record has been saved, please reopen it to read the latest version."
+核对说明 / 证据,Check instructions/evidence
+核对读取不完整，仍保持新建锁定。请恢复完整权限或刷新版本后再核对。,The check read is incomplete and the new lock is still maintained. Please restore full permissions or refresh the version and check again.
+核销超过最新原生余额，请刷新,"Reconciliation exceeds the latest native balance, please refresh"
+横向滚动订单表格,Horizontal scrolling order form
+正在上传…,Uploading…
+正在刷新余额…,Refreshing balance...
+正在刷新订单，请稍候…,"Refreshing orders, please wait..."
+正在核验收款记录…,Checking payment records...
+正在核验订单…,Verifying order...
+正在读取…,Reading…
+正在读取关联收款记录…,Reading associated payment records...
+正在读取授权订单与关联…,Reading authorization orders and associations...
+正在读取物料明细…,Reading material details...
+正在读取采购来源…,Reading purchasing source...
+此付款有未记账凭证草稿。确认弃用该草稿并撤销付款登记？草稿保留恢复记录和事件审计，不会提交、记账或转账。,"This payment has not been drafted PostingVoucher. Confirm to discard this draft and cancel payment registration? Draft retains recovery records and event audits and will not commit, Posting or transfer."
+此字段不在当前付款记录的可读筛选范围内。,This field is outside the readable filter range of the current payment record.
+此批量转换仅支持订单入库及入库确认应付,This batch conversion only supports order warehousing and warehousing confirmation payable
+此抽屉仅支持采购入库、应付和付款明确提交,"This drawer only supports explicit submission of purchase receipt, payable and payment"
+此采购申请尚未接入原始来源，请先同步核对,"This purchase application has not yet been connected to the original source, please synchronize and check first"
+此高级关联筛选请切换“原生筛选 / 批量操作”；当前条件不会被丢弃。,"Please switch ""Native Filter/Batch Operation"" for this advanced correlation filter; the current conditions will not be discarded."
+每张入库分别确认应付，不更新库存；付款需下一步明确确认。,"Payable is confirmed separately for each piece put into storage, and the inventory is not updated; payment needs to be confirmed clearly in the next step."
+每次仅支持 1 至 100 张采购订单,Only supports 1 to 100 Purchase Order at a time
+每笔核销金额必须是有效的非负数，不付款请明确填0。,"Each amount of Reconciliation must be a valid non-negative number. If you do not want to pay, please fill in 0 clearly."
+每页,per page
+汇兑差额科目必须为本位币损益科目,The exchange difference account must be a profit and loss account in the functional currency
+汇兑损益成本中心,Exchange Profit and Loss Cost Center
+汇兑损益科目,Exchange profit and loss account
+汇率,exchange rate
+没有创建付款单权限,No permission to create payment orders
+没有创建目标单据权限,No permission to create target document
+没有可开票或入库的剩余数量，请打开原生单据核对,There is no remaining quantity that can be invoiced or put into storage. Please open the original document for verification.
+没有可见附件,No attachments visible
+没有当前提交或工作流操作权限,No current submission or workflow action permissions
+没有权限填写完整采购字段,Do not have permission to complete the purchase fields
+没有权限导出{0}。,No permission to export {0}.
+没有权限新建采购物料,No permission to create new purchasing materials
+没有权限新建采购订单,No permission to create new Purchase Order
+没有权限查看 {0} 单号。,No permission to view {0} order number.
+没有权限查看出纳付款证据,No permission to view cashier payment evidence
+没有权限查看完整采购来源,No permission to view complete purchasing source
+没有权限查看采购公司或供应商,No permission to view purchasing company or Supplier
+没有权限查看采购来源,No permission to view purchasing source
+没有权限查看采购订单或 OA 采购申请。,You do not have permission to view the Purchase Order or OA purchase requisition.
+没有物料明细读取权限。,No permission to read material details.
+没有符合条件的关联采购应付单,There is no associated purchase payable document that meets the conditions.
+没有符合条件的运营支出来源,No qualifying sources of operating expenses
+没有符合条件的采购付款记录,There are no eligible purchase payment records
+没有符合条件的采购记录,No matching purchase records
+没有编辑所选字段的权限,No permission to edit selected field
+法律公司,Legal Entity
+法律公司映射保存结果不一致，已取消本次操作,The legal company mapping save results are inconsistent and this operation has been cancelled.
+法律公司未确认，请先核对财务映射。,"The legal firm is not confirmed, please check the financial mapping first."
+测试来源地址仅限专用隔离站点,Test source addresses are limited to dedicated quarantine sites
+海外成本,Overseas costs
+海外成本核算,Overseas cost accounting
+海外成本物流能力尚未安装或不可用,Overseas cost logistics capabilities have not been installed or are not available
+消耗品,Consumables
+添加付款单,Add payment order
+添加物料,Add Item
+清关,customs clearance
+清空,Clear
+清空筛选,Clear filter
+片,film
+版本,Version
+物料 {0} 未启用采购,Material {0} Purchasing is not enabled
+物料 {0} 的业务归属与采购公司冲突,The business ownership of material {0} conflicts with the purchasing company
+物料 {0} 的库存属性与采购用途冲突,The inventory attribute of material {0} conflicts with the purchasing purpose.
+物料 {0} 的采购单位缺少明确的正数换算,The purchasing unit of material {0} lacks an explicit positive conversion
+物料必须为启用的采购物料,The material must be an enabled purchasing material
+物料明细不可见，请核对权限,"Material details are not visible, please check permissions"
+物料申请,Material requisition
+物流关联受限，请核对权限,"Logistics association is restricted, please check permissions"
+物流待核对,Logistics to be verified
+物流成本批次当前不可见，不能改写关联；请恢复来源能力后核对，可保留独立手工节点。,Logistics cost batches are currently invisible and the association cannot be rewritten; please restore the source capability and check. Independent manual nodes can be retained.
+物流报告到货（非 ERP 入库）,Logistics report arrival (non-ERP warehousing)
+物流报告（非 ERP 入库）,Logistics report (non-ERP warehousing)
+物流报告：{0} {1},Logistics report: {0} {1}
+物流来源证据缓存,Logistics source evidence cache
+物流证据,Logistics evidence
+物流证据刷新时间,Logistics evidence refresh time
+物流评论及手工报告均不更新库存，也不确认付款或应付。预计、否定、含糊和冲突评论需人工核对。,"Neither logistics comments nor manual reports update inventory, nor do they confirm payments or payables. Anticipated, negative, ambiguous and conflicting comments are subject to manual review."
+状态,Status
+现有 OR 筛选已保留；清除后可使用订单 / 客户搜索。,Existing OR filter retained; cleared to use Order/Customer search.
+现有 OR 筛选已保留；请清除这些条件后使用订单/供应商搜索。,The existing OR filter is reserved; please clear these criteria and search using Order/Supplier.
+现有关联已复核,Existing association reviewed
+现有凭证关联写后校验不一致，请人工复核,"The existing Voucher association is inconsistent in post-write verification, please review manually."
+现有原生付款计划无法完整分配，请打开原生单据,"The existing native payment plan cannot be fully allocated, please open the native document"
+生产,Production
+生产已放行,Production has been released
+生成结算凭证草稿,Generate settlement draft Voucher
+生成费用凭证草稿,Generate fee Voucher draft
+生成采购订单,Generate Purchase Order
+生成预付款草稿前须明确申请币种及银行币种的本位币汇率,"Before generating an advance payment draft, you must specify the application currency and the base currency exchange rate of the bank currency."
+用途待确认,Usage to be confirmed
+申请事实已变化,The application facts have changed
+申请事实已变化，请刷新后重新确认付款,"The application facts have changed, please refresh and reconfirm payment."
+申请事实已变化，请重新预览,"The application facts have changed, please preview again"
+申请人,Applicant
+申请人归属返回数量不符,The number of returns attributed to the applicant does not match
+申请人归属返回身份不符,The applicant’s return status does not match
+申请信息,Application information
+申请币种,Apply for currency
+申请币种兑本位币汇率 ({0}),Exchange rate between application currency and standard currency ({0})
+申请开始日期,Application start date
+申请摘要,Application summary
+申请日期,Application date
+申请来源字段尚未安装；当前显示可用的原生申请信息。,The application source field has not been installed; currently showing available native application information.
+申请来源身份已变化，请重新同步并复核,"The identity of the application source has changed, please re-synchronize and review"
+申请类别,Application Category
+申请类型,Application type
+申请类型待分类或往来方类型不符,The application type needs to be classified or the type of counterparty does not match
+申请类型无效,Invalid application type
+申请组织,Apply for an organization
+申请结束日期,Application end date
+申请编号,Application number
+申请编号 / 摘要 / 收款人,Application number/Abstract/Payee
+申请部门,Application Department
+申请金额,Application amount
+申请附件,Application attachment
+申请：{0},Application: {0}
+界面与导航,Interface and Navigation
+目标公司,target company
+目标单据与来源无关联,The target document is not related to the source
+相同付款请求不能变更金额或字段,The same payment request cannot change the amount or fields.
+确认 ERP 尚未覆盖本项费用,Confirm that ERP has not covered this fee
+确认人,Confirmor
+确认付款,Confirm payment
+确认保存同类采购映射规则？,Confirm to save similar procurement mapping rules?
+确认保存预付款凭证草稿？不确认费用、不自动记账。,"Confirm to save the draft of advance payment Voucher? No confirmation of fee, no automatic Posting."
+确认值无效,Confirm value is invalid
+确认入库,Confirm storage
+确认全部入库,Confirm all storage
+确认全部应付,Confirm all payable
+确认关联已有订单,Confirm that there is an existing order associated with it
+确认创建采购订单草稿？创建后请在订单核对。,Confirm creating Purchase Order draft? Please check it in the order after creation.
+确认历史付款核对,Confirm historical payment reconciliation
+确认合并付款,Confirm combined payment
+确认同类规则,Confirm similar rules
+确认启用同步,Confirm to enable sync
+确认复核现有关联？不创建或替换采购订单。,Confirm to review existing associations? Does not create or replace Purchase Order.
+确认实际原生价格,Confirm actual original price
+确认对 {0} 执行“{1}”？此操作沿用原生权限及工作流，提交后会记账。,"Confirm execution of ""{1}"" for {0}? This operation follows the native permissions and workflow, and Posting will be generated after submission."
+确认将本次金额核销到所列应付单？此处仅记账，不调用网银。,"Confirm to transfer this amount Reconciliation to the listed payable document? Only Posting is used here, and online banking is not called."
+确认将此来源关联到所选采购订单？,Confirm to associate this source to selected Purchase Order?
+确认已经实际支付并登记本笔付款？此操作不向银行转账，不自动记账。,Confirm that the payment has been actually made and registered? This operation does not transfer money to the bank and does not automatically Posting.
+确认应付,Confirm payable
+确认执行本批全部原生单据操作？,Confirm to execute all original document operations in this batch?
+确认时间,Confirmation time
+确认核对历史付款并保存对应关系？,Confirm to check historical payments and save correspondence?
+确认核对结果，解除本次新建锁定,Confirm the verification results and unlock this new creation.
+确认精确来源范围和采购映射后，由现有定时任务接入采购订单草稿。,"After confirming the precise source range and procurement mapping, the existing scheduled task is connected to the Purchase Order draft."
+确认订单,Confirm order
+确认费用已实际发生,Confirm that the expense has actually been incurred
+确认费用已有 ERP 覆盖,Confirm that the fee has been covered by ERP
+确认采购应付,Confirm purchase payable
+票据日期,Note date
+科目,subjects
+科目公司、类型或状态无效,"Invalid account company, type or status"
+科目币种,Account currency
+科目币种借方,Account currency Debit
+科目币种贷方,Account currency Credit
+科目币种金额,Account currency amount
+移除筛选,Remove filter
+税费（原生计算，只读）,"Taxes (native calculation, read-only)"
+笔,pen
+笔，待付,"Pen, to be paid"
+第,No.
+第 {0} 张,No. {0}
+第{0}行单价无效,The unit price of line {0} is invalid
+第{0}行原单单价无效，待人工核对,The original unit price of line {0} is invalid and needs to be manually verified.
+第{0}行物料、单位、正数数量或明确金额待完善,"The material, unit, positive quantity or clear amount of line {0} needs to be completed."
+第{0}行采购币种与来源不符,The purchasing currency of line {0} does not match the source.
+筛选值无效,Invalid filter value
+筛选更新失败，请重试。,"Filter update failed, please try again."
+筛选条件必须为对象,Filter criteria must be objects
+筛选条件必须是对象。,Filter criteria must be objects.
+类型,Type
+精确差额,exact difference
+精确本位币金额,Exact functional currency amount
+精确舍入依据,Exact rounding basis
+紧凑,Compact
+累计付款超过申请金额，请核对,"The accumulated payment exceeds the application amount, please check"
+累计关联数量超出内部采购明细数量,The cumulative associated quantity exceeds the internal procurement detail quantity
+累计关联数量超出外部采购明细数量,The cumulative associated quantity exceeds the detailed quantity of external procurement
+累计已付,Total paid
+组织,organization
+结束日期,end date
+统一结算供应商,Unified settlement Supplier
+统一采购列表,Unified purchasing list
+统一采购查询需要 Frappe 站点。,Unified purchasing inquiries require a Frappe site.
+继续,continue
+继续 {0},Continue {0}
+继续处理,Continue processing
+继续应付草稿,Keep working on the draft
+维护收款往来方,Maintain the payee party
+综合成本,comprehensive cost
+缓存 OA 身份无效，请管理员核查,"Cache OA identity is invalid, please check with the administrator"
+缓存 OA 身份重复，请管理员核查,"Cache OA has a duplicate identity, please check with the administrator."
+编辑草稿,Edit draft
+缺少导出所需的 CSRF 验证，请刷新页面后重试。,"The CSRF verification required for export is missing, please refresh the page and try again."
+缺少有效请求标识,Missing valid request id
+缺少有效请求标识，请刷新付款抽屉,"Missing valid request id, please refresh payment drawer"
+网页原单链接,Original web link
+联系人,Contact person
+联系人邮箱,Contact email
+联系电话,Contact number
+自动新增物料必须选择末级物料组,Automatically adding materials must select the last level Item Group
+舍入依据不完整，需复核,The rounding basis is incomplete and needs to be reviewed
+舍入后本位币金额,Amount in functional currency after rounding
+节点图片,Node picture
+节点附件,Node attachment
+草稿,Draft
+草稿 · 未记账,Draft · NotPosting
+草稿或来源范围已改变，请刷新,"The draft or source range has changed, please refresh"
+草稿确认范围已改变，请刷新,"Draft confirmation scope has changed, please refresh"
+补传回单,Reply
+补充信息读取失败；请刷新重试或打开原生订单核对。,Failed to read supplementary information; please refresh and try again or turn on native order verification.
+补充证据,Additional evidence
+补充证据说明,Supplementary evidence description
+规则仅限2026年9月25日至12月31日同一精确范围的同类来源，由现有定时任务自动生成采购订单草稿。,"The rules are limited to similar sources in the same precise range from September 25 to December 31, 2026, and the Purchase Order draft is automatically generated by existing scheduled tasks."
+规则保存结果未确认，请刷新来源核对。,"The rule saving result is not confirmed, please refresh the source to check."
+规则已变化，请重新预览。,"The rules have changed, please preview again."
+规则版本,Rule version
+规则物料组,Rule Item Group
+规则采购单位,Rule purchasing unit
+规则预览不完整，请重新预览核对。,"The rule preview is incomplete, please preview again and check."
+视图,view
+计价单位,unit of account
+订单/审批,Order/Approval
+订单/审批/项目/供应商,Order/Approval/Project/Supplier
+订单产品明细,Order product details
+订单号 / 客户 / ODT,Order number / Customer / ODT
+订单基本信息,Order basic information
+订单开始日期,Order start date
+订单或完整采购字段无权读取，请核对原生权限。,"The order or complete purchase fields do not have permission to read, please check the native permissions."
+订单日期,order date
+订单未付,Order unpaid
+订单未付：{0},Unpaid order: {0}
+订单未提交或没有创建收款凭证的权限。,The order was not submitted or there is no permission to create payment Voucher.
+订单版本：{0},Order version: {0}
+订单状态,Order status
+订单结束日期,Order end date
+订单详情,Order details
+订单资料,Order information
+订单金额,Order amount
+订单金额为 0，请先核实销售价格后再分配预付款。,"The order amount is 0, please verify the sales price before allocating advance payment."
+订单金额：{0},Order amount: {0}
+订单金额：{0} ｜ OA 申请金额：{1}{2},Order amount: {0} | OA Application amount: {1}{2}
+订单附件,Order attachments
+记录已保存，列表刷新失败。请刷新订单核对。,The record has been saved and the list refresh failed. Please refresh the order to verify.
+记录手工节点,Record manual nodes
+记账,Posting
+记账时间,Posting time
+记账账户,Posting account
+设置尚未保存，关闭会丢弃当前输入，继续？,The settings have not been saved. Closing will discard the current input. Continue?
+该凭证已被关联，不能重复确认,The Voucher has been associated and cannot be confirmed again.
+该已提交订单不允许更新采购关联，请先核对元数据策略,This submitted order does not allow the purchase association to be updated. Please check the metadata policy first.
+请先保存公司映射和同步密钥，再预览,Please save the company mapping and sync key before previewing
+请先保存关联并重新打开，再确认实际原生价格。,Please save the association and reopen it before confirming the actual native price.
+请先保存当前财务映射，再预览,Please save the current financial mapping before previewing it
+请先保存费用映射并生成或关联费用确认凭证，再维护本笔结算。,Please save the expense mapping and generate or associate expense confirmation Voucher before maintaining this settlement.
+请先刷新来源或核对采购订单，再继续办理。,Please refresh the source or check Purchase Order before continuing.
+请先刷新来源，核对当前证据后再复核现有关联。,"Please refresh the source first, verify the current evidence, and then review existing connections."
+请先取得当前同步预览并明确确认法律公司映射,Please first obtain the current sync preview and explicitly confirm the legal firm mapping
+请先取得当前映射的有效预览；已有 ERP 覆盖不能新建费用,Please first obtain a valid preview of the current mapping; it is already covered by ERP and cannot create a new fee.
+请先在内部关联中明确保存关联，再记录物流证据。,Please explicitly save the association in the internal association before recording the logistics evidence.
+请先在已有采购订单核对项目；关联入口不会改写订单项目,Please check the item in the existing Purchase Order first; the associated entry will not overwrite the order item
+请先在财务映射中明确付款申请或费用报销，不能默认按供应商付款。,Please clarify the payment application or expense reimbursement in the financial mapping first. Payment cannot be made according to Supplier by default.
+请先完成财务分类和确认,Please complete the financial classification and confirmation first
+请先明确保存草稿，再提交。,Please explicitly save the draft before submitting.
+请先明确关联采购订单,Please clearly associate Purchase Order first
+请先明确现有 ERP 覆盖并确认关联,Please first clarify the existing ERP coverage and confirm the association
+请先核对并接管完整历史付款，不能按零历史登记,Please check and accept the complete payment history first. You cannot register with zero history.
+请先生成或关联费用确认凭证,Please first generate or associate fee confirmation Voucher
+请先确认原请求已结束，再核对当前授权关联。未发现关联也不会自动解除锁定；解除后不会自动重试或新建。,"Please confirm that the original request has ended, and then check the current authorization association. It will not be automatically unlocked if no association is found; it will not be automatically retried or created after being unlocked."
+请先预览并确认法律公司映射,Please preview and confirm the legal firm mapping first
+请在一张明确的采购申请中预览同类规则,Please preview similar rules in a clear purchase requisition
+请在采购订单列表点击“完善/关联”，明确公司、物料、单位和数量后生成草稿,"Please click ""Complete/Associate"" in the Purchase Order list to generate a draft after clarifying the company, material, unit and quantity."
+请填写 1 至 4096 字的核对证据。,Please fill in the verification evidence in 1 to 4096 words.
+请填写不超过 4096 字的核对证据,Please fill in the verification evidence no longer than 4096 words
+请填写停用原因,Please fill in the reason for deactivation
+请填写停用原因；保留审计记录，不删除关联。,Please fill in the reason for deactivation; audit records will be retained and the association will not be deleted.
+请填写公司、供应商、规则物料组、采购单位和加工服务物料编码、名称，再预览。,"Please fill in the company, Supplier, rules Item Group, purchasing unit and processing service Item Code, name, and then preview."
+请填写公司、已有供应商、币种、需求日期，以及每行物料、正数数量、单位和明确单价。,"Please fill in the company, existing Supplier, currency, demand date, as well as each row of materials, positive quantity, unit and clear unit price."
+请填写物料编码和单位,Please fill in Item Code and unit
+请填写账户、日期，以及不超过未付余额的正数金额。,"Please fill in the account, date, and a positive amount up to the unpaid balance."
+请提供明确的原生单据、公司及明细 ID,"Please provide clear original documents, company and details ID"
+请明确填写采购物料明细,Please clearly fill in the purchase material details
+请明确本次实际付款银行科目和汇率,Please clarify the actual payment bank account and exchange rate
+请明确每张应付单的本次付款金额,Please clarify the payment amount of each payable note
+请明确每行来源法律标识和 ERP 公司，来源标识不能重复,Please clearly identify the source legal identification and ERP company in each line. The source identification cannot be repeated.
+请明确确认未发现历史付款，再接管 OA 申请；不会自动按零历史登记,Please clearly confirm that no historical payment is found before accepting the OA application; it will not be automatically registered as zero history
+请明确费用已发生及 ERP 覆盖情况,Please clarify the expenses incurred and ERP coverage
+请明确选择不重复的原生付款单,Please explicitly select a non-duplicate native payment order
+请明确选择公司、供应商和需求日期,"Please clearly select the company, Supplier and demand date"
+请明确选择历史原生付款单。,Please explicitly select historical native payment orders.
+请明确选择原生内部订单及明细后核对实际价格。,Please clearly select the original internal order and details before checking the actual price.
+请明确选择属于原生订单的唯一明细,Please explicitly select the only details that belong to the native order
+请明确选择已有原生销售订单与准确明细 ID。,Please clearly select the existing native Sales Order and accurate details ID.
+请明确选择最终公司和原生采购明细，核对数量及单位。,"Please clearly select the final company and original purchase details, and check the quantity and unit."
+请明确采购公司、统一结算供应商、物料组和计价单位,"Please specify the purchasing company, unified settlement Supplier, Item Group and pricing unit"
+请明确采购公司及最终使用/销售公司,Please specify the purchasing company and final use/sales company
+请查看钉钉原单,Please check the original order of DingTalk
+请核对原生应付与付款单。,Please check the original payable and payment slip.
+请核对并处理当前草稿，完成后返回原列表。,Please review and process the current draft and return to the original list when finished.
+请核对来源类型、来源法律标识与 ERP 法律公司。,"Please check the source type, source legal identification and ERP Law Firm."
+请核对每张目标单据的明细修改,Please check the detailed modifications of each target document
+请款网站,Payment website
+请确认已有公司、供应商和物料，再创建采购订单草稿。,"Please confirm that the company, Supplier and material already exist, and then create a Purchase Order draft."
+请等待字段验证完成，或重新选择有效记录后再次点击。,"Please wait for field verification to complete, or reselect a valid record and click again."
+请等待当前操作完成,Please wait for the current operation to complete
+请等待附件上传完成，或移除失败文件。,"Please wait for the attachment to be uploaded, or remove the failed file."
+请输入有限正数关联数量；空值不等于零。,Please enter a finite positive association quantity; a null value does not equal zero.
+请选择原生内部采购订单,Please select native internal Purchase Order
+请选择已存在的原生 File ID，不能输入任意网址或上传新文件。,Please select the existing native File ID. You cannot enter any URL or upload a new file.
+请选择当前页的采购单据（最多100张）,Please select the purchasing documents on the current page (up to 100 documents)
+请选择明确的手工核对节点；报告不替代原生入库。,Please select a clear manual verification node; the report does not replace native warehousing.
+请选择服务器候选中的准确原生内部订单与明细；身份变更请停用后新建。,"Please select the accurate native internal orders and details in the server candidate; if the identity changes, please deactivate and create a new one."
+请选择本次完整授权读取中实际存在的准确关联 ID，不能猜测新建结果。,Please select the exact association ID that actually exists in this complete authorization read. Do not guess the new result.
+请选择本次结果，并确认原请求已结束、已人工核对原生记录；不会自动重试。,Please select this result and confirm that the original request has ended and the original record has been manually checked; there will be no automatic retry.
+请选择要关联的已有采购订单。,Please select the existing Purchase Order to be associated.
+请预览并明确选择已有原生凭证,Please preview and clearly select the existing native Voucher
+读取审批缓存…,Reading approval cache…
+负责人确认,Person in charge confirms
+财务,Finance
+财务凭证 / 状态,FinanceVoucher/Status
+财务凭证（只读）,Finance Voucher (read only)
+财务办理入口；请在订单查看进度,Financial processing entrance; please check the progress in the order
+财务复核,financial review
+财务审核状态,financial review status
+财务往来方类型无效,Invalid financial correspondent type
+财务映射公司不一致,Financial mapping company inconsistent
+财务映射字段或法律公司无效,Invalid financial mapping field or legal firm
+财务映射格式无效,Invalid financial mapping format
+财务申请类型,Financial application type
+财务确认 / 同步,Financial confirmation/synchronization
+财务经理审批,Financial manager approval
+账户不可见,Account is not visible
+账户性质,Account nature
+账户或单据不可用 / 无权读取，请在原生单据核对。,"The account or document is unavailable/do not have permission to read, please check in the original document."
+货币类型,currency type
+质量,quality
+贷方,Credit
+贸易保管不形成内部价格或应付,Trade custody does not form internal prices or payables
+贸易保管不形成内部应付，所有公司应为采购公司,"Trade custody does not form internal payables, and all companies should be purchasing companies."
+贸易保管关联不形成内部应付,Trade custody relationships do not form internal payables
+贸易保管最终公司须为实际采购公司，并明确选择授权保管公司及仓库。,"The final company for trade custody must be the actual purchasing company, and the authorized custody company and warehouse must be clearly selected."
+贸易品保管（无内部应付）,Storage of trade goods (no internal payables)
+贸易所有公司与保管公司/仓库需明确核对,All trading companies and storage companies/warehouses need to be clearly checked
+费用 / 税费科目,Fee/Tax Account
+费用凭证日期,Fee VoucherDate
+费用分摊字段无效,Cost allocation field is invalid
+费用分摊金额必须完整等于来源金额,Cost allocation amount must fully equal source amount
+费用分类,Cost classification
+费用应付往来方与实际付款不一致，请核对；不会改换付款对象,"The fee payable to the counterparty is inconsistent with the actual payment, please check; the payment object will not be changed"
+费用报销,Expense reimbursement
+费用确认,Fee confirmation
+费用确认关联已变化,Charge confirmation association has changed
+费用确认凭证关联不可修改,Fee confirmation Voucher association cannot be modified
+费用确认凭证尚未提交，本付款凭证尚未核销,"The fee confirmation Voucher has not yet been submitted, and the payment Voucher has not yet been Reconciliation"
+费用确认凭证已记账，只能查看；后续实际付款仍可办理结算。,The fee confirmation Voucher has been changed to Posting and can only be viewed; subsequent actual payments can still be settled.
+费用确认已存在或预览变化，请刷新,"Fee confirmation already exists or preview changes, please refresh"
+费用确认方式,Fee confirmation method
+费用确认方式无效,The fee confirmation method is invalid
+费用行只能使用费用或税额科目,Expense lines can only use expense or tax accounts
+资产,assets
+跨公司采购与内部采购公司需分别明确,Cross-company procurement and internal procurement companies need to be clearly defined separately
+跨单据或明细筛选请在原生高级列表处理,"For cross-document or detail filtering, please process it in the native advanced list."
+跨币种与会计设置,Cross-currency and accounting settings
+跨币种付款必须明确银行实付金额及两种币种的本位币汇率,"For cross-currency payments, the actual amount paid by the bank and the functional currency exchange rate of the two currencies must be clearly stated."
+跨币种付款请在原生单据处理,Please process cross-currency payments in the original document
+辅助核算公司不一致,Auxiliary accounting companies are inconsistent
+输入尚未保存，关闭会丢弃当前输入，继续？,The input has not been saved. Closing will discard the current input. Continue?
+输入控件不可用，请在原生单据核对。,"The input control is not available, please check in the original document."
+运营支出,operating expenses
+运营支出同步设置,OpEx Sync Settings
+运营支出筛选,Operating Expenses Filter
+运营支出详情,Operating Expenditure Details
+运营来源标识与 OA 身份不符，请管理员核查,The operation source identifier does not match the identity of OA. Please check with the administrator.
+运营来源核对超过本次上限，请管理员核查,"Operation source verification exceeds this upper limit, please ask the administrator to verify"
+运营来源模式无效,Operation source mode is invalid
+运营费用凭证事件关联不可移除或修改,The operating expense Voucher event association cannot be removed or modified.
+运营费用凭证关联不可伪造或更改,The operating expense Voucher association cannot be forged or changed.
+运营费用来源及财务确认只能通过专用接口修改,Operating expense sources and financial confirmations can only be modified through a dedicated interface
+返回原采购列表,Return to original purchase list
+还有后续记录，请再次手动同步,"There are still subsequent records, please synchronize manually again"
+进度阶段,progress stage
+退款,Refund
+退货入库,Return to warehouse
+退货应付,Returns payable
+适配明细合计,Total adaptation details
+适配规则范围缺失企业、模板、地区、申请组织或采购类型,"The scope of the adaptation rule is missing the enterprise, template, region, application organization or procurement type"
+适配采购明细（只读）,Adaptation purchase details (read-only)
+选择已提交、已分配到本订单的原生付款单。核对仅保存对应关系。,Select the native payment order that has been submitted and assigned to this order. Checking only saves the correspondence.
+选择已有原生凭证,Select the existing native Voucher
+选择当前页全部订单,Select all orders on the current page
+选择文件,Select file
+逐单入库,Warehouse one by one
+逐单重新预览,Re-preview orders one by one
+部分 / 合并付款,Partial/Combined Payment
+部分付款,partial payment
+部分关联缺失或无权读取，请在原生单据核对。,"Some associations are missing or do not have read permission, please check in the original document."
+部分发货,Partial delivery
+部分收款记录不可见，请财务核对。,"Some payment records are not visible, please check with the finance department."
+部分收款记录受权限限制，请联系财务核对。,"Some collection records are subject to permission restrictions, please contact the finance department for verification."
+部分收货,Partial receipt
+采购,Procurement
+采购人员请在采购订单查看订单进度；应付与付款办理由财务处理,Purchasing personnel please check the order progress at Purchase Order; payable and payment processing are handled by finance
+采购付款,Purchase payment
+采购付款公司,purchase payment company
+采购付款公司待确认,Purchase and payment company to be confirmed
+采购付款记录,Purchase payment record
+采购付款：{0},Purchase payment: {0}
+采购來源超过本次同步上限,The purchasing source exceeds the upper limit of this synchronization
+采购入库,Procurement and warehousing
+采购入库 → 确认应付,Procurement into warehouse → Confirm payable
+采购入库单号,Purchase receipt number
+采购入库明细,Purchase warehousing details
+采购公司,purchasing company
+采购公司入库：{0},Procurement company storage: {0}
+采购公司尚无可核对入库,The purchasing company has not yet verified the inventory
+采购公司已确认,Purchasing company confirmed
+采购公司待确认；申请人组织仅为建议，请核对原单明确采购公司,"The purchasing company is to be confirmed; the applicant organization is only a suggestion, please check the original order to specify the purchasing company"
+采购公司收货受限,Purchasing companies are restricted in receiving goods
+采购公司收货待核对,The purchasing company receives the goods to be verified
+采购公司确认人,Purchasing company confirmer
+采购公司确认信息仅允许办理入口设置,The purchasing company confirmation information is only allowed to handle entrance settings.
+采购公司确认时间,Purchasing company confirmation time
+采购关联 / 分配币种,Purchasing Relevance/Assignment Currency
+采购关联与付款,Purchasing links and payments
+采购关联公司与原生订单已变化,Procurement affiliates and original orders have changed
+采购关联字段未安装，请联系管理员,"The purchasing related field is not installed, please contact the administrator"
+采购关联类型或原生订单不符,The purchasing association type or native order does not match
+采购关联类型无效,Procurement association type is invalid
+采购冲销元数据所需原生单据类型缺失,The native document type required for procurement Reversal metadata is missing
+采购冲销所需原生元数据版本不完整,The native metadata version required for purchasing Reversal is incomplete.
+采购冲销所需原生数据库列缺失,The native database column required for purchasing Reversal is missing
+采购冲销操作,Purchase Reversal operation
+采购冲销操作字段定义冲突，未修改现有定义,"Procurement Reversal operation field definition conflicts, existing definition is not modified"
+采购冲销未完成，相关后续操作暂缓办理。,"The purchase of Reversal has not been completed, and related follow-up operations are temporarily suspended."
+采购出纳分页未前进,Purchasing cashier page does not advance
+采购出纳快照时间不符,Purchase cashier snapshot time does not match
+采购出纳来源超过本次读取上限,The source of purchasing cashier exceeds the upper limit of this reading
+采购出纳根标识重复，请管理员核对,"The purchasing cashier root ID is duplicated, please check with the administrator."
+采购单位,purchasing unit
+采购单位未在物料中维护，请先核对单位换算,"The purchasing unit is not maintained in the material, please check the unit conversion first"
+采购原始来源证据,Procurement of original source evidence
+采购导出列不能重复。,Purchase export columns cannot be repeated.
+采购履行,Procurement Fulfillment
+采购履行关联元数据尚未安装，请管理员更新应用,"Procurement fulfillment associated metadata has not been installed, please administrator update the application"
+采购履行关联请使用订单进度的核对入口,Please use the order progress verification portal for purchasing fulfillment association.
+采购履行关联需保留审计身份，请停用关联，不能删除或重命名,The procurement fulfillment association needs to retain audit status. Please deactivate the association. It cannot be deleted or renamed.
+采购履行核对,Procurement fulfillment verification
+采购币种缺失或不唯一,The purchase currency is missing or not unique
+采购应付,Purchase Payables
+采购抽屉组件版本不完整，请整页刷新后重试。,"The version of the purchasing drawer component is incomplete, please refresh the entire page and try again."
+采购操作审计不能由普通操作创建或改写,Procurement operation audits cannot be created or overwritten by normal operations
+采购操作审计需永久保留，不能删除或改写,Procurement operation audits must be retained permanently and cannot be deleted or rewritten.
+采购日期必须使用 YYYY-MM-DD。,Purchase date must use YYYY-MM-DD.
+采购明细与申请金额不一致，请核对原单,"The purchase details are inconsistent with the application amount, please check the original order"
+采购明细待完善,Procurement details need to be improved
+采购明细待完善或与来源不符，请填写核对说明,"The purchase details need to be completed or are inconsistent with the source, please fill in the verification instructions"
+采购映射规则字段无效,Procurement mapping rule field is invalid
+采购映射规则已确认,Procurement mapping rules confirmed
+采购映射规则请通过来源预览确认入口保存,Please save the procurement mapping rules through the source preview confirmation portal.
+采购来源,Procurement source
+采购来源不可用或无权查看，请核对系统提示。,The purchasing source is unavailable or you do not have permission to view it. Please check the system prompts.
+采购来源元数据未安装,Procurement source metadata is not installed
+采购来源关联及公司请使用采购订单列表的核对入口,Please use the verification portal of the Purchase Order list for purchasing source associations and companies.
+采购来源及已接入来源超过本次同步上限,The purchasing source and connected source exceed the upper limit of this synchronization.
+采购来源同步失败，请核对系统提示。,"Procurement source synchronization failed, please check the system prompts."
+采购来源同步未完成，请重新核对。,"Procurement source synchronization is not completed, please check again."
+采购来源同步需要管理员权限。,Procurement source synchronization requires administrator rights.
+采购来源导入标记仅允许系统设置,Procurement source import tag only allows system settings
+采购来源已关联,Procurement source is associated
+采购来源已变化或未审批通过，请先复核关联后再提交,The source of procurement has changed or has not been approved. Please review the association before submitting.
+采购来源已变化或未通过，请先复核关联,"The purchasing source has changed or failed, please review the association first."
+采购来源已移出中国/墨西哥2026范围或不存在，请核对原单,The purchasing source has moved outside the scope of China/Mexico 2026 or does not exist. Please check the original order.
+采购来源未审批通过、已拒绝或撤销,"The procurement source has not been approved, rejected or revoked"
+采购来源未审批通过、已拒绝或撤销，不能办理,"The procurement source has not been approved, has been rejected or withdrawn, and cannot be processed."
+采购来源视图,Procurement source view
+采购来源详情不完整，请核对同步和权限后刷新。,"The purchasing source details are incomplete, please check synchronization and permissions before refreshing."
+采购来源读取失败，请刷新重试。,"Failed to read the procurement source, please refresh and try again."
+采购来源读取未完成，请核对同步状态或权限。,"The procurement source reading is not completed, please check the synchronization status or permissions."
+采购来源身份,Purchasing source identity
+采购来源身份不符,The identity of the purchasing source does not match
+采购来源身份或审批号不唯一，待人工核对,The purchasing source identity or approval number is not unique and needs to be manually verified.
+采购来源身份缺失,The identity of the purchasing source is missing
+采购来源身份重复，请核对本次快照,"The identity of the purchasing source is duplicated, please check this snapshot"
+采购核销引用,Purchase Reconciliation Reference
+采购流程,Procurement process
+采购申请人归属数量不符,The quantity attributed to the procurement applicant does not match
+采购申请人归属身份不符,The identity of the procurement applicant does not match
+采购类型,Procurement type
+采购订单,Purchase Order
+采购订单 → 入库,Purchase Order → Warehouse
+采购订单仅支持入库；请从采购入库确认应付后付款，独立预付款请在原生财务付款单处理,"Purchase Order only supports warehousing; please confirm payable from purchase and warehousing before payment, and independent advance payment should be processed in the original financial payment document"
+采购订单公司与已核对来源不符,Purchase Order company does not match the verified source
+采购订单号,No. Purchase Order
+采购订单字段元数据不完整，请核对安装状态后刷新。,The Purchase Order field metadata is incomplete. Please check the installation status and refresh.
+采购订单字段元数据读取失败，请核对安装状态和权限后刷新。,Purchase Order field metadata failed to be read. Please check the installation status and permissions before refreshing.
+采购订单已关联另一条钉钉申请,Purchase Order has been associated with another DingTalk application
+采购订单明细字段不可用。,Purchase Order detail field is not available.
+采购订单草稿已创建,Purchase Order draft has been created
+采购订单项目字段未安装，请联系管理员,"Purchase Order project field is not installed, please contact the administrator"
+采购订单预付款请在原生财务付款单处理；采购付款记录可继续查看,Purchase Order advance payment should be processed in the original financial payment order; purchase payment records can continue to be viewed
+采购说明,Purchasing instructions
+采购附件路径无效,Purchase attachment path is invalid
+重新读取并核对不确定的新建结果,Reread and verify inconclusive new results
+重新预览,Re-preview
+重试,Retry
+重试付款,Retry payment
+重试保存草稿,Try saving draft again
+重试原操作,Retry original operation
+重试确认付款,Retry to confirm payment
+金额,Amount
+金额不可见,Amount not visible
+金额不完整，需复核,The amount is incomplete and needs to be reviewed
+金额待核对,Amount to be verified
+金额必须为有效数字,Amount must be a valid figure
+金额必须为有限数字,Amount must be a finite number
+金额必须是精确十进制字符串,Amount must be an exact decimal string
+金额无效,Invalid amount
+金额精度不能由原生凭证完整表示，请先核查,"The amount accuracy cannot be fully represented by the native Voucher, please check first"
+金额须明确且最多两位小数,The amount must be clear and must have up to two decimal places.
+钉钉,DingTalk
+钉钉企业,DingTalkEnterprise
+钉钉原单,DingTalk original order
+钉钉原单链接暂不可用,DingTalk original link is temporarily unavailable
+钉钉待完善,DingTalk needs to be improved
+钉钉待完善原因,Reasons why DingTalk needs to be improved
+钉钉申请单号,DingTalk application number
+钉钉采购申请,DingTalk Purchase Request
+银行参考号,Bank reference number
+银行实际付款金额,Actual payment amount from bank
+银行实际支付,Bank actual payment
+银行币种,Bank currency
+银行币种兑本位币汇率,Bank currency to standard currency exchange rate
+银行汇率,bank exchange rate
+银行流水号（可选）,Bank serial number (optional)
+银行科目币种金额,Bank account currency amount
+销售,sales
+销售备注,Sales notes
+销售订单,Sales Order
+附件,Accessories
+附件上传未完成,Attachment upload not completed
+附件下载失败，请核对权限或附件版本。,"Attachment download failed, please check the permissions or attachment version."
+附件下载路径无效,Attachment download path is invalid
+附件下载需要同源请求和 CSRF 验证，请刷新。,"Attachment download requires origin request and CSRF verification, please refresh."
+附件不可用于本次付款,Attachment is not available for this payment
+附件不存在或已变化，请刷新核对,"The attachment does not exist or has changed, please refresh to check."
+附件不存在或无权读取,The attachment does not exist or does not have permission to read
+附件不属于此原生采购关联,The attachment does not belong to this native procurement association
+附件会话失效，请重新选择文件,"The attachment session is invalid, please select the file again"
+附件列表无效,Attachment list is invalid
+附件尚未归档或无权读取，请在钉钉原单核对,"The attachment has not been archived or has no permission to read, please check the original document at DingTalk"
+附件已变化或撤回，请重新同步,"The attachment has been changed or withdrawn, please resynchronize."
+附件已用于其他付款,Attachment has been used for another payment
+附件暂不可下载，请在原单核对,"The attachment is temporarily unavailable for download, please check with the original order."
+附件超过本次下载上限,The attachment exceeds the download limit for this time
+附件路径无效，请在钉钉原单核对,"The attachment path is invalid, please check in the original order DingTalk"
+附件过大，请在请款网站核对。,"The attachment is too large, please check on the payment collection website."
+集团内部结算,Intra-group settlement
+需复核,Need to review
+需安装并登录钉钉，原单权限由钉钉校验。,"You need to install and log in to DingTalk, and the original order permissions are verified by DingTalk."
+需求付款日期,Demand payment date
+需求日期,Request Date
+需求明细,Demand details
+需要财务权限,Financial permissions required
+非库存物料,Non-stock item
+项,items
+项目,Project
+项目/最终归属,Project/final ownership
+项目公司不符,The project company does not match
+项目归属,Project ownership
+项目待核对,Item to be checked
+项目必须启用且明确属于采购公司，请选择有效项目或明确留空,"Project must be enabled and clearly belongs to the purchasing company, please select a valid project or explicitly leave it blank"
+预付款,advance payment
+预付款 / 往来科目,Advance payment / current account
+预付款为 ERP 订单汇总；草稿收款不代表已到账，未录入的收款请向财务核对。,The advance payment is ERP order summary; draft payment does not mean that it has been received. Please check with the finance department for unentered payment.
+预付款仅使用本申请的 ERP 实际付款记录,Prepayment only uses the actual payment record of ERP for this application
+预付款状态,Prepayment status
+预付款科目未明确配置，不会猜测费用或科目,"Prepayment accounts are not explicitly configured, no guesswork on fees or accounts"
+预付款科目须为同申请币种的资产／往来科目，不能使用费用或付款银行科目,The prepayment account must be an asset/current account in the same application currency. Expense or payment bank accounts cannot be used.
+预览,Preview
+预览 / 提交,Preview/Submit
+预览事实已变化，请重新预览,"The preview fact has changed, please preview again"
+预览来源与公司映射,Preview source and company mapping
+预览结算凭证,Preview settlement Voucher
+预览自动接入规则,Preview automatic access rules
+预览费用凭证,Preview fee Voucher
+预览预付款凭证,Preview advance payment Voucher
+预计交付日期,Estimated delivery date
+预计交付日期沿用 ERP 交期；CRM 未同步的源字段不作推断。,The expected delivery date follows the ERP delivery date; CRM unsynchronized source fields will not be inferred.
+颜色,color
+高级关联筛选,Advanced relevance filtering
+高级处理 / 原生单据,Advanced processing/native documents
+默认逐单入库，可选择合并。,"The default is to store orders one by one, and you can choose to merge."
+（保存后由原生规则重算）,(Recalculated by native rules after saving)
+；另有 {0} 张不可入库,;Other {0} sheets cannot be stored in the database
+定义此日期之后物料不能再用于交易或生产,Defines the date after which the item can no longer be used in transactions or manufacturing

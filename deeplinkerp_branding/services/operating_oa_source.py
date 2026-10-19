@@ -5,6 +5,13 @@ cashier transport are supplied by the service. No accounting or source writes.
 """
 from __future__ import annotations
 
+try:
+    from frappe import _
+except ImportError:
+    def _(message):
+        return message
+
+
 import base64
 import copy
 import json
@@ -156,9 +163,9 @@ def approval_state(status, result):
 def with_workflow(row, evidence):
     """Validate exact identity before using the authoritative originator/tasks."""
     if not isinstance(evidence, dict) or any(evidence.get(key) != row.get(key) for key in ("corp_id", "process_instance_id")):
-        raise ValueError("审批来源企业或实例身份不符，请核对")
+        raise ValueError(_("审批来源企业或实例身份不符，请核对"))
     if evidence.get("source_id") != application_id(row):
-        raise ValueError("审批来源唯一标识不符，请核对")
+        raise ValueError(_("审批来源唯一标识不符，请核对"))
     result = dict(row)
     originator = evidence.get("originator")
     verified = evidence.get("lookup_status") == "found" and isinstance(originator, dict) and isinstance(originator.get("id"), str) and bool(originator["id"].strip())
@@ -324,7 +331,7 @@ def archive_integrity(manifest):
     if (manifest.get("archive_status") != "archived" or not isinstance(sha, str)
             or not re.fullmatch(r"[0-9a-fA-F]{64}", sha) or isinstance(size, bool)
             or not isinstance(size, (int, str)) or not re.fullmatch(r"[0-9]+", str(size))):
-        raise ValueError("归档校验信息缺失或无效，请在钉钉原单核对")
+        raise ValueError(_("归档校验信息缺失或无效，请在钉钉原单核对"))
     return sha.lower(), int(size)
 
 

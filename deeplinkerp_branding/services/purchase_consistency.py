@@ -7,6 +7,9 @@ replacement ledgers or manufacture documents in other business modules.
 
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import hashlib
 import json
 import uuid
@@ -1911,7 +1914,7 @@ class ProcurementControllerBoundary:
 		from .purchase_repost_boundary import POINTER, execution
 
 		if fieldname == POINTER or (isinstance(fieldname, dict) and POINTER in fieldname):
-			frappe.throw("库存保护指针不能由普通单据写入、清除或替换", frappe.PermissionError)
+			frappe.throw(_i18n("库存保护指针不能由普通单据写入、清除或替换"), frappe.PermissionError)
 		fields = set(fieldname) if isinstance(fieldname, dict) else {fieldname}
 		if self.doctype == "Purchase Invoice" and fields & PI_HOLD_FIELDS:
 			early_commit = kwargs.get("commit") or (len(args) > 3 and args[3])

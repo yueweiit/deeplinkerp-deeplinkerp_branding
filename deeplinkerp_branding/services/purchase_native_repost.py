@@ -6,6 +6,9 @@ unchanged. Captured aliases keep their identity through audited trampolines.
 
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import hashlib
 import json
 import re
@@ -152,7 +155,7 @@ def guard_task(doc, *, destructive=False):
 		else None
 	)
 	if operation_id and (destructive or not progress.allows(operation_id)):
-		frappe.throw("已受理采购冲销的原生任务不能由普通操作重置或改写", frappe.PermissionError)
+		frappe.throw(_i18n("已受理采购冲销的原生任务不能由普通操作重置或改写"), frappe.PermissionError)
 
 
 def protect_task(doc, method=None):

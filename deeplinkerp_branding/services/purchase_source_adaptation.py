@@ -6,6 +6,13 @@ This module selects confirmed facts and validates arithmetic; it does no writes.
 
 from __future__ import annotations
 
+try:
+	from frappe import _
+except ImportError:
+	def _(message):
+		return message
+
+
 import copy
 import json
 import re
@@ -57,7 +64,7 @@ def _rows_value(value):
 		try:
 			return json.loads(value, parse_float=Decimal)
 		except (ValueError, TypeError):
-			raise ValueError("加工商明细格式不支持，请核对原单结构") from None
+			raise ValueError(_("加工商明细格式不支持，请核对原单结构")) from None
 	return value
 
 
@@ -109,7 +116,7 @@ def scope(source):
 def scope_key(value):
 	"""Hash every populated scope component; no missing-component wildcards."""
 	if not isinstance(value, dict) or any(not _scope_text(value.get(key)) for key in SCOPE_FIELDS):
-		raise ValueError("适配规则范围缺失企业、模板、地区、申请组织或采购类型")
+		raise ValueError(_("适配规则范围缺失企业、模板、地区、申请组织或采购类型"))
 	return digest({key: value[key] for key in SCOPE_FIELDS})
 
 
@@ -121,7 +128,7 @@ def _field(raw, aliases):
 			if value is not None and not (isinstance(value, str) and not value.strip()):
 				matches.append(value)
 	if len(matches) > 1:
-		raise ValueError("加工商明细字段重复或不唯一，请核对原单")
+		raise ValueError(_("加工商明细字段重复或不唯一，请核对原单"))
 	return matches[0] if matches else None
 
 
@@ -142,7 +149,7 @@ def processor_rows(value, *, flatten_row=None):
 	"""
 	values = _rows_value(value)
 	if not isinstance(values, list):
-		raise ValueError("加工商明细格式不支持，请核对原单结构")
+		raise ValueError(_("加工商明细格式不支持，请核对原单结构"))
 	result = []
 	for index, original in enumerate(values, 1):
 		raw = copy.deepcopy(original)
@@ -150,13 +157,13 @@ def processor_rows(value, *, flatten_row=None):
 		row_number = raw.get("_dingtalk_row_number", raw.get("rowNumber")) if isinstance(raw, dict) else None
 		if isinstance(raw, list) or (isinstance(raw, dict) and "rowValue" in raw):
 			if flatten_row is None:
-				raise ValueError("加工商明细格式需要现有钉钉表格解析器")
+				raise ValueError(_("加工商明细格式需要现有钉钉表格解析器"))
 			raw = flatten_row({"rowValue": raw} if isinstance(raw, list) else raw)
 		if not isinstance(raw, dict):
-			raise ValueError("加工商明细格式不支持，请核对原单行")
+			raise ValueError(_("加工商明细格式不支持，请核对原单行"))
 		row = {key: _field(raw, aliases) for key, aliases in PROCESSOR_ALIASES.items()}
 		if envelope_key and row["source_row_key"] and envelope_key != row["source_row_key"]:
-			raise ValueError("加工商明细来源行标识不一致，请核对原单")
+			raise ValueError(_("加工商明细来源行标识不一致，请核对原单"))
 		row_number = raw.get("_dingtalk_row_number", raw.get("rowNumber", row_number))
 		for key in ("qty", "rate", "amount"):
 			original_value = row[key]

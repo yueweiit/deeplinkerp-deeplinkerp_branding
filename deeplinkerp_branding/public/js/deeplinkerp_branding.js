@@ -1,4 +1,5 @@
 (function () {
+ const translateText = (text, args = []) => String((globalThis.__ || (value => value))(text)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const ERPNextBrandName = "ERPNext";
 	const DeeplinkERPBrandName = "Deeplinkerp";
 	const ERPNextSettingsName = "ERPNext Settings";
@@ -126,9 +127,9 @@
 		});
 	}
 
-	function replaceDisplayAttributes(replacements) {
+	function replaceDisplayAttributes(replacements, selector = "[title], [data-original-title], [aria-label], [alt]") {
 		const attributes = ["title", "data-original-title", "aria-label", "alt"];
-		document.querySelectorAll("[title], [data-original-title], [aria-label], [alt]").forEach((element) => {
+		document.querySelectorAll(selector).forEach((element) => {
 			attributes.forEach((attribute) => {
 				const value = element.getAttribute(attribute);
 				if (replacements[value] && replacements[value] !== value) {
@@ -149,6 +150,12 @@
 		addReplacement(replacements, DeeplinkERPSettingsName, settingsName);
 		addReplacement(replacements, FrappeFrameworkName, frameworkName);
 		addReplacement(replacements, DLPFrameworkName, frameworkName);
+		const inventoryLabels = {};
+		[
+			"物料库存明细", "半成品库存明细", "成品库存明细", "模具库存明细",
+		].forEach((label) => addReplacement(inventoryLabels, label, translate(label)));
+		replaceTextContent(".body-sidebar-container .sidebar-item-label", inventoryLabels);
+		replaceDisplayAttributes(inventoryLabels, ".body-sidebar-container [title], .body-sidebar-container [aria-label]");
 
 		if (window.frappe?.app?.sidebar?.header_subtitle === FrappeFrameworkName || window.frappe?.app?.sidebar?.header_subtitle === DLPFrameworkName) {
 			if (frappe.app.sidebar.header_subtitle !== frameworkName) frappe.app.sidebar.header_subtitle = frameworkName;
@@ -226,9 +233,23 @@
 			) {
 				this.header_subtitle = getBrandName();
 			}
+			if ((frappe.boot?.app_data || []).some((app) => app.app_title === this.header_subtitle)) {
+				this.header_subtitle = translate(this.header_subtitle);
+			}
 			return result;
 		};
 		frappe.ui.Sidebar.prototype.__deeplinkerpPatched = true;
+	}
+
+	function patchSidebarMenuIcons() {
+		const prototype = window.frappe?.ui?.SidebarHeader?.prototype;
+		if (!prototype?.add_app_item || prototype.__deeplinkerpMenuIconsPatched) return;
+		const original = prototype.add_app_item;
+		prototype.add_app_item = function (item, ...args) {
+			const prepared = DeepLinkERPNavigation.prepareSidebarMenuItem(item);
+			if (prepared) return original.call(this, prepared, ...args);
+		};
+		prototype.__deeplinkerpMenuIconsPatched = true;
 	}
 
 	function getDesktopIcons() {
@@ -633,6 +654,7 @@
 	}
 
 	function refreshDeskEnhancements() {
+		patchSidebarMenuIcons();
 		patchSidebarSubtitle();
 		applyBranding();
 		if (window.DeepLinkERPInterfaceMode) {
@@ -672,6 +694,7 @@
 		bindDeskEvents();
 	}
 
+	patchSidebarMenuIcons();
 	if (document.readyState === "loading") {
 		document.addEventListener("DOMContentLoaded", initialize);
 	} else {

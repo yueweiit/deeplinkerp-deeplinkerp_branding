@@ -103,7 +103,7 @@ def test_shared_page_uses_integer_page_size_and_only_opens_an_unsaved_stock_entr
 	assert 'frappe.set_route("Form", "Stock Entry"' in source
 	assert "overseas_costing.services.inventory_location_service" not in source
 	assert "this.resetSelection();" not in source.split("async refresh(", 1)[1].split("renderPager(payload)", 1)[0]
-	assert "物料移动 (${this.selected.size})" in source
+	assert '__("物料移动 ({0})", [this.selected.size])' in source
 	assert "this.movementActionDataLabel" not in source
 	assert ".menu-item-label" not in source
 	assert 'aria-disabled' in source

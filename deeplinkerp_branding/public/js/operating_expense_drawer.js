@@ -4,7 +4,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
 	"use strict";
 	const API = "deeplinkerp_branding.services.operating_expenses.";
-	const t = (value) => (root.__ || ((text) => text))(value);
+	const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const clone = (value) => JSON.parse(JSON.stringify(value));
 	const esc = (value) =>
 		String(value ?? "").replace(
@@ -502,7 +502,7 @@
 		root.DeepLinkERPPurchasePayments?.nativeAction("Journal Entry", name, label) ||
 		`<button type="button" class="btn btn-default btn-xs dlp-native-document" data-doctype="Journal Entry" data-name="${esc(
 			name
-		)}">${esc(label)}</button>`;
+		)}">${esc(t(label))}</button>`;
 	const journalState = (value) =>
 		t(value === 0 ? "草稿 · 未记账" : value === 1 ? "关联已记账" : "已取消 · 需复核");
 	function sourceHTML(detail) {
@@ -670,7 +670,7 @@
 					{ value: "payment", label: t("付款申请") },
 					{ value: "reimbursement", label: t("费用报销") },
 				],
-				label: "明确申请类型",
+				label: t("明确申请类型"),
 				reqd: 1,
 			});
 		defs.find((df) => df.fieldname === "recognition_mode").options = [
@@ -960,7 +960,7 @@
 						fieldname: "legal_company",
 						fieldtype: "Link",
 						options: "Company",
-						label: "明确法律公司",
+						label: t("明确法律公司"),
 						reqd: 1,
 					},
 					"",
@@ -1149,7 +1149,7 @@
 					fieldname: "existing_journal",
 					fieldtype: "Link",
 					options: "Journal Entry",
-					label: "选择已有原生凭证",
+					label: t("选择已有原生凭证"),
 					read_only: !eligible() || hasPostedRecognition(detail),
 				},
 				"",
@@ -1628,7 +1628,7 @@
 			const tokenControl = await makeControl(
 				drawer,
 				drawer.panel.find(".dlp-operating-token"),
-				{ fieldname: "api_token", fieldtype: "Password", label: "新的同步密钥（可选）" },
+				{ fieldname: "api_token", fieldtype: "Password", label: t("新的同步密钥（可选）") },
 				w.token,
 				(value) => w.touchToken(value)
 			);
@@ -1702,7 +1702,7 @@
 				{
 					fieldname: "confirm_sync_preview",
 					fieldtype: "Check",
-					label: "我已核对来源类型和法律公司映射，确认启用同步",
+					label: t("我已核对来源类型和法律公司映射，确认启用同步"),
 				},
 				0,
 				(value) => w.confirm(value)

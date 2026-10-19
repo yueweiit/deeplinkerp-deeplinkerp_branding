@@ -7,6 +7,9 @@ prospective only: no historical task is adopted and no cancellation is enabled.
 
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import hashlib
 import json
 import re
@@ -474,7 +477,7 @@ def guard(doc, *, proposed=None):
 		)
 		old = rows[0] if rows else None
 	if (protected(doc) or protected(fields) or protected(old)) and doc.name not in _mutation.get():
-		frappe.throw("原生库存同步审计不能由普通操作创建、改写或清理", frappe.PermissionError)
+		frappe.throw(_i18n("原生库存同步审计不能由普通操作创建、改写或清理"), frappe.PermissionError)
 
 
 def _pairs(mes, doc, rows=None):
@@ -1150,7 +1153,7 @@ def _clear_log_table(doctype, days=90):
 		# Before native try/sql_ddl (which commits before CREATE and also drops
 		# a temporary table in except). Reject even an empty current namespace.
 		frappe.throw(
-			"原生库存同步审计不支持按创建时间重建日志表，请使用受保护的常规日志清理", frappe.PermissionError
+			_i18n("原生库存同步审计不支持按创建时间重建日志表，请使用受保护的常规日志清理"), frappe.PermissionError
 		)
 	return log_settings._dlp_purchase_retention_original(doctype, days=days)
 

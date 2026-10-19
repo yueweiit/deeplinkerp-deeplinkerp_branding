@@ -57,7 +57,7 @@ def apply_interface_mode_bootinfo(bootinfo):
 def set_user_navigation_mode(mode):
 	user = frappe.session.user
 	if not user or user == "Guest":
-		frappe.throw("Login is required to change the interface mode.", frappe.PermissionError)
+		frappe.throw(frappe._("Login is required to change the interface mode."), frappe.PermissionError)
 
 	requested_mode = str(mode or "").strip().lower()
 	if requested_mode == FOLLOW_COMPANY:
@@ -65,6 +65,6 @@ def set_user_navigation_mode(mode):
 	elif requested_mode in VALID_MODES:
 		frappe.defaults.set_user_default(USER_OVERRIDE_KEY, requested_mode, user=user)
 	else:
-		frappe.throw("Invalid interface mode.", frappe.ValidationError)
+		frappe.throw(frappe._("Invalid interface mode."), frappe.ValidationError)
 
 	return get_interface_mode_payload(user)

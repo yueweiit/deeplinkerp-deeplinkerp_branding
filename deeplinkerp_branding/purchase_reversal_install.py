@@ -1,5 +1,12 @@
 """Narrow additive metadata for a future reversal boundary; no business writes."""
 
+try:
+	from frappe import _
+except ImportError:
+	def _(message):
+		return message
+
+
 import re
 
 TARGETS = (
@@ -59,7 +66,7 @@ def _native_intent_index_plan():
 			as_dict=True,
 		)
 		if len(rows) > 1:
-			frappe.throw("原生库存同步索引列名称定义冲突，未修改现有定义", frappe.ValidationError)
+			frappe.throw(_("原生库存同步索引列名称定义冲突，未修改现有定义"), frappe.ValidationError)
 		if rows:
 			by_name[name] = rows[0]
 	for name in ("name", "integration_request_service", "status", "request_description"):
@@ -69,7 +76,7 @@ def _native_intent_index_plan():
 			"utf8mb4",
 			"utf8mb4_unicode_ci",
 		):
-			frappe.throw("原生库存同步索引所需列定义未经核查", frappe.ValidationError)
+			frappe.throw(_("原生库存同步索引所需列定义未经核查"), frappe.ValidationError)
 	generated = by_name.get(ACTIVITY_COLUMN)
 	if generated and (
 		generated.COLUMN_TYPE != "tinyint(4)"
@@ -77,7 +84,7 @@ def _native_intent_index_plan():
 		or _generated_expression(generated.GENERATION_EXPRESSION)
 		!= _generated_expression(ACTIVITY_EXPRESSION)
 	):
-		frappe.throw("原生库存同步生成索引定义冲突，未修改现有定义", frappe.ValidationError)
+		frappe.throw(_("原生库存同步生成索引定义冲突，未修改现有定义"), frappe.ValidationError)
 	indexes = frappe.db.sql(
 		"SHOW INDEX FROM `tabIntegration Request` WHERE Key_name=%s", (ACTIVITY_INDEX,), as_dict=True
 	)
@@ -98,9 +105,9 @@ def _native_intent_index_plan():
 			for row in existing
 		)
 	):
-		frappe.throw("原生库存同步复合索引定义冲突，未修改现有定义", frappe.ValidationError)
+		frappe.throw(_("原生库存同步复合索引定义冲突，未修改现有定义"), frappe.ValidationError)
 	if existing and not generated:
-		frappe.throw("原生库存同步复合索引缺少已核查生成列", frappe.ValidationError)
+		frappe.throw(_("原生库存同步复合索引缺少已核查生成列"), frappe.ValidationError)
 	return not generated, not existing
 
 
@@ -113,7 +120,7 @@ def install_native_intent_index(plan=None):
 	plan = _native_intent_index_plan() if plan is None else plan
 	state = getattr(frappe.local.db, "_purchase_session", None)
 	if frappe.db.transaction_writes or (state and state.locks):
-		frappe.throw("原生库存同步索引不能在业务事务内安装", frappe.ValidationError)
+		frappe.throw(_("原生库存同步索引不能在业务事务内安装"), frappe.ValidationError)
 	if plan[0]:
 		frappe.db.sql(
 			"ALTER TABLE `tabIntegration Request` ADD COLUMN `"
@@ -127,7 +134,7 @@ def install_native_intent_index(plan=None):
 			"Integration Request", ["integration_request_service", ACTIVITY_COLUMN, "name"], ACTIVITY_INDEX
 		)
 	if _native_intent_index_plan() != (False, False):
-		frappe.throw("原生库存同步索引安装未通过实际定义核查", frappe.ValidationError)
+		frappe.throw(_("原生库存同步索引安装未通过实际定义核查"), frappe.ValidationError)
 
 
 def after_migrate():
@@ -138,18 +145,18 @@ def after_migrate():
 	# custom definitions are never overwritten or treated as a different feature.
 	for doctype in (*TARGETS, "Integration Request"):
 		if not frappe.db.exists("DocType", doctype) or not frappe.db.has_column(doctype, "name"):
-			frappe.throw("采购冲销元数据所需原生单据类型缺失", frappe.ValidationError)
+			frappe.throw(_("采购冲销元数据所需原生单据类型缺失"), frappe.ValidationError)
 	missing = {}
 	for doctype in TARGETS:
 		meta = frappe.get_meta(doctype)
 		if not all(meta.has_field(field) for field in _REQUIRED[doctype]):
-			frappe.throw("采购冲销所需原生元数据版本不完整", frappe.ValidationError)
+			frappe.throw(_("采购冲销所需原生元数据版本不完整"), frappe.ValidationError)
 		# Table fields have child tables, not parent SQL columns. All stored
 		# native prerequisites and compatible pointers must physically exist.
 		if not all(
 			frappe.db.has_column(doctype, field) for field in _REQUIRED[doctype] - {"items", "references"}
 		):
-			frappe.throw("采购冲销所需原生数据库列缺失", frappe.ValidationError)
+			frappe.throw(_("采购冲销所需原生数据库列缺失"), frappe.ValidationError)
 		existing = meta.get_field(FIELDNAME)
 		if existing:
 			if (
@@ -160,7 +167,7 @@ def after_migrate():
 					for key in ("fieldtype", "options", "hidden", "read_only", "no_copy")
 				)
 			):
-				frappe.throw("采购冲销操作字段定义冲突，未修改现有定义", frappe.ValidationError)
+				frappe.throw(_("采购冲销操作字段定义冲突，未修改现有定义"), frappe.ValidationError)
 		else:
 			missing[doctype] = [dict(DEFINITION)]
 	index_plan = _native_intent_index_plan()  # preflight both contracts before first DDL

@@ -107,6 +107,11 @@ def _whitelist(function):
 	return frappe.whitelist()(function)
 
 
+def _(message: str) -> str:
+	translator = getattr(frappe, "_", None)
+	return translator(message) if callable(translator) else message
+
+
 def is_count_uom(stock_uom: str | None) -> bool:
 	normalized = str(stock_uom or "").strip().lower()
 	return any(token in normalized for token in COUNT_UOM_TOKENS)
@@ -128,7 +133,7 @@ def get_category_definition(category: Any) -> dict[str, str]:
 	key = _text(category)
 	definition = CATEGORY_DEFINITIONS.get(key)
 	if not definition:
-		raise ValueError(f"不支持的库存分类：{key or '空'}")
+		raise ValueError(_("不支持的库存分类：{0}").format(key or _("空")))
 	return dict(definition)
 
 
@@ -142,15 +147,15 @@ def parse_page_length(value: Any = None) -> int:
 	if value is None or (isinstance(value, str) and not value.strip()):
 		return DEFAULT_PAGE_LENGTH
 	if isinstance(value, bool):
-		raise ValueError("每页行数必须是 1 到 2500 的整数。")
+		raise ValueError(_("每页行数必须是 1 到 2500 的整数。"))
 	try:
 		parsed = int(value)
 	except (TypeError, ValueError) as error:
-		raise ValueError("每页行数必须是 1 到 2500 的整数。") from error
+		raise ValueError(_("每页行数必须是 1 到 2500 的整数。")) from error
 	if str(value).strip() not in {str(parsed), f"+{parsed}"}:
-		raise ValueError("每页行数必须是 1 到 2500 的整数。")
+		raise ValueError(_("每页行数必须是 1 到 2500 的整数。"))
 	if not MIN_PAGE_LENGTH <= parsed <= MAX_PAGE_LENGTH:
-		raise ValueError("每页行数必须是 1 到 2500 的整数。")
+		raise ValueError(_("每页行数必须是 1 到 2500 的整数。"))
 	return parsed
 
 
@@ -277,9 +282,9 @@ def _number_format(stock_uom: str | None, value: Any) -> str:
 def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 	workbook = Workbook()
 	sheet = workbook.active
-	sheet.title = "物料库存明细"
+	sheet.title = _("物料库存明细")[:31]
 	sheet.freeze_panes = "A2"
-	sheet.append(EXPORT_HEADERS)
+	sheet.append([_(header) for header in EXPORT_HEADERS])
 
 	header_fill = PatternFill("solid", fgColor="075985")
 	for cell in sheet[1]:
@@ -340,8 +345,8 @@ def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 					end_column=column,
 				)
 		for row_number in range(start_row, end_row + 1):
-			for cell in sheet[row_number]:
-				cell.alignment = Alignment(vertical="center", wrap_text=True)
+			for column in range(1, len(EXPORT_HEADERS) + 1):
+				sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
 
 	widths = (18, 32, 24, 18, 15, 15, 15, 28, 18, 20, 28)
 	for index, width in enumerate(widths, start=1):
@@ -542,9 +547,9 @@ def build_categorized_inventory_payload(
 def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 	workbook = Workbook()
 	sheet = workbook.active
-	sheet.title = _text(payload.get("title")) or "分类库存明细"
+	sheet.title = _(_text(payload.get("title")) or "分类库存明细")[:31]
 	sheet.freeze_panes = "A2"
-	sheet.append(CATEGORY_EXPORT_HEADERS)
+	sheet.append([_(header) for header in CATEGORY_EXPORT_HEADERS])
 
 	header_fill = PatternFill("solid", fgColor="075985")
 	for cell in sheet[1]:
@@ -569,11 +574,15 @@ def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 					group.get("item_code") or "" if shared else "",
 					group.get("item_name") or "" if shared else "",
 					group.get("warehouse") or "" if shared else "",
-					location.get("reference_location") or "库位待维护",
+					(
+						location.get("reference_location")
+						if location.get("reference_location") not in (None, "", "库位待维护")
+						else _("库位待维护")
+					),
 					location.get("snapshot_location_qty"),
 					float(group.get("actual_qty") or 0) if shared else "",
 					group.get("difference_qty") if shared else "",
-					group.get("inventory_status") or "" if shared else "",
+					_(group.get("inventory_status") or "") if shared else "",
 					location.get("snapshot_date") or "",
 					group.get("stock_uom") or "" if shared else "",
 					group.get("item_group") or "" if shared else "",
@@ -606,8 +615,8 @@ def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 					end_column=column,
 				)
 		for row_number in range(start_row, end_row + 1):
-			for cell in sheet[row_number]:
-				cell.alignment = Alignment(vertical="center", wrap_text=True)
+			for column in range(1, len(CATEGORY_EXPORT_HEADERS) + 1):
+				sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
 
 	widths = (18, 32, 24, 18, 15, 15, 15, 14, 14, 15, 28, 18, 20, 28)
 	for index, width in enumerate(widths, start=1):
@@ -630,7 +639,7 @@ def _require_read_permission() -> None:
 	if frappe is None:
 		return
 	if not frappe.has_permission(SNAPSHOT_DOCTYPE, "read"):
-		frappe.throw("没有权限查看库存库位快照。", frappe.PermissionError)
+		frappe.throw(_("没有权限查看库存库位快照。"), frappe.PermissionError)
 
 
 def _require_categorized_inventory_read_permission() -> None:
@@ -639,7 +648,7 @@ def _require_categorized_inventory_read_permission() -> None:
 	_require_read_permission()
 	for doctype in ("Item", "Bin", "Warehouse"):
 		if not frappe.has_permission(doctype, "read"):
-			frappe.throw(f"没有权限查看{doctype}。", frappe.PermissionError)
+			frappe.throw(_("没有权限查看{0}。").format(doctype), frappe.PermissionError)
 
 
 def _require_company_permission(company: str) -> None:
@@ -657,10 +666,10 @@ def _resolve_company(company: Any = None) -> str:
 	if resolved:
 		return resolved
 	if frappe is None:
-		raise ValueError("请先选择公司或设置默认公司。")
+		raise ValueError(_("请先选择公司或设置默认公司。"))
 	resolved = _text(frappe.defaults.get_user_default("Company"))
 	if not resolved:
-		frappe.throw("请先选择公司或设置默认公司。", frappe.ValidationError)
+		frappe.throw(_("请先选择公司或设置默认公司。"), frappe.ValidationError)
 	return resolved
 
 
@@ -701,7 +710,7 @@ def _load_snapshot_rows(filters: dict[str, Any]) -> list[dict[str, Any]]:
 	warehouses = _accessible_warehouses(company)
 	selected_warehouse = _text(filters.get("warehouse"))
 	if selected_warehouse and selected_warehouse not in warehouses:
-		frappe.throw("没有权限查看所选仓库。", frappe.PermissionError)
+		frappe.throw(_("没有权限查看所选仓库。"), frappe.PermissionError)
 	if not items or not warehouses:
 		return []
 	filters["company"] = company
@@ -767,9 +776,9 @@ def _category_group_bounds(category: str, selected_group: str = "") -> tuple[int
 
 	selected = frappe.db.get_value("Item Group", selected_group, ["lft", "rgt"], as_dict=True)
 	if not selected:
-		raise ValueError(f"物料组不存在：{selected_group}")
+		raise ValueError(_("物料组不存在：{0}").format(selected_group))
 	if int(selected["lft"]) < int(root["lft"]) or int(selected["rgt"]) > int(root["rgt"]):
-		raise ValueError(f"物料组不属于{root_name}：{selected_group}")
+		raise ValueError(_("物料组不属于{0}：{1}").format(root_name, selected_group))
 	frappe.get_doc("Item Group", selected_group).check_permission("read")
 	return int(selected["lft"]), int(selected["rgt"])
 
@@ -804,8 +813,8 @@ def _category_query_context(category: str, filters: dict[str, Any]) -> dict[str,
 	selected_warehouse = _text(filters.get("warehouse"))
 	if selected_warehouse and selected_warehouse not in warehouses:
 		if frappe is not None:
-			frappe.throw("没有权限查看所选仓库。", frappe.PermissionError)
-		raise PermissionError("没有权限查看所选仓库。")
+			frappe.throw(_("没有权限查看所选仓库。"), frappe.PermissionError)
+		raise PermissionError(_("没有权限查看所选仓库。"))
 	return {
 		"company": company,
 		"group_lft": group_lft,
@@ -937,7 +946,7 @@ def _movement_permission_payload() -> dict[str, Any]:
 	allowed = bool(frappe.has_permission("Stock Entry", "create"))
 	return {
 		"can_create_stock_entry": allowed,
-		"movement_disabled_reason": "" if allowed else "没有创建物料移动单的权限。",
+		"movement_disabled_reason": "" if allowed else _("没有创建物料移动单的权限。"),
 	}
 
 
@@ -946,13 +955,13 @@ def _parse_list(value: Any, label: str) -> list[dict[str, Any]]:
 		try:
 			value = json.loads(value or "[]")
 		except json.JSONDecodeError as error:
-			raise ValueError(f"{label}格式不正确。") from error
+			raise ValueError(_("{0}格式不正确。").format(label)) from error
 	if not isinstance(value, list) or not value:
-		raise ValueError(f"{label}不能为空。")
+		raise ValueError(_("{0}不能为空。").format(label))
 	if len(value) > MAX_PAGE_LENGTH:
-		raise ValueError(f"{label}一次不能超过 {MAX_PAGE_LENGTH} 项。")
+		raise ValueError(_("{0}一次不能超过 {1} 项。").format(label, MAX_PAGE_LENGTH))
 	if not all(isinstance(row, dict) for row in value):
-		raise ValueError(f"{label}格式不正确。")
+		raise ValueError(_("{0}格式不正确。").format(label))
 	return [dict(row) for row in value]
 
 
@@ -960,10 +969,10 @@ def _require_stock_entry_create_permission() -> None:
 	if frappe is None:
 		return
 	if not frappe.has_permission("Stock Entry", "create"):
-		frappe.throw("没有权限创建物料移动单。", frappe.PermissionError)
+		frappe.throw(_("没有权限创建物料移动单。"), frappe.PermissionError)
 	for doctype in ("Item", "Bin", "Warehouse", "Stock Entry Type"):
 		if not frappe.has_permission(doctype, "read"):
-			frappe.throw(f"没有权限读取{doctype}。", frappe.PermissionError)
+			frappe.throw(_("没有权限读取{0}。").format(doctype), frappe.PermissionError)
 
 
 def _request_page_length(value: Any) -> int:
@@ -978,24 +987,24 @@ def _request_page_length(value: Any) -> int:
 def _validate_item(item_code: str):
 	item_code = _text(item_code)
 	if not item_code:
-		raise ValueError("物料编码不能为空。")
+		raise ValueError(_("物料编码不能为空。"))
 	item = frappe.get_doc("Item", item_code)
 	item.check_permission("read")
 	if getattr(item, "disabled", 0) or not getattr(item, "is_stock_item", 0):
-		raise ValueError(f"物料不可用于库存移动：{item_code}")
+		raise ValueError(_("物料不可用于库存移动：{0}").format(item_code))
 	return item
 
 
 def _validate_warehouse(company: str, warehouse: str):
 	warehouse = _text(warehouse)
 	if not warehouse:
-		raise ValueError("仓库不能为空。")
+		raise ValueError(_("仓库不能为空。"))
 	doc = frappe.get_doc("Warehouse", warehouse)
 	doc.check_permission("read")
 	if _text(getattr(doc, "company", "")) != company:
-		raise ValueError(f"仓库不属于当前公司：{warehouse}")
+		raise ValueError(_("仓库不属于当前公司：{0}").format(warehouse))
 	if int(getattr(doc, "is_group", 0) or 0):
-		raise ValueError(f"不能使用分组仓库：{warehouse}")
+		raise ValueError(_("不能使用分组仓库：{0}").format(warehouse))
 	return doc
 
 
@@ -1012,9 +1021,9 @@ def _actual_qty(item_code: str, warehouse: str) -> float:
 
 def _attach_reversal_progress(payload, selections=None):
 	if selections:
-		selected = _parse_list(selections, "已选物料")
+		selected = _parse_list(selections, _("已选物料"))
 		if len(selected) > MAX_PAGE_LENGTH:
-			raise ValueError("已选物料超过库存范围上限")
+			raise ValueError(_("已选物料超过库存范围上限"))
 		payload["selected_reversals"] = []
 		for row in selected:
 			code, warehouse = _text(row.get("item_code")), _text(row.get("source_warehouse"))
@@ -1053,7 +1062,7 @@ def _require_pair_available(item_code, warehouse):
 	if frappe.db.get_value(
 		"Bin", {"item_code": item_code, "warehouse": warehouse}, "custom_purchase_reversal_operation"
 	):
-		frappe.throw("采购冲销未完成，相关库存移动暂缓办理。", frappe.ValidationError)
+		frappe.throw(_("采购冲销未完成，相关库存移动暂缓办理。"), frappe.ValidationError)
 
 
 def build_movement_item_spec(
@@ -1074,21 +1083,21 @@ def build_movement_item_spec(
 	try:
 		quantity = float(quantity)
 	except (TypeError, ValueError) as error:
-		raise ValueError(f"{item_code or '物料'}的移动数量必须是数字。") from error
+		raise ValueError(_("{0}的移动数量必须是数字。").format(item_code or _("物料"))) from error
 	if not math.isfinite(quantity):
-		raise ValueError(f"{item_code or '物料'}的移动数量必须是有限数字。")
+		raise ValueError(_("{0}的移动数量必须是有限数字。").format(item_code or _("物料")))
 	if quantity <= 0:
-		raise ValueError(f"{item_code or '物料'}的移动数量必须大于零。")
+		raise ValueError(_("{0}的移动数量必须大于零。").format(item_code or _("物料")))
 
 	if purpose in {"Material Issue", "Material Transfer"}:
 		if not source_warehouse:
-			raise ValueError(f"{item_code}缺少来源仓库。")
+			raise ValueError(_("{0}缺少来源仓库。").format(item_code))
 		if quantity - float(actual_qty or 0) > 1e-9:
-			raise ValueError(f"{item_code}的移动数量超过来源仓实时库存 {float(actual_qty or 0):g}。")
+			raise ValueError(_("{0}的移动数量超过来源仓实时库存 {1:g}。").format(item_code, float(actual_qty or 0)))
 	if purpose in {"Material Receipt", "Material Transfer"} and not target_warehouse:
-		raise ValueError("请选择目标仓库。")
+		raise ValueError(_("请选择目标仓库。"))
 	if purpose == "Material Transfer" and source_warehouse == target_warehouse:
-		raise ValueError(f"{item_code}的来源仓库和目标仓库不能相同。")
+		raise ValueError(_("{0}的来源仓库和目标仓库不能相同。").format(item_code))
 
 	result = {
 		"item_code": item_code,
@@ -1129,7 +1138,7 @@ def get_inventory_movement_context(company: str, selections: Any) -> dict[str, A
 	_require_stock_entry_create_permission()
 	company = _resolve_company(company)
 	_require_company_permission(company)
-	selected = _parse_list(selections, "已选物料")
+	selected = _parse_list(selections, _("已选物料"))
 	seen: set[tuple[str, str]] = set()
 	items: list[dict[str, Any]] = []
 	for selection in selected:
@@ -1137,7 +1146,7 @@ def get_inventory_movement_context(company: str, selections: Any) -> dict[str, A
 		source_warehouse = _text(selection.get("source_warehouse"))
 		key = (item_code, source_warehouse)
 		if key in seen:
-			raise ValueError(f"重复选择物料仓库组：{item_code} / {source_warehouse}")
+			raise ValueError(_("重复选择物料仓库组：{0} / {1}").format(item_code, source_warehouse))
 		seen.add(key)
 		item = _validate_item(item_code)
 		_validate_warehouse(company, source_warehouse)
@@ -1172,18 +1181,18 @@ def prepare_inventory_stock_entry(
 	_require_company_permission(company)
 	stock_entry_type = _text(stock_entry_type)
 	if not stock_entry_type:
-		raise ValueError("请选择移动类型。")
+		raise ValueError(_("请选择移动类型。"))
 	type_doc = frappe.get_doc("Stock Entry Type", stock_entry_type)
 	type_doc.check_permission("read")
 	purpose = _text(getattr(type_doc, "purpose", ""))
 	if not purpose:
-		raise ValueError(f"移动类型未配置用途：{stock_entry_type}")
+		raise ValueError(_("移动类型未配置用途：{0}").format(stock_entry_type))
 
 	target_warehouse = _text(target_warehouse)
 	if purpose in {"Material Receipt", "Material Transfer"}:
 		_validate_warehouse(company, target_warehouse)
 
-	selected = _parse_list(items, "移动物料")
+	selected = _parse_list(items, _("移动物料"))
 	stock_entry = frappe.new_doc("Stock Entry")
 	stock_entry.company = company
 	stock_entry.stock_entry_type = stock_entry_type
@@ -1197,7 +1206,7 @@ def prepare_inventory_stock_entry(
 		source_warehouse = _text(selected_item.get("source_warehouse"))
 		key = (item_code, source_warehouse)
 		if key in seen:
-			raise ValueError(f"重复移动物料仓库组：{item_code} / {source_warehouse}")
+			raise ValueError(_("重复移动物料仓库组：{0} / {1}").format(item_code, source_warehouse))
 		seen.add(key)
 		item = _validate_item(item_code)
 		for warehouse in {source_warehouse, target_warehouse} - {""}:
@@ -1239,7 +1248,7 @@ def prepare_inventory_stock_entry(
 		"purpose": purpose,
 		"requires_completion": purpose not in SIMPLE_STOCK_ENTRY_PURPOSES,
 		"completion_message": (
-			"该移动类型还需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。"
+			_("该移动类型还需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。")
 			if purpose not in SIMPLE_STOCK_ENTRY_PURPOSES
 			else ""
 		),
@@ -1315,7 +1324,7 @@ def get_categorized_inventory_detail(
 	payload["company"] = company
 	payload["item_group_options"] = [] if missing_item_group else _list_category_item_groups(context)
 	if missing_item_group:
-		payload["warning"] = f"ERP 未维护分类物料组：{missing_item_group}"
+		payload["warning"] = _("ERP 未维护分类物料组：{0}").format(missing_item_group)
 	payload.update(_movement_permission_payload())
 	return _attach_reversal_progress(payload, progress_selections)
 

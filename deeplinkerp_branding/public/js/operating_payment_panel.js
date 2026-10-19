@@ -3,7 +3,7 @@
  root.DeepLinkERPOperatingPaymentPanel = factory(root);
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
  "use strict";
- const t = value => (root.__ || (text => text))(value);
+ const t = (value, args = []) => String((root.__ || (text => text))(value)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
  const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
  const money=value=>root.DeepLinkERPOperatingExpenses?.money(value)??"—";
  const tabs = [["payments","付款明细"],["approvals","审批流"],["request","申请信息"],["vouchers","凭证"]];
@@ -120,7 +120,7 @@
     const claimed=await uiTask(drawer,async current=>{
      const preview=await request("preview_takeover",{source_id:sourceId,zero_history_confirmed:zeroConfirmed});
      if (!mounted() || !current() || !preview) return;
-     status.text(`${t("历史付款")} ${preview.history_count??"—"} ${t("笔")} · ${t("已付")} ${money(preview.balance?.paid_amount)} ${preview.currency||"—"} · ${t("待付")} ${money(preview.balance?.pending_amount)} ${preview.currency||"—"}`);
+     status.text(t("{0} {1} {2} · {3} {4} {5} · {6} {7} {8}", [t("历史付款"), preview.history_count??"—", t("笔"), t("已付"), money(preview.balance?.paid_amount), preview.currency||"—", t("待付"), money(preview.balance?.pending_amount), preview.currency||"—"]));
      if(preview.needs_zero_history_confirmation===true){needsZeroConfirmation=true;await requireHistoryConfirmation();if(!zeroConfirmed){drawer.refreshEligibility();return;}}
      if (!preview.existing && !(await confirm(`${esc(t("已核对历史"))} ${esc(preview.history_count??"—")} ${esc(t("笔，待付"))} ${esc(preview.balance?.pending_amount??"—")} ${esc(preview.currency||"—")}。${esc(t("启用后，对应申请在请款网站不能再登记付款。确认接管？"))}`))) return;
      if (!mounted() || !current()) return;
@@ -150,25 +150,25 @@
     if(account&&!cross)values.bank_amount=values.amount;
     currencyFields.prop("hidden",!cross);
     ratesFields.appendTo(cross?currencyFields:advanced);
-    currencyNotice.text(`${t("申请币种")} ${source.currency||"—"} · ${t("银行币种")} ${account?.currency||"—"}`);
-    try {const next=paymentPreview(detail.erp_payments.balance,values.amount);preview.text(`${t("保存后累计已付")} ${next.paid_amount} ${source.currency} · ${t("剩余待付")} ${next.pending_amount} ${source.currency}`);}catch(error){preview.text(values.amount?error.message:`${t("最多可付")} ${detail.erp_payments.balance.pending_amount} ${source.currency}`);}
+    currencyNotice.text(t("{0} {1} · {2} {3}", [t("申请币种"), source.currency||"—", t("银行币种"), account?.currency||"—"]));
+    try {const next=paymentPreview(detail.erp_payments.balance,values.amount);preview.text(t("{0} {1} {2} · {3} {4} {5}", [t("保存后累计已付"), next.paid_amount, source.currency, t("剩余待付"), next.pending_amount, source.currency]));}catch(error){preview.text(values.amount?error.message:`${t("最多可付")} ${detail.erp_payments.balance.pending_amount} ${source.currency}`);}
     if(!accounts.length)preview.text(accountsIssue||t("付款账户尚未配置，请先维护当前公司的银行或现金账户。"));
     drawer.refreshEligibility();
    }
-   const definitions=[["amount","Data",null,`本次付款金额 (${source.currency||"—"})`],["payment_date","Date",null,"付款日期"],["bank_account","Select",[{value:"",label:""},...accounts.map(account=>({value:account.name,label:`${account.label||account.name} (${account.currency||"—"})`}))],"付款账户"],["payee_display","Data",null,"收款人"],["bank_reference","Data",null,"银行流水号（可选）"],["remark","Small Text",null,"备注（可选）"]];
+   const definitions=[["amount","Data",null,t("本次付款金额 ({0})", [source.currency||"—"])],["payment_date","Date",null,"付款日期"],["bank_account","Select",[{value:"",label:""},...accounts.map(account=>({value:account.name,label:`${account.label||account.name} (${account.currency||"—"})`}))],"付款账户"],["payee_display","Data",null,"收款人"],["bank_reference","Data",null,"银行流水号（可选）"],["remark","Small Text",null,"备注（可选）"]];
    for (const [fieldname,fieldtype,options,label] of definitions) {
     if(!current())return;
     await makeControl(drawer,root.$("<div></div>").appendTo(fields),{fieldname,fieldtype,options,label,read_only:fieldname==="payee_display",reqd:["payment_date","amount","bank_account"].includes(fieldname)},fieldname==="payee_display"?source.payee_name||values.party:values[fieldname],value=>{const previous=accountMap.get(values.bank_account);values[fieldname]=String(value??"");if(fieldname==="bank_account"&&accountMap.get(values.bank_account)?.currency!==previous?.currency){values.bank_amount="";delete values.bank_exchange_rate;bankAmountControl?.set_value("");bankRateControl?.set_value("");}update();});
    }
-   for(const [fieldname,label] of [["bank_amount","银行实际付款金额"],["source_exchange_rate",`申请币种兑本位币汇率 (${source.currency||"—"})`],["bank_exchange_rate","银行币种兑本位币汇率"]]){
+   for(const [fieldname,label] of [["bank_amount","银行实际付款金额"],["source_exchange_rate",t("申请币种兑本位币汇率 ({0})", [source.currency||"—"])],["bank_exchange_rate","银行币种兑本位币汇率"]]){
     if(!current())return;
     const control=await makeControl(drawer,root.$("<div></div>").appendTo(fieldname==="bank_amount"?currencyFields:ratesFields),{fieldname,fieldtype:"Data",label,reqd:fieldname==="bank_amount"},"",value=>{if(value)values[fieldname]=String(value);else delete values[fieldname];update();});if(fieldname==="bank_amount")bankAmountControl=control;if(fieldname==="bank_exchange_rate")bankRateControl=control;
    }
    const partyHolder=root.$("<div></div>").appendTo(advanced.find(".dlp-operating-fields"));
    if(!values.party)advanced.prop("open",true);
-   await makeControl(drawer,partyHolder,{fieldname:"party",fieldtype:"Link",options:values.party_type,label:"维护收款往来方",reqd:true},values.party,value=>{values.party=String(value??"");update();},values.party_type==="Employee"?()=>({filters:{company:detail.company}}):undefined);
+   await makeControl(drawer,partyHolder,{fieldname:"party",fieldtype:"Link",options:values.party_type,label:t("维护收款往来方"),reqd:true},values.party,value=>{values.party=String(value??"");update();},values.party_type==="Employee"?()=>({filters:{company:detail.company}}):undefined);
    for (const [fieldname,fieldtype,options,label] of [["advance_account","Link","Account","预付款 / 往来科目"],["exchange_difference_account","Link","Account","汇兑损益科目"],["cost_center","Link","Cost Center","成本中心"],["project","Link","Project","项目"]]) {if(!current())return;await makeControl(drawer,root.$("<div></div>").appendTo(advanced.find(".dlp-operating-fields")),{fieldname,fieldtype,options,label},"",value=>{if(value) values[fieldname]=String(value);else delete values[fieldname];update();},options?()=>({filters:{company:detail.company}}):undefined);}
-   await makeControl(drawer,root.$("<div></div>").appendTo(form),{fieldname:"upload_proof",fieldtype:"Check",label:"保存后上传付款回单（可选）"},0,value=>{uploadProof=Boolean(value);});
+   await makeControl(drawer,root.$("<div></div>").appendTo(form),{fieldname:"upload_proof",fieldtype:"Check",label:t("保存后上传付款回单（可选）")},0,value=>{uploadProof=Boolean(value);});
    const ready=()=>{try {paymentPreview(detail.erp_payments.balance,values.amount);const account=accountMap.get(values.bank_account),needsRates=account?.currency!==source.currency||Boolean(values.advance_account);return !recorded&&current()&&opened&&canRegister(detail,canFinance())&&Boolean(account?.currency&&values.party&&values.payment_date)&&cents(values.bank_amount)>0n&&(!needsRates||(positiveRate(values.source_exchange_rate)&&positiveRate(values.bank_exchange_rate)));}catch(_){return false;}};
    const hasPayments=(source.payments||[]).length || (detail.erp_payments.payments||[]).length || cents(detail.erp_payments.balance.paid_amount)>0n;
    action(drawer,actions,hasPayments?"新增付款":"录入第一笔付款",()=>{opened=true;form.prop("hidden",false);update();},()=>!recorded&&canRegister(detail,canFinance()),true);

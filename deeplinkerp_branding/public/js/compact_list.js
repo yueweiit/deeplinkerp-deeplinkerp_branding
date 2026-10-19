@@ -1,4 +1,5 @@
 (function (root, factory) {
+ const translateText = (text, args = []) => String((globalThis.__ || (value => value))(text)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
  const businessDateFields = Object.fromEntries([
   ...['Material Request','Request for Quotation','Supplier Quotation','Purchase Order','Quotation','Sales Order'].map(doctype=>[doctype,'transaction_date']),
   ...['Purchase Receipt','Purchase Invoice','Payment Entry','Sales Invoice','Delivery Note','POS Invoice','POS Opening Entry','POS Closing Entry'].map(doctype=>[doctype,'posting_date']),
@@ -151,7 +152,7 @@
   if(setPage)owner.setPage=function(...args){const expanded=owner.expandedDetails.size;owner.cancelPendingRowDetails();const value=setPage.apply(this,args);if(expanded && active())render();return value;};
   owner.mountRowDetailControls=()=>{
    if(!owner.$rowDetailControls && owner.$toolbar){
-    owner.$rowDetailControls=owner.root.$('<span class="dlp-purchase-detail-actions"><button type="button" class="btn btn-default btn-sm" data-row-details="expand">展开</button><button type="button" class="btn btn-default btn-sm" data-row-details="collapse">收起</button></span>').appendTo(owner.$toolbar);
+    owner.$rowDetailControls=owner.root.$(`<span class="dlp-purchase-detail-actions"><button type="button" class="btn btn-default btn-sm" data-row-details="expand">${translateText("展开")}</button><button type="button" class="btn btn-default btn-sm" data-row-details="collapse">${translateText("收起")}</button></span>`).appendTo(owner.$toolbar);
     owner.$rowDetailControls.on('click.dlpRowDetails','[data-row-details="expand"]',()=>owner.expandAllRowDetails()).on('click.dlpRowDetails','[data-row-details="collapse"]',()=>owner.collapseAllRowDetails());
    }updateControls();
   };
@@ -235,6 +236,7 @@
  if(root.document && root.frappe)installBusinessDateSort(root);
 })(typeof globalThis !== "undefined" ? globalThis : this, function (config, shared) {
  "use strict";
+ const translateText = (text, args = []) => String((globalThis.__ || (value => value))(text)).replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
  const DOCTYPE = config.doctype;
 	const COLUMNS = config.columns;
 	const NUMBERS = new Set(config.numbers || []);
@@ -299,7 +301,7 @@
 		add(config.dateField || "transaction_date", "<=", quick.to_date);
 		for (const field of config.quickFields || []) add(field, "=", quick[field]);
 		const search = String(quick.search || "").trim();
-		if (search && or_filters.length) throw new Error("Quick search cannot be combined with existing OR filters.");
+		if (search && or_filters.length) throw new Error(translateText("Quick search cannot be combined with existing OR filters."));
 		if (search) {
 			for (const field of config.searchFields || ["name"]) {
 				if (allowed.has(field)) or_filters.push([DOCTYPE, field, "like", `%${search}%`]);
@@ -375,7 +377,7 @@
 			return formatted + (currency ? ` ${escapeHTML(currency)}` : "");
 		}
 		if (DATES.has(field) && formatters.date) return escapeHTML(formatters.date(value));
-		if (field === "advance_payment_status" && formatters.translate) return escapeHTML(formatters.translate(value));
+		if (["status", "advance_payment_status", "payment_state", "state"].includes(field) && formatters.translate) return escapeHTML(formatters.translate(value));
 		return escapeHTML(value);
 	}
 
@@ -501,10 +503,10 @@
 			...filterActions(),
 			async exportCurrent() {
 				if (providerActive(this)) return config.provider.exportCurrent(this);
-				if (!frappe.model.can_export?.(DOCTYPE)) throw new Error("当前用户没有导出权限。");
+				if (!frappe.model.can_export?.(DOCTYPE)) throw new Error(translateText("当前用户没有导出权限。"));
 				const args = buildRequests(list.get_args(), this.preferences.columns, allowed).export;
 				if (!root.DeepLinkERPPurchaseOrderExport?.exportExcel) await frappe.require("/assets/deeplinkerp_branding/js/purchase_order_export.js");
-				if (!root.DeepLinkERPPurchaseOrderExport?.exportExcel) throw new Error("Excel 导出组件加载失败，请刷新页面后重试。");
+				if (!root.DeepLinkERPPurchaseOrderExport?.exportExcel) throw new Error(translateText("Excel 导出组件加载失败，请刷新页面后重试。"));
 				await root.DeepLinkERPPurchaseOrderExport.exportExcel(root, args, config.exportOptions?.(args, this));
 			},
 			refresh() {
@@ -712,7 +714,7 @@
 			}
 			movePurchaseNativeFilterSection(controller);
 			config.afterRender?.(controller);controller.afterRowDetailsRender?.();
-			if (providerActive(controller) && !currentRows(controller).length) this.$result?.append('<div class="list-row-container dlp-provider-empty text-muted text-center" role="status">没有符合条件的采购记录</div>');
+			if (providerActive(controller) && !currentRows(controller).length) this.$result?.append(`<div class="list-row-container dlp-provider-empty text-muted text-center" role="status">${translateText("没有符合条件的采购记录")}</div>`);
 		};
 		list.toggle_result_area = function () {
 			if (!providerReadonly(controller)) originals.toggle_result_area.call(this);
@@ -876,7 +878,7 @@
 		for (const [kind,filters] of [['native',native],['native_or',controller.orFilterGroup?.get_filters() || []]]) for (const filter of filters) {
 			const key = `${kind === 'native_or' ? 'or:' : ''}${filterKey(filter)}`; if (seen.has(key)) continue; seen.add(key);
 			const [,field,operator,value] = filter;
-			result.push({kind,key,filter:filter.slice(0,4),field,label:`${kind === 'native_or' ? `${t('任一条件')} · ` : ''}${t(definitions.get(field)?.label || field)}`,operator,value:display(field,value)});
+			result.push({kind,key,filter:filter.slice(0,4),field,label:translateText("{0}{1}", [kind === 'native_or' ? `${t('任一条件')} · ` : '', t(definitions.get(field)?.label || field)]),operator,value:display(field,value)});
 		}
 		const providerLabels = {source:'来源', approval_status:'审批状态', pending_company:'公司待确认'};
 		for (const [field,value] of Object.entries(controller.quick)) {
@@ -996,8 +998,8 @@
 		if(config.purchaseChrome) {
 			controller.$moreFilters=$(`<details class="dlp-purchase-more-filters"><summary class="btn btn-default btn-sm">${escapeHTML(t('更多筛选'))}</summary><div class="dlp-purchase-advanced-filters"></div></details>`).appendTo(controller.$filters);
 			controller.$advancedFilters=controller.$moreFilters.find('.dlp-purchase-advanced-filters');
-			controller.$appliedFilters=$('<div class="dlp-purchase-applied-filters" aria-label="当前筛选"></div>').insertAfter(controller.$filters);
-			controller.$filterTags=$('<div class="dlp-applied-filter-tags" aria-label="已应用的筛选条件"></div>').appendTo(controller.$appliedFilters);
+			controller.$appliedFilters=$(`<div class="dlp-purchase-applied-filters" aria-label="${translateText('当前筛选')}"></div>`).insertAfter(controller.$filters);
+			controller.$filterTags=$(`<div class="dlp-applied-filter-tags" aria-label="${translateText('已应用的筛选条件')}"></div>`).appendTo(controller.$appliedFilters);
 			controller.$filterTags.on('click.dlpPOFilters', '[data-applied-filter]', event => {
 				const tag = controller.appliedFilterTags[Number(event.currentTarget.dataset.appliedFilter)];
 				controller.removeAppliedFilter(tag).catch(error => root.frappe.msgprint({message:escapeHTML(error.message || t('筛选更新失败，请重试。')),indicator:'red'}));
@@ -1238,7 +1240,7 @@
 					if (generation !== this.requestId || !active() || requestKey(config.provider.request(this).args) !== requestKey(request.args)) return;
 					this.providerPayload = response.message || {}; this.providerRows = this.providerPayload.rows || []; this.total = Number(this.providerPayload.total_count || 0);
 					render(); config.provider.onPayload?.(this); paintSummary(this);
-				} catch (error) { if (generation === this.requestId && active()) this.$summary.text('无权读取或加载失败，请核对系统提示。'); }
+				} catch (error) { if (generation === this.requestId && active()) this.$summary.text(translateText("无权读取或加载失败，请核对系统提示。")); }
 			},
 		};
 		function active() { return (frappe.get_route?.() || [])[0] === config.pageRoute; }

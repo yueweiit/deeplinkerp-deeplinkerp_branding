@@ -12,6 +12,13 @@ association/list sorting adds O(P log P); the complete pipeline is not linear.
 
 from __future__ import annotations
 
+try:
+	from frappe import _ as _i18n
+except ImportError:
+	def _i18n(message):
+		return message
+
+
 import json
 import re
 from collections import defaultdict
@@ -170,10 +177,10 @@ def _date(value: Any) -> str:
 
 def _integer(value: Any, *, minimum: int, maximum: int | None = None) -> int:
 	if isinstance(value, bool) or not re.fullmatch(r"\+?\d+", str(value).strip()):
-		raise ValueError("分页参数必须是整数。")
+		raise ValueError(_i18n("分页参数必须是整数。"))
 	parsed = int(value)
 	if parsed < minimum or (maximum is not None and parsed > maximum):
-		raise ValueError(f"分页参数必须在 {minimum} 到 {maximum or '无限制'} 之间。")
+		raise ValueError(_i18n("分页参数必须在 {0} 到 {1} 之间。").format(minimum, maximum or '无限制'))
 	return parsed
 
 
@@ -181,33 +188,33 @@ def _filters(value: Any) -> dict[str, Any]:
 	if isinstance(value, str):
 		value = json.loads(value or "{}")
 	if value is not None and not isinstance(value, dict):
-		raise ValueError("筛选条件必须是对象。")
+		raise ValueError(_i18n("筛选条件必须是对象。"))
 	parsed = dict(value or {})
 	parsed["scope"] = _text(parsed.get("scope")) or "all"
 	parsed["source"] = _text(parsed.get("source")).lower()
 	if parsed["scope"] not in {"all", "orders", "oa"}:
-		raise ValueError("不支持的采购查看范围。")
+		raise ValueError(_i18n("不支持的采购查看范围。"))
 	if parsed["source"] not in {"", "oa", "non_oa"}:
-		raise ValueError("不支持的采购来源。")
+		raise ValueError(_i18n("不支持的采购来源。"))
 	parsed["progress_phase"] = _text(parsed.get("progress_phase"))
 	if parsed["progress_phase"] not in {"", "supplier_unpaid", "internal_unsettled", "factory_pending"}:
-		raise ValueError("不支持的采购进度阶段。")
+		raise ValueError(_i18n("不支持的采购进度阶段。"))
 	if not isinstance(parsed.get("review_only", False), bool):
-		raise ValueError("待核对筛选必须是布尔值。")
+		raise ValueError(_i18n("待核对筛选必须是布尔值。"))
 	parsed["review_only"] = parsed.get("review_only", False)
 	for key in ("company", "beneficiary_company", "status", "advance_payment_status", "approval_status", "search"):
 		parsed[key] = _text(parsed.get(key))
 	parsed["search"] = parsed["search"].casefold()
 	for key in ("from_date", "to_date"):
 		if parsed.get(key) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", _text(parsed[key])):
-			raise ValueError("采购日期必须使用 YYYY-MM-DD。")
+			raise ValueError(_i18n("采购日期必须使用 YYYY-MM-DD。"))
 	return parsed
 
 
 def _sort_spec(order_by: str, native_fields=()) -> tuple[str, bool]:
 	parts = _text(order_by).split()
 	if len(parts) != 2 or parts[0] not in SORT_FIELDS | set(native_fields) or parts[1].lower() not in {"asc", "desc"}:
-		raise ValueError("不支持的采购排序。")
+		raise ValueError(_i18n("不支持的采购排序。"))
 	return parts[0], parts[1].lower() == "desc"
 
 
@@ -215,7 +222,7 @@ def _native_projection(permitted: set[str], order_by: str) -> dict[str, str]:
 	"""Carry the active workflow and chosen native scalar, never all custom fields."""
 	parts = _text(order_by).split()
 	if len(parts) != 2 or not re.fullmatch(r"[a-z_][a-z0-9_]*", parts[0]) or parts[1].lower() not in {"asc", "desc"}:
-		raise ValueError("不支持的采购排序。")
+		raise ValueError(_i18n("不支持的采购排序。"))
 	selected, fields = parts[0], {}
 	workflow_field = None
 	if get_workflow_name and get_workflow_name(PURCHASE_ORDER):
@@ -228,7 +235,7 @@ def _native_projection(permitted: set[str], order_by: str) -> dict[str, str]:
 			fields[workflow_field] = meta.get_field(workflow_field).fieldtype
 		if selected not in SORT_FIELDS or selected in {"creation", "modified"} or selected == workflow_field:
 			if selected not in allowed:
-				raise ValueError("不支持的采购排序。")
+				raise ValueError(_i18n("不支持的采购排序。"))
 			_require_fields(PURCHASE_ORDER, {selected})
 			df = meta.get_field(selected)
 			fields[selected] = df.fieldtype if df else "Datetime" if selected in {"creation", "modified"} else "Data"
@@ -248,10 +255,10 @@ def _native_purchase_filters(value) -> list[list]:
 		if isinstance(entry, (list, tuple)) and len(entry) == 4 and entry[0] == PURCHASE_ORDER_ITEM:
 			items = frappe.get_meta(PURCHASE_ORDER).get_field("items")
 			if not items or items.fieldtype != "Table" or items.options != PURCHASE_ORDER_ITEM:
-				frappe.throw("采购订单明细字段不可用。")
+				frappe.throw(_i18n("采购订单明细字段不可用。"))
 			field, operator, operand = entry[-3:]
 			if field not in _query_fields(PURCHASE_ORDER_ITEM):
-				frappe.throw("不支持此采购订单明细字段。")
+				frappe.throw(_i18n("不支持此采购订单明细字段。"))
 			_require_fields(PURCHASE_ORDER, {"items"})
 			_require_fields(PURCHASE_ORDER_ITEM, {field}, parenttype=PURCHASE_ORDER)
 			result.append(_normalize_filter(PURCHASE_ORDER_ITEM, field, str(operator).lower(), operand))
@@ -695,9 +702,9 @@ def _columns(columns: Any) -> list[str]:
 	if columns is None:
 		return list(DEFAULT_EXPORT_COLUMNS)
 	if not isinstance(columns, list) or not columns or any(not isinstance(key, str) or key not in EXPORT_LABELS.keys() | EXPORT_GROUPS.keys() for key in columns):
-		raise ValueError("不支持的采购导出列。")
+		raise ValueError(_i18n("不支持的采购导出列。"))
 	if len(set(columns)) != len(columns):
-		raise ValueError("采购导出列不能重复。")
+		raise ValueError(_i18n("采购导出列不能重复。"))
 	return list(dict.fromkeys(field for key in columns for field in EXPORT_GROUPS.get(key, (key,))))
 
 
@@ -843,7 +850,7 @@ def _require_export_permission(doctype: str, records) -> None:
 	if frappe.permissions.can_export(doctype):
 		return
 	if not frappe.permissions.can_export(doctype, is_owner=True):
-		frappe.throw(f"没有权限导出{doctype}。", frappe.PermissionError)
+		frappe.throw(_i18n("没有权限导出{0}。").format(doctype), frappe.PermissionError)
 	for record in records:
 		if "owner" in record:
 			owner = record.get("owner")
@@ -853,7 +860,7 @@ def _require_export_permission(doctype: str, records) -> None:
 			doc.check_permission("read")
 			owner = doc.get("owner")
 		if not owner or owner != frappe.session.user:
-			frappe.throw(f"没有权限导出{doctype}。", frappe.PermissionError)
+			frappe.throw(_i18n("没有权限导出{0}。").format(doctype), frappe.PermissionError)
 
 
 def _read_records(native_filters=None, native_or_filters=None, order_by="transaction_date desc") -> tuple[list, list, dict, list, set, bool, dict]:
@@ -862,7 +869,7 @@ def _read_records(native_filters=None, native_or_filters=None, order_by="transac
 	native_filters = json.loads(native_filters or "[]") if isinstance(native_filters, str) else native_filters
 	native_or_filters = json.loads(native_or_filters or "[]") if isinstance(native_or_filters, str) else native_or_filters
 	if any(value is not None and not isinstance(value, (list, dict)) for value in (native_filters, native_or_filters)):
-		frappe.throw("原生筛选条件必须为列表或对象。")
+		frappe.throw(_i18n("原生筛选条件必须为列表或对象。"))
 	capabilities, warnings, records, native_fields, permissions = {}, [], {}, {}, {}
 	oa_reverse_link_readable = False
 	for doctype, key, requested in ((PURCHASE_ORDER, "purchase_order", PO_QUERY_FIELDS), (OA_REQUEST, "oa_request", OA_QUERY_FIELDS)):
@@ -887,7 +894,7 @@ def _read_records(native_filters=None, native_or_filters=None, order_by="transac
 			"custom_purchase_source_json", "custom_cashier_payment_evidence"}]
 		fields = list(dict.fromkeys(fields))
 		if "name" not in fields:
-			frappe.throw(f"没有权限查看 {doctype} 单号。", frappe.PermissionError)
+			frappe.throw(_i18n("没有权限查看 {0} 单号。").format(doctype), frappe.PermissionError)
 		query = {}
 		if doctype == PURCHASE_ORDER and (native_filters or native_or_filters):
 			query = {"filters": _native_purchase_filters(native_filters), "or_filters": _native_purchase_filters(native_or_filters)}
@@ -944,7 +951,7 @@ def _read_records(native_filters=None, native_or_filters=None, order_by="transac
 			if row["name"] in roles:
 				row["_role_context"] = roles[row["name"]]
 	if not any(capabilities.values()):
-		frappe.throw("没有权限查看采购订单或 OA 采购申请。", frappe.PermissionError)
+		frappe.throw(_i18n("没有权限查看采购订单或 OA 采购申请。"), frappe.PermissionError)
 	codes = {_text(row.get("currency")).upper() for row in records[OA_REQUEST] if _text(row.get("currency"))}
 	currency_codes = {code for code in codes if code not in RECOGNIZED_CURRENCIES and frappe.db.exists("Currency", code)}
 	return records[PURCHASE_ORDER], records[OA_REQUEST], capabilities, warnings, currency_codes, oa_reverse_link_readable, native_fields

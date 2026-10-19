@@ -6,6 +6,9 @@ acceptance scope, protected progress and the final read-only business proof.
 
 from __future__ import annotations
 
+from frappe import _ as _i18n
+
+
 import json
 import uuid
 from contextlib import contextmanager
@@ -86,7 +89,7 @@ def guard_audit(doc, proposed=None):
 	):
 		current = operation.current()
 		if doc.name not in _mutation.get() and not (current and current["operation_id"] == doc.name):
-			frappe.throw("采购操作审计不能由普通操作创建或改写", frappe.PermissionError)
+			frappe.throw(_i18n("采购操作审计不能由普通操作创建或改写"), frappe.PermissionError)
 
 
 def _load(name, *, lock=True):

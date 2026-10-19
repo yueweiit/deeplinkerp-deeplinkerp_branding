@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from frappe import _
+
+
 import hashlib
 import json
 import re
@@ -13,7 +16,7 @@ from deeplinkerp_branding.services import purchase_payment_service as service
 
 def _key(session_id):
 	if not re.fullmatch(r"[a-zA-Z0-9-]{16,80}", str(session_id or "")):
-		frappe.throw("附件会话失效，请重新选择文件")
+		frappe.throw(_("附件会话失效，请重新选择文件"))
 	return (
 		"dlp-payment-files:" + hashlib.sha256((frappe.session.user + ":" + session_id).encode()).hexdigest()
 	)
@@ -25,20 +28,20 @@ def _context(doctype, name):
 		service._read("Company", doc.company)
 		doc.check_permission("write")
 		if doc.docstatus != 0:
-			frappe.throw("付款单已改变，请刷新")
+			frappe.throw(_("付款单已改变，请刷新"))
 	else:
 		doc = service._source(doctype, name)
 		if doc.docstatus != 1 or doc.get("is_return"):
-			frappe.throw("来源必须为已提交且非退货的采购单据")
+			frappe.throw(_("来源必须为已提交且非退货的采购单据"))
 		if not frappe.has_permission("Payment Entry", "create"):
-			frappe.throw("没有创建付款单权限", frappe.PermissionError)
+			frappe.throw(_("没有创建付款单权限"), frappe.PermissionError)
 	return doc
 
 
 def _intent(session_id):
 	value = frappe.cache().get_value(_key(session_id))
 	if not value or value.get("cancelled"):
-		frappe.throw("附件会话失效，请重新选择文件")
+		frappe.throw(_("附件会话失效，请重新选择文件"))
 	return value
 
 
@@ -51,11 +54,11 @@ def _ids(value):
 	try:
 		value = json.loads(value) if isinstance(value, str) else value
 	except ValueError:
-		frappe.throw("附件列表无效")
+		frappe.throw(_("附件列表无效"))
 	if value is None:
 		return []
 	if not isinstance(value, list) or not all(isinstance(name, str) and name for name in value):
-		frappe.throw("附件列表无效")
+		frappe.throw(_("附件列表无效"))
 	return list(dict.fromkeys(value))
 
 
@@ -71,7 +74,7 @@ def _temporary(name):
 		or doc.attached_to_name
 		or doc.attached_to_field
 	):
-		frappe.throw("附件不可用于本次付款", frappe.PermissionError)
+		frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 	return doc
 
 
@@ -84,7 +87,7 @@ def begin_upload(doctype, name, session_id):
 		if previous and (
 			previous["context"] != [doctype, name] or previous.get("cancelled") or previous.get("bound")
 		):
-			frappe.throw("附件会话失效，请重新选择文件")
+			frappe.throw(_("附件会话失效，请重新选择文件"))
 		_put(session_id, previous or {"context": [doctype, name], "files": [], "uploads": {}})
 	return {"session_id": session_id}
 
@@ -97,7 +100,7 @@ def upload_file():
 		intent = _intent(session_id)
 		_context(*intent["context"])
 		if intent.get("bound") or not frappe.local.uploaded_file or not frappe.local.uploaded_filename:
-			frappe.throw("附件上传未完成")
+			frappe.throw(_("附件上传未完成"))
 		digest = hashlib.sha256(
 			str(frappe.local.uploaded_filename).encode() + b"\0" + frappe.local.uploaded_file
 		).hexdigest()
@@ -112,7 +115,7 @@ def upload_file():
 			}
 		).save()
 		if doc.owner != frappe.session.user:
-			frappe.throw("附件不可用于本次付款", frappe.PermissionError)
+			frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 		intent["files"] = list(dict.fromkeys([*intent["files"], doc.name]))
 		intent.setdefault("uploads", {})[digest] = doc.name
 		_put(session_id, intent)
@@ -142,9 +145,9 @@ def bind(doc, session_id=None, attachments=None):
 		if intent.get("bound"):
 			if intent["bound"] == doc.name and names == intent.get("used"):
 				return
-			frappe.throw("附件已用于其他付款", frappe.PermissionError)
+			frappe.throw(_("附件已用于其他付款"), frappe.PermissionError)
 		if source.company != doc.company:
-			frappe.throw("附件不可用于本次付款", frappe.PermissionError)
+			frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 		if source.doctype == "Payment Entry":
 			valid_source = source.name == doc.name
 		else:
@@ -154,7 +157,7 @@ def bind(doc, session_id=None, attachments=None):
 				for ref in doc.references
 			)
 		if not valid_source or not set(names) <= set(intent["files"]):
-			frappe.throw("附件不可用于本次付款", frappe.PermissionError)
+			frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 		temporary = [_temporary(name) for name in names]
 		for file in temporary:
 			# Native copy retains the blob and its validations without decoding
@@ -174,7 +177,7 @@ def discard(session_id, attachments=None, cancel=0):
 			return []  # Never remove committed payment attachments or their source Files.
 		names = list(intent["files"]) if cancel in (True, 1, "1") else _ids(attachments)
 		if not set(names) <= set(intent["files"]):
-			frappe.throw("附件不可用于本次付款", frappe.PermissionError)
+			frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 		docs = [_temporary(name) for name in names]
 		for doc in docs:
 			doc.check_permission("delete")

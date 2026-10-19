@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from frappe import _
+
+
 import copy
 import json
 from contextlib import contextmanager
@@ -44,7 +47,7 @@ def managed_rule_write():
 
 def validate_rule_write(doc):
 	if not _managed.get():
-		frappe.throw("采购映射规则请通过来源预览确认入口保存", frappe.PermissionError)
+		frappe.throw(_("采购映射规则请通过来源预览确认入口保存"), frappe.PermissionError)
 
 
 def read_item(code):
@@ -56,12 +59,12 @@ def read_item(code):
 def validate_existing_item(spec, item):
 	code = spec["item_code"]
 	if item.get("disabled") or not item.get("is_purchase_item"):
-		raise ValueError(f"物料 {code} 未启用采购")
+		raise ValueError(_("物料 {0} 未启用采购").format(code))
 	if int(bool(item.get("is_stock_item"))) != int(bool(spec.get("is_stock_item"))):
-		raise ValueError(f"物料 {code} 的库存属性与采购用途冲突")
+		raise ValueError(_("物料 {0} 的库存属性与采购用途冲突").format(code))
 	owner = item.get("custom_overseas_business_entity")
 	if owner and owner != spec.get("company"):
-		raise ValueError(f"物料 {code} 的业务归属与采购公司冲突")
+		raise ValueError(_("物料 {0} 的业务归属与采购公司冲突").format(code))
 	if item.get("stock_uom") != spec.get("uom"):
 		conversions = [
 			row.get("conversion_factor")
@@ -69,7 +72,7 @@ def validate_existing_item(spec, item):
 			if row.get("uom") == spec.get("uom")
 		]
 		if len(conversions) != 1 or conversions[0] is None or Decimal(str(conversions[0])) <= 0:
-			raise ValueError(f"物料 {code} 的采购单位缺少明确的正数换算")
+			raise ValueError(_("物料 {0} 的采购单位缺少明确的正数换算").format(code))
 
 
 def item_specs(plan):
@@ -78,10 +81,10 @@ def item_specs(plan):
 		spec = {key: row.get(key) for key in ("item_code", "item_name", "item_group", "uom", "is_stock_item")}
 		spec["company"] = plan.get("company")
 		if not spec["item_code"]:
-			raise ValueError("原单缺少可靠物料编码，不能自动创建物料")
+			raise ValueError(_("原单缺少可靠物料编码，不能自动创建物料"))
 		previous = result.get(spec["item_code"])
 		if previous and previous != spec:
-			raise ValueError(f"同一物料 {spec['item_code']} 的名称、单位或属性冲突")
+			raise ValueError(_("同一物料 {0} 的名称、单位或属性冲突").format(spec['item_code']))
 		result[spec["item_code"]] = spec
 	return list(result.values())
 
@@ -91,16 +94,16 @@ def check_item_creation(spec):
 	if code in {"/", "-", "--", "n/a", "s/c", "sincodigo", "sincódigo", "无", "暂无", "未填写"} or (
 		code and not code.strip("0")
 	):
-		raise ValueError(f"原单物料编码 {spec['item_code']} 是占位值，缺少可靠物料编码，不能自动创建物料")
+		raise ValueError(_("原单物料编码 {0} 是占位值，缺少可靠物料编码，不能自动创建物料").format(spec['item_code']))
 	service = _service()
 	if not all(spec.get(key) for key in ("item_code", "item_name", "item_group", "uom", "company")):
-		raise ValueError(f"新物料 {spec.get('item_code') or '—'} 的名称、物料组、单位或公司待确认")
+		raise ValueError(_("新物料 {0} 的名称、物料组、单位或公司待确认").format(spec.get('item_code') or '—'))
 	group = service._native("Item Group", spec["item_group"])
 	service._native("UOM", spec["uom"])
 	if group.get("is_group"):
-		raise ValueError("自动新增物料必须选择末级物料组")
+		raise ValueError(_("自动新增物料必须选择末级物料组"))
 	if not frappe.has_permission("Item", "create"):
-		frappe.throw("没有权限新建采购物料", frappe.PermissionError)
+		frappe.throw(_("没有权限新建采购物料"), frappe.PermissionError)
 	service._write_fields(
 		"Item", {"item_code", "item_name", "item_group", "stock_uom", "is_stock_item", "is_purchase_item"}
 	)
@@ -163,17 +166,17 @@ def candidate_rule(source, values):
 	from . import purchase_source_adaptation as adaptation
 
 	if not isinstance(values, dict) or set(values) - set(CONFIG_FIELDS):
-		raise ValueError("采购映射规则字段无效")
+		raise ValueError(_("采购映射规则字段无效"))
 	scope = adaptation.scope(source)
 	key = adaptation.scope_key(scope)
 	result = {field: str(values.get(field) or "").strip() for field in CONFIG_FIELDS}
 	result["service_item_code"] = result["service_item_code"] or "DLP-SVC-PROCESSING"
 	result["service_item_name"] = result["service_item_name"] or "加工服务"
 	if any(not result[field] for field in ("company", "supplier", "item_group", "purchase_uom")):
-		raise ValueError("请明确采购公司、统一结算供应商、物料组和计价单位")
+		raise ValueError(_("请明确采购公司、统一结算供应商、物料组和计价单位"))
 	for field in ("service_item_code", "service_item_name"):
 		if len(result[field]) > 140:
-			raise ValueError("服务物料编码或名称过长")
+			raise ValueError(_("服务物料编码或名称过长"))
 	result.update(scope, scope_key=key, enabled=1)
 	return result
 
@@ -192,7 +195,7 @@ def canonical_roles(source):
 		if candidate["status"] == "unique":
 			row[key] = candidate["value"]
 		elif candidate["status"] == "unreadable":
-			frappe.throw("没有权限查看采购公司或供应商", frappe.PermissionError)
+			frappe.throw(_("没有权限查看采购公司或供应商"), frappe.PermissionError)
 		elif candidate["status"] == "ambiguous":
 			row[key + "_status"] = "ambiguous"
 	return result
@@ -209,7 +212,7 @@ def preview(source, evidence, *, doc=None, candidate=None):
 	confirmed = service._confirmed_company(doc) if doc else None
 	if confirmed:
 		if adapted_source.get("purchasing_company") and adapted_source["purchasing_company"] != confirmed:
-			frappe.throw("已确认采购公司与原单采购公司冲突")
+			frappe.throw(_("已确认采购公司与原单采购公司冲突"))
 		adapted_source["purchasing_company"] = confirmed
 	parse_error = None
 	try:
@@ -319,7 +322,7 @@ def confirm_rule(source, evidence, values, expected_fingerprint, *, doc=None):
 	with acquire(("dlp-source-rule:" + candidate["scope_key"][:40],)):
 		plan = preview(source, evidence, doc=doc, candidate=values)
 		if not expected_fingerprint or plan["preview_fingerprint"] != expected_fingerprint:
-			frappe.throw("原单、映射或物料状态已变化，请重新预览")
+			frappe.throw(_("原单、映射或物料状态已变化，请重新预览"))
 		if plan["blocking_reasons"]:
 			frappe.throw("；".join(plan["blocking_reasons"]))
 		key = candidate["scope_key"]

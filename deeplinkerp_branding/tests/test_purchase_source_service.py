@@ -715,6 +715,9 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 		from deeplinkerp_branding.services import operating_expenses
 
 		with (
+			# This test mocks Redis locking; translation resources are covered
+			# separately and must not be read from that lock-only cache mock.
+			patch.object(service, "_i18n", side_effect=lambda text: text),
 			patch.object(frappe, "cache", Mock(lock=Mock(return_value=MagicMock()))),
 			patch.object(frappe, "local", SimpleNamespace(site="synthetic-source-test")),
 			patch.object(frappe, "get_meta", return_value=SimpleNamespace(has_field=lambda _: True)),
