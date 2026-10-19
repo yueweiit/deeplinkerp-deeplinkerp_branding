@@ -15,6 +15,7 @@ except ImportError:
 import base64
 import copy
 import json
+import logging
 import re
 from collections import defaultdict
 from urllib.parse import urlencode
@@ -395,9 +396,32 @@ def read_page(connection_factory, limit, until, cursor=None, identity=None, *, p
         + "ORDER BY page.corp_id,page.process_instance_id"
     )
     params.append(limit + 1)
-    with connection_factory() as connection:
-        with connection.cursor() as query:
-            query.execute(sql, tuple(params)); rows = [dict(r) for r in query.fetchall()]
+    parameters = tuple(params)
+    for attempt in range(2):
+        try:
+            with connection_factory() as connection:
+                with connection.cursor() as query:
+                    query.execute(sql, parameters)
+                    rows = [dict(r) for r in query.fetchall()]
+            break
+        except Exception as error:
+            retry_class = None
+            try:
+                from psycopg.errors import ConnectionTimeout, QueryCanceled
+            except ImportError:
+                pass
+            else:
+                if isinstance(error, ConnectionTimeout):
+                    retry_class = "ConnectionTimeout"
+                elif (isinstance(error, QueryCanceled) and error.sqlstate == "57014"
+                      and error.diag.message_primary == "canceling statement due to statement timeout"):
+                    retry_class = "QueryCanceled"
+            if attempt or retry_class is None:
+                raise
+            logging.getLogger(__name__).warning(
+                "oa_read_page_retry exception_class=%s sqlstate=%s attempt=%d",
+                retry_class, "57014" if retry_class == "QueryCanceled" else None, attempt + 1,
+            )
     more = len(rows) > limit
     selected = rows[:limit]
     next_cursor = encode_cursor(until, str(selected[-1]["corp_id"]), str(selected[-1]["process_instance_id"])) if more else None

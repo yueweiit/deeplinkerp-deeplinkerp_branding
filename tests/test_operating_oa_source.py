@@ -4,7 +4,7 @@ import importlib
 import importlib.util
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from unittest.mock import Mock, call, patch
@@ -86,7 +86,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         return changed, query.queries, upsert, maps
 
     def test_reconciliation_projects_scope_fields_and_preserves_cached_audit_evidence(self):
-        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=timezone.utc)) for _ in range(6)]
+        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(6)]
         for index, row in enumerate(rows):
             row.update(corp_id="corp'one", process_instance_id="instance-'" + str(index))
         rows[-1].update(corp_id="other-corp", process_instance_id=rows[0]["process_instance_id"])
@@ -96,7 +96,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         originals[1]["form_component_values"][1]["value"] = "墨西哥"
         originals[1].update(status="TERMINATED", result=None)
         originals[3]["form_component_values"][1]["value"] = "墨西哥"
-        originals[3]["updated_at"] = datetime(2026, 10, 7, tzinfo=timezone.utc)
+        originals[3]["updated_at"] = datetime(2026, 10, 7, tzinfo=UTC)
         originals[4]["form_component_values"].append(copy.deepcopy(originals[4]["form_component_values"][0]))
         originals[-1]["form_component_values"][1]["value"] = "墨西哥"
         originals.pop(2)  # Missing source remains visible as withdrawn, with its original evidence.
@@ -118,7 +118,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
             self.assertEqual(set(params[0]), {"corp'one", "other-corp"})
 
     def test_reconciliation_limits_201_identities_to_three_queries_on_one_connection(self):
-        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=timezone.utc)) for _ in range(201)]
+        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(201)]
         for index, row in enumerate(rows):
             row["process_instance_id"] = "instance-" + str(index)
         changed, queries, upsert, _ = self.reconcile(self.cached(rows), rows)
