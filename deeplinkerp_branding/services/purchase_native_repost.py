@@ -33,7 +33,8 @@ PINS = {
 	"riv": "c4449547d07c76fd316a5b2185d4c9b60bd42e8747767fe28aea28cbc2ceafe1",
 	"stock": "8e6f465d14b40647895137572f433ba214bc5dcb2df8471f77ba7f8da0ae99ee",
 	"accounts": "bcb051040ed4e6d213aeafa78cf69eef3034b9a7157499a3047297cbab6cb4b8",
-	"gl": "c2228231802b3d979043bc91f0819b7d9e884c72c32051659456cbbe32f91b84",
+	# ERPNext b0d56f2f48: company-scoped reversal freeze check; adapter targets unchanged.
+	"gl": "e66d7550cac63afab319823c53cbec8f9fc40d9d55097bf35489902a7ebbed52",
 }
 
 

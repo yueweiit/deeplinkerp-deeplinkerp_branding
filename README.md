@@ -21,6 +21,25 @@ bench get-app --branch main deeplinkerp_branding https://github.com/yueweiit/dee
 bench install-app deeplinkerp_branding
 ```
 
+### 采购冲销适配兼容性
+
+`services/purchase_native_repost.py` 的 `PINS` 校验原生库存重算和总账源码，随后校验实际函数身份。
+`purchase_repost_boundary.before_execution` 在 HTTP 请求及后台任务入口安装适配器，版本不匹配也可能使
+`/api/method/ping` 返回 417 和“采购冲销证据尚未完成”，不能仅凭该提示判断存在未完成冲销单据。
+
+当前总账指纹对应 ERPNext 提交 `b0d56f2f48`：仅为 `make_reverse_gl_entries` 的冻结检查补齐凭证公司，
+并明确传递 `adv_adj`，适配器包装的函数及接口未改变。发布时必须同时核对 ERPNext 与本 App 的实际源提交；
+不可删除校验、直接采用未经审核的哈希或改写冲销记录来恢复访问。
+
+开发 bench 中可运行不连接站点数据库的兼容性回归：
+
+```bash
+env/bin/python -m unittest deeplinkerp_branding.tests.test_purchase_native_repost_compatibility -v
+```
+
+该回归使用真实已安装原生模块，检查重复安装、捕获函数身份及未知源码/运行时函数变更拒绝；
+不代替数据库、真实出库/冲销或生产 HTTP 验收。
+
 ### Contributing
 
 This app uses `pre-commit` for code formatting and linting. Please [install pre-commit](https://pre-commit.com/#installation) and enable it for this repository:
