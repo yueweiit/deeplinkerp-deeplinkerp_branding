@@ -1840,3 +1840,13 @@ ai 助手,ai assistant
 （保存后由原生规则重算）,(Recalculated by native rules after saving)
 ；另有 {0} 张不可入库,;Other {0} sheets cannot be stored in the database
 定义此日期之后物料不能再用于交易或生产,Defines the date after which the item can no longer be used in transactions or manufacturing
+在第 {0} 行下方新增一行,Insert a row below row {0}
+末尾新增,Add at end
+字段仍在校验，请稍后再新增行,Field validation is still running. Please try adding a row again shortly.
+已清除本表筛选，以显示新增行,Table filters were cleared to show the new row.
+正在新增一行…,Adding a row…
+新增行未完成,Row insertion did not complete
+请检查当前输入后重试,Check the current input and try again.
+新增行已撤回，请核对当前单据后重试,The new row was removed. Review this document before trying again.
+新行仍在当前单据中，请检查后再操作,The new row remains in this document. Review it before taking further action.
+新行可能仍在当前单据中，请检查后再操作,The new row may remain in this document. Review it before taking further action.

@@ -1,0 +1,50 @@
+.dlp-grid-insert-target {
+	position: relative;
+}
+
+.dlp-grid-insert-below {
+	position: absolute;
+	left: 44px;
+	bottom: -9px;
+	z-index: 5;
+	width: 28px;
+	height: 18px;
+	padding: 0;
+	border: 1px solid var(--primary);
+	border-radius: 9px;
+	background: var(--fg-color, white);
+	color: var(--primary);
+	font-size: 16px;
+	line-height: 14px;
+	opacity: 0;
+	pointer-events: none;
+	cursor: pointer;
+}
+
+.dlp-grid-insert-target:hover > .dlp-grid-insert-below,
+.dlp-grid-insert-target:focus-within > .dlp-grid-insert-below,
+.dlp-grid-insert-below:focus-visible {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+/* The native table clips overflow at its bottom edge. */
+.grid-body .rows > .grid-row:last-child .dlp-grid-insert-below {
+	bottom: 1px;
+}
+
+.dlp-grid-insert-below:focus-visible {
+	outline: 2px solid var(--primary);
+	outline-offset: 2px;
+}
+
+@media (hover: none) {
+	.dlp-grid-insert-below {
+		opacity: 1;
+		pointer-events: auto;
+	}
+}
+
+@media print {
+	.dlp-grid-insert-below { display: none; }
+}

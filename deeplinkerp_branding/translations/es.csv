@@ -2113,3 +2113,13 @@ updated at,actualizado en
 默认逐单入库，可选择合并。,El valor predeterminado es almacenar los pedidos uno por uno y puede optar por fusionarlos.
 ；另有 {0} 张不可入库,;No se pueden almacenar otras hojas {0} en la base de datos
 定义此日期之后物料不能再用于交易或生产,Define la fecha a partir de la cual el artículo ya no puede utilizarse en transacciones ni en fabricación
+在第 {0} 行下方新增一行,Insertar una fila debajo de la fila {0}
+末尾新增,Añadir al final
+字段仍在校验，请稍后再新增行,La validación del campo sigue en curso. Intente añadir la fila de nuevo en un momento.
+已清除本表筛选，以显示新增行,Se han quitado los filtros de la tabla para mostrar la nueva fila.
+正在新增一行…,Añadiendo una fila…
+新增行未完成,No se completó la inserción de la fila
+请检查当前输入后重试,Revise los datos actuales e inténtelo de nuevo.
+新增行已撤回，请核对当前单据后重试,Se ha eliminado la nueva fila. Revise este documento antes de volver a intentarlo.
+新行仍在当前单据中，请检查后再操作,La nueva fila permanece en este documento. Revísela antes de continuar.
+新行可能仍在当前单据中，请检查后再操作,Es posible que la nueva fila permanezca en este documento. Revísela antes de continuar.
