@@ -177,8 +177,10 @@
 		controller.salesReleaseKey = null;
 		controller.salesReleaseVersion = (controller.salesReleaseVersion || 0) + 1;
 		controller.salesReleaseNames = [];
+		controller.salesRejectName = null;
 		controller.$salesViewbar?.find(".dlp-sales-selected").text(label);
 		controller.$salesViewbar?.find(".dlp-sales-release").text(t("允许生产（{0}单）", [0])).prop("disabled", true);
+		controller.$salesViewbar?.find(".dlp-sales-reject").prop("disabled", true);
 	}
 	function releaseSelectionCurrent(controller, version, key = controller.salesReleaseKey) {
 		return salesListActive(controller) && controller.salesReleaseVersion === version && key === controller.salesReleaseKey && key === releaseSelectionKey(controller);
@@ -194,11 +196,14 @@
 		controller.salesReleaseKey = key;
 		const version = controller.salesReleaseVersion = (controller.salesReleaseVersion || 0) + 1;
 		controller.salesReleaseNames = [];
+		controller.salesRejectName = null;
 		const bar = controller.$salesViewbar;
-		const paint = (label, eligible = []) => {
+		const paint = (label, eligible = [], rejectName = null) => {
 			controller.salesReleaseNames = eligible;
+			controller.salesRejectName = rejectName;
 			bar.find(".dlp-sales-selected").text(label);
-			bar.find(".dlp-sales-release").text(t("允许生产（{0}单）", [eligible.length])).prop("disabled", !eligible.length);
+			bar.find(".dlp-sales-release").text(t("允许生产（{0}单）", [eligible.length])).prop("disabled", !eligible.length || Boolean(controller.salesRejectBusy));
+			bar.find(".dlp-sales-reject").prop("disabled", !rejectName || Boolean(controller.salesRejectBusy));
 		};
 		paint(!names.length ? t("未选择订单") : names.length > 100 ? t("已选择：{0}；每次最多核验 100 单", [names.length]) : t("已选择：{0}；正在核验…", [names.length]));
 		if (!names.length || names.length > 100) return Promise.resolve();
@@ -207,21 +212,50 @@
 			try {
 				const response = await controller.root.frappe.call({ method: "crm_integration.crm_integration.finance_release.get_finance_release_review", args: { sales_orders: names } });
 				if (!current()) return;
-				const permitted = new Set((response.message?.orders || []).filter(row => row.can_release === true).map(row => row.name));
+				const rows = response.message?.orders || [];
+				const permitted = new Set(rows.filter(row => row.can_release === true).map(row => row.name));
 				const eligible = names.filter(name => permitted.has(name));
-				paint(t("已选择：{0} · 可放行：{1} · 不可放行：{2}", [names.length, eligible.length, names.length - eligible.length]), eligible);
+				const single = names.length === 1 ? rows.find(row => row.name === names[0]) : null;
+				const rejectName = single?.can_reject === true ? names[0] : null;
+				const summary = t("已选择：{0} · 可放行：{1} · 不可放行：{2}", [names.length, eligible.length, names.length - eligible.length]);
+				const rejectionReason = single && !rejectName && (single.reject_reason || single.reason);
+				paint(rejectionReason ? `${summary} · ${t("不可驳回：{0}", [rejectionReason])}` : summary, eligible, rejectName);
 			} catch (_) {
-				if (current()) paint(t("放行资格核验失败，请重新选择或刷新后重试。"));
+				if (current()) paint(t("财务操作资格核验失败，请重新选择或刷新后重试。"));
 			}
 		})();
 		controller.salesReleasePromise = promise;
 		return promise;
 	}
+	async function rejectSelectedOrder(controller) {
+		if (controller.salesRejectBusy) return;
+		const pending = updateReleaseSelection(controller, true), version = controller.salesReleaseVersion;
+		await pending;
+		if (!releaseSelectionCurrent(controller, version)) return;
+		const name = controller.salesRejectName;
+		if (!name) return;
+		root.frappe.confirm(`${esc(t("确认驳回此销售订单？"))} ${esc(name)}`, async () => {
+			if (!releaseSelectionCurrent(controller, version) || controller.salesRejectName !== name || controller.salesRejectBusy) return;
+			controller.salesRejectBusy = true;
+			controller.$salesViewbar.find(".dlp-sales-reject").prop("disabled", true);
+			try {
+				const response = await root.frappe.call({ method: "crm_integration.crm_integration.sales_order.reject_sales_order", args: { sales_order_name: name }, freeze: true, freeze_message: t("正在驳回销售订单...") });
+				if (response.message?.status !== "success") throw new Error("Reject was not confirmed");
+				controller.list.clear_checked_items?.();
+			} catch (_) {
+				root.frappe.msgprint(t("驳回未完成，请核对 ERP 订单和 CRM 状态后重试。"));
+			} finally {
+				controller.salesRejectBusy = false;
+				invalidateReleaseSelection(controller);
+				controller.refresh();
+			}
+		});
+	}
 	function mountControls(controller) {
 		controller.salesView = "finance"; controller.salesExpanded = new Map();
 		if (!root.$ || !controller.$toolbar) return;
 		dismissAutomaticOnboarding(controller);
-		const bar = root.$(`<div class="dlp-sales-viewbar"><div class="dlp-sales-tabs">${[["all", "全部订单"], ["mine", "我的订单"], ["finance", "待财务审核"]].map(([value, label]) => `<button class="btn btn-default btn-sm" type="button" data-sales-view="${value}" aria-pressed="${value === "finance"}">${esc(t(label))}</button>`).join("")}</div><div class="dlp-sales-release-action"><span class="dlp-sales-selected" role="status">${esc(t("未选择订单"))}</span><button type="button" class="btn btn-primary dlp-sales-release" disabled>${esc(t("允许生产（{0}单）", [0]))}</button></div></div>`).prependTo(controller.$toolbar);
+		const bar = root.$(`<div class="dlp-sales-viewbar"><div class="dlp-sales-tabs">${[["all", "全部订单"], ["mine", "我的订单"], ["finance", "待财务审核"]].map(([value, label]) => `<button class="btn btn-default btn-sm" type="button" data-sales-view="${value}" aria-pressed="${value === "finance"}">${esc(t(label))}</button>`).join("")}</div><div class="dlp-sales-release-action"><span class="dlp-sales-selected" role="status">${esc(t("未选择订单"))}</span><button type="button" class="btn btn-primary dlp-sales-release" disabled>${esc(t("允许生产（{0}单）", [0]))}</button><button type="button" class="btn btn-default dlp-sales-reject" disabled>${esc(t("财务驳回"))}</button></div></div>`).prependTo(controller.$toolbar);
 		controller.$salesViewbar = bar;
 		controller.$salesNotice = root.$(`<p class="dlp-sales-notice text-muted">${esc(t("收款记录未录入不代表未收款；定金由财务按线下约定判断。"))}</p>`).insertAfter(controller.$toolbar);
 		const updateSelection = () => updateReleaseSelection(controller);
@@ -236,6 +270,7 @@
 			if (!releaseSelectionCurrent(controller, version)) return;
 			root.CRMFinanceRelease.open(names, () => { controller.list.clear_checked_items?.(); updateSelection(); controller.refresh(); });
 		});
+		bar.find(".dlp-sales-reject").on("click", () => rejectSelectedOrder(controller));
 		bar.find("[data-sales-view]").on("click", async event => {
 			switchView(controller, event.currentTarget.dataset.salesView);
 			if (controller.salesView === "finance") { controller.resetting = true; controller.quick.financial_status = ""; await controller.controls.financial_status?.set_value(""); controller.resetting = false; }
@@ -372,5 +407,5 @@
 		rowExtra: (controller, doc) => controller.salesExpanded?.has(doc.name) ? `<section class="dlp-sales-expanded"><strong>${esc(t("订单产品明细"))}</strong>${itemTable(controller.salesExpanded.get(doc.name))}</section>` : "",
 		afterRender: controller => { controller.updateSalesSelection?.(); mountScrollTop(controller, salesListActive(controller)); mountHorizontalScroll(controller, salesListActive(controller)); },
 	});
-	return { ...grid, COLUMNS, presets, itemTable, detailsHTML, receiptsHTML, loadDetailReceipts, transformQuery, financialLabel, statusLabels, orderStatusLabels, updateReleaseSelection, invalidateExpandedDetails, dismissAutomaticOnboarding };
+	return { ...grid, COLUMNS, presets, itemTable, detailsHTML, receiptsHTML, loadDetailReceipts, transformQuery, financialLabel, statusLabels, orderStatusLabels, updateReleaseSelection, rejectSelectedOrder, invalidateExpandedDetails, dismissAutomaticOnboarding };
 });

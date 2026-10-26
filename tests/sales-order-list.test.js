@@ -168,6 +168,7 @@ test('sales scope and release controls mount inside the existing personal-column
  f.env.$=html=>new Surface(html);f.controller.$toolbar=new Surface('existing toolbar');
  const columns=f.controller.preferences.columns.slice();f.config.mountControls(f.controller);
  assert.equal(f.controller.$salesViewbar.parent,f.controller.$toolbar);
+ assert.match(f.controller.$salesViewbar.html,/class="btn btn-default dlp-sales-reject" disabled>财务驳回<\/button>/);
  assert.equal(f.controller.$salesNotice.after,f.controller.$toolbar);
  assert.equal(nodes.find(node=>node.html.includes('dlp-sales-preset')).parent,f.controller.$toolbar);
  assert.match(nodes.find(node=>node.html.includes('dlp-sales-preset')).html,/<option value="finance">收款与预付<\/option>/);
@@ -244,7 +245,7 @@ test('real column changes load missing financial detail once and discard stale e
 test('missing source permission keeps selected release actions disabled without sending review requests',async()=>{
  const f=releaseSelectionFixture();f.controller.allowed=new Set(['name']);f.controller.list.data=[{name:'denied'}];
  await grid.updateReleaseSelection(f.controller);
- assert.equal(f.reads.length,0);assert.equal(f.button().disabled,true);assert.match(f.summary().label,/无权/);
+ assert.equal(f.reads.length,0);assert.equal(f.button().disabled,true);assert.equal(f.rejectButton().disabled,true);assert.match(f.summary().label,/无权/);
 });
 
 test('Sales export transforms match the selected order and translate only financial process cells',()=>{
@@ -269,7 +270,7 @@ function releaseSelectionFixture() {
  const reads=[],nodes=new Map(),controller={requestId:1,list:{data:[],get_checked_items(){return this.data;}}};
  controller.root={frappe:{get_route:()=>['List','Sales Order','List'],call:request=>new Promise((resolve,reject)=>reads.push({request,resolve,reject}))}};
  controller.$salesViewbar={find(selector){if(!nodes.has(selector))nodes.set(selector,{text(value){this.label=value;return this;},prop(key,value){this[key]=value;return this;}});return nodes.get(selector);}};
- return {controller,reads,button:()=>nodes.get('.dlp-sales-release'),summary:()=>nodes.get('.dlp-sales-selected')};
+ return {controller,reads,button:()=>nodes.get('.dlp-sales-release'),rejectButton:()=>nodes.get('.dlp-sales-reject'),summary:()=>nodes.get('.dlp-sales-selected')};
 }
 
 test('release action stays disabled until authoritative review and excludes released or unauthorized rows',async()=>{
@@ -292,6 +293,36 @@ test('all released and incomplete or failed review responses never enable produc
   if(response instanceof Error)f.reads[0].reject(response);else f.reads[0].resolve(response);
   await pending;assert.equal(f.button().disabled,true);assert.deepEqual(f.controller.salesReleaseNames,[]);
  }
+});
+
+test('reject is visible for one eligible order, independent of production release eligibility',async()=>{
+ const f=releaseSelectionFixture();f.controller.list.data=[{name:'SO-A'}];
+ const review=grid.updateReleaseSelection(f.controller);
+ assert.equal(f.rejectButton().disabled,true);
+ f.reads[0].resolve({message:{orders:[{name:'SO-A',can_release:false,can_reject:true}]}});await review;
+ assert.equal(f.button().disabled,true);assert.equal(f.rejectButton().disabled,false);
+ assert.equal(f.controller.salesRejectName,'SO-A');
+ f.controller.list.data=[{name:'SO-A'},{name:'SO-B'}];
+ const multiple=grid.updateReleaseSelection(f.controller);
+ f.reads[1].resolve({message:{orders:[{name:'SO-A',can_reject:true},{name:'SO-B',can_reject:true}]}});await multiple;
+ assert.equal(f.rejectButton().disabled,true,'list action rejects only one explicitly selected order');
+});
+
+test('ineligible order keeps reject disabled and shows the rejection reason, not the release reason',async()=>{
+ const f=releaseSelectionFixture();f.controller.list.data=[{name:'QA-ORDER'}];
+ const review=grid.updateReleaseSelection(f.controller);
+ f.reads[0].resolve({message:{orders:[{name:'QA-ORDER',can_release:false,can_reject:false,reason:'无生产放行权限',reject_reason:'没有取消权限'}]}});await review;
+ assert.equal(f.rejectButton().disabled,true);
+ assert.match(f.summary().label,/不可驳回：没有取消权限/);
+ assert.doesNotMatch(f.summary().label,/无生产放行权限/);
+});
+
+test('single releasable order still explains why rejection is unavailable',async()=>{
+ const f=releaseSelectionFixture();f.controller.list.data=[{name:'SO-A'}];
+ const review=grid.updateReleaseSelection(f.controller);
+ f.reads[0].resolve({message:{orders:[{name:'SO-A',can_release:true,can_reject:false,reject_reason:'缺少 CRM 订单编号'}]}});await review;
+ assert.equal(f.button().disabled,false);assert.equal(f.rejectButton().disabled,true);
+ assert.match(f.summary().label,/不可驳回：缺少 CRM 订单编号/);
 });
 
 test('an old review cannot enable a changed selection or a refreshed order',async()=>{
@@ -326,6 +357,30 @@ test('native dispatch invalidates release eligibility immediately and rejects an
  f.list.no_change(f.list.get_call_args());
  assert.equal(f.button().disabled,true,'already eligible selection is disabled at the real dispatch gate');
  assert.equal(f.controller.salesReleaseNames.length,0);
+});
+
+test('list rejection revalidates before confirmation and refreshes only after server success',async()=>{
+ const f=mountedReleaseFixture();let confirm,refreshes=0,cleared=0;
+ f.env.frappe.confirm=(message,callback)=>{assert.match(message,/SO-A/);confirm=callback;};
+ f.env.frappe.msgprint=()=>assert.fail('successful rejection must not show an error');
+ f.controller.refresh=()=>{refreshes++;};f.list.clear_checked_items=()=>{cleared++;};
+ const action=f.grid.rejectSelectedOrder(f.controller);
+ f.reads[0].resolve({message:{orders:[{name:'SO-A',can_reject:true}]}});await action;
+ assert.equal(f.reads.length,1,'confirmation does not send E1');
+ const result=confirm();
+ assert.equal(f.reads[1].request.method,'crm_integration.crm_integration.sales_order.reject_sales_order');
+ assert.equal(f.reads[1].request.args.sales_order_name,'SO-A');
+ f.reads[1].resolve({message:{status:'success'}});await result;
+ assert.equal(refreshes,1);assert.equal(cleared,1);assert.equal(f.rejectButton().disabled,true);
+});
+
+test('changed list selection cannot execute an old rejection confirmation',async()=>{
+ const f=mountedReleaseFixture();let confirm;
+ f.env.frappe.confirm=(_,callback)=>{confirm=callback;};
+ const action=f.grid.rejectSelectedOrder(f.controller);
+ f.reads[0].resolve({message:{orders:[{name:'SO-A',can_reject:true}]}});await action;
+ f.list.data=[{name:'SO-B'}];await confirm();
+ assert.equal(f.reads.length,1);
 });
 
 test('departed sales list ignores late display details without starting another release review',async()=>{

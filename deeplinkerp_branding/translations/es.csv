@@ -2181,3 +2181,9 @@ updated at,actualizado en
 草稿不代表已到账；保存后可由有权限的财务人员提交。,"Un borrador no confirma la recepción de fondos. Una vez guardado, un usuario autorizado de Finanzas puede enviarlo."
 请先保存或核对未确认的收款资料和附件，再提交草稿。,Guarde o revise los datos y adjuntos del cobro pendientes de confirmación antes de enviar el borrador.
 重试提交,Reintentar envío
+财务驳回,Rechazar
+确认驳回此销售订单？,¿Confirmar el rechazo de este pedido de venta?
+正在驳回销售订单...,Rechazando el pedido de venta...
+驳回未完成，请核对 ERP 订单和 CRM 状态后重试。,El rechazo no se completó. Verifique el pedido en ERP y el estado en CRM antes de reintentarlo.
+财务操作资格核验失败，请重新选择或刷新后重试。,No se pudieron verificar las acciones financieras. Vuelva a seleccionar el pedido o actualice e inténtelo de nuevo.
+不可驳回：{0},No se puede rechazar: {0}

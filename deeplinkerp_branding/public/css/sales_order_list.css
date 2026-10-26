@@ -24,7 +24,7 @@ body.dlp-sales-order-grid-active .dlp-po-toolbar{gap:6px;padding:6px 0;align-ite
 .dlp-sales-tabs,.dlp-sales-release-action{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0;max-width:100%}
 .dlp-sales-tabs{order:0}.dlp-sales-release-action{order:1;flex:1 1 auto}
 .dlp-sales-tabs .btn{white-space:nowrap}.dlp-sales-tabs [aria-pressed=true]{font-weight:600;background:#edf5ff;border-color:#97bde8}
-body.dlp-sales-order-grid-active .dlp-sales-release-action .btn-primary{height:30px;min-height:30px;padding:3px 10px;font-size:13px;font-weight:600;white-space:nowrap}
+body.dlp-sales-order-grid-active .dlp-sales-release-action .btn{height:30px;min-height:30px;padding:3px 10px;font-size:13px;font-weight:600;white-space:nowrap}
 .dlp-sales-selected{font-size:12px;color:var(--text-muted,#666)}
 .dlp-sales-notice{font-size:12px;margin:2px 0 6px}.dlp-sales-preset{order:2;width:auto;max-width:150px}
 body.dlp-sales-order-grid-active .dlp-po-toolbar>label{order:3}

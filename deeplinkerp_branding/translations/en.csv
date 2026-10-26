@@ -1908,3 +1908,9 @@ ai 助手,ai assistant
 草稿不代表已到账；保存后可由有权限的财务人员提交。,"A draft does not confirm receipt of funds. After saving, an authorized Finance user can submit it."
 请先保存或核对未确认的收款资料和附件，再提交草稿。,Save or review unconfirmed receipt details and attachments before submitting the draft.
 重试提交,Retry submission
+财务驳回,Reject
+确认驳回此销售订单？,Confirm to reject this Sales Order?
+正在驳回销售订单...,Rejecting Sales Order...
+驳回未完成，请核对 ERP 订单和 CRM 状态后重试。,Rejection did not complete. Check the ERP order and CRM status before retrying.
+财务操作资格核验失败，请重新选择或刷新后重试。,Could not verify financial actions. Reselect the order or refresh and try again.
+不可驳回：{0},Cannot reject: {0}

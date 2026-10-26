@@ -30,7 +30,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/purchase_payments.css?v=0.0.10",
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.27",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.6",
-	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.13",
+	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.14",
 	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.3",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
 ]
