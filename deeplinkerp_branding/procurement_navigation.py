@@ -13,7 +13,7 @@ ENTRIES = (
 TARGETS = {entry[2] for entry in ENTRIES} | {"Purchase Invoice"}
 
 
-def reconcile_links(doc, table, type_field="link_type", entries=None, targets=None, anchor=None):
+def reconcile_links(doc, table, type_field="link_type", entries=None, targets=None, anchor=None, child=0):
 	"""One ordered upsert for Sidebar items, Workspace links and shortcuts.
 
 	Existing canonical child rows keep their identity; filtered/custom routes stay.
@@ -42,7 +42,7 @@ def reconcile_links(doc, table, type_field="link_type", entries=None, targets=No
 			changed = True
 		values = {"label": label, type_field: kind, "link_to": name}
 		if table == "items":
-			values.update(type="Link", child=0, icon=icon)
+			values.update(type="Link", child=child, icon=icon)
 		elif table == "links":
 			values.update(type="Link", onboard=0, dependencies="")
 		for key, value in values.items():

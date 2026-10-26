@@ -16,6 +16,47 @@ MODULE = ROOT / "deeplinkerp_branding/operating_navigation.py"
 
 
 class OperatingNavigationTest(unittest.TestCase):
+	def test_finance_expense_group_keeps_operating_entry_as_child_and_sync_is_idle(self):
+		sidebar = Doc(name="China Finance", flags=Row(), items=[
+			Row(name="account", link_to="Account", label="科目表"),
+			Row(name="bank", type="Section Break", label="银行与对账"),
+			Row(name="statement", type="Link", link_to="China Reconciliation Statement", child=1),
+			Row(name="expenses", type="Section Break", label="支出管理"),
+			Row(name="operating", type="Link", link_to="operating-expenses", child=0),
+			Row(name="history", type="Section Break", label="凭证明细与历史"),
+		])
+		saved = []
+		sidebar.save = lambda **kw: saved.append("sidebar")
+		fake = types.ModuleType("frappe")
+		fake.flags, fake.conf = Row(in_import=False), Row(developer_mode=True)
+		fake.db = types.SimpleNamespace(exists=lambda dt, name:
+			name == "operating-expenses" if dt == "Page"
+			else dt == "Workspace Sidebar" and name == "China Finance")
+		fake.get_doc = lambda *_: sidebar
+		module = self.load_module(fake)
+		self.assertEqual(len(module.ensure_operating_navigation()["changed"]), 1)
+		self.assertEqual([row.name for row in sidebar["items"]],
+			["account", "bank", "statement", "expenses", "operating", "history"])
+		self.assertEqual(sidebar["items"][4].child, 1)
+		self.assertEqual(module.ensure_operating_navigation()["changed"], [])
+		self.assertEqual(saved, ["sidebar"])
+
+	def test_finance_workspace_places_operating_link_under_expense_card(self):
+		doc = Doc(name="China Finance", links=[
+			Row(name="bank", type="Card Break", label="银行与对账"),
+			Row(name="statement", type="Link", link_to="China Reconciliation Statement"),
+			Row(name="expenses", type="Card Break", label="支出管理"),
+			Row(name="history", type="Card Break", label="凭证明细与历史"),
+			Row(name="operating", type="Link", link_to="operating-expenses"),
+		])
+		module = self.load_module(types.ModuleType("frappe"))
+		args = dict(entries=module.ENTRIES, targets=module.TARGETS,
+			anchor=module._anchor(doc, "links"))
+		self.assertTrue(navigation.reconcile_links(doc, "links", **args))
+		self.assertEqual([row.name for row in doc.links],
+			["bank", "statement", "expenses", "operating", "history"])
+		self.assertFalse(navigation.reconcile_links(doc, "links", **args))
+
 	def test_renamed_entry_moves_immediately_after_account_url_without_duplicates(self):
 		self.check_account_anchor("/desk/chart-of-accounts")
 		self.check_account_anchor("/desk/account/view/tree?sidebar=China%20Finance")

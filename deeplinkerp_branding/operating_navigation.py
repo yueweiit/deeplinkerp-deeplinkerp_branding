@@ -9,7 +9,20 @@ ENTRIES = (("运营支出", "Page", "operating-expenses", "receipt-text"),)
 TARGETS = {"operating-expenses"}
 
 
+def _expense_group_anchor(doc, table):
+	if doc.get("name") != "China Finance":
+		return None
+	group_type = "Section Break" if table == "items" else "Card Break"
+	return next((
+		index + 1 for index, row in enumerate(doc.get(table) or [])
+		if row.get("type") == group_type and row.get("label") == "支出管理"
+	), None)
+
+
 def _anchor(doc, table):
+	group_anchor = _expense_group_anchor(doc, table)
+	if group_anchor is not None:
+		return group_anchor
 	rows = list(doc.get(table) or [])
 	for index, row in enumerate(rows):
 		if row.get("link_to") == "Account" or urlsplit(row.get("url") or "").path.rstrip("/") in {"/desk/chart-of-accounts", "/app/chart-of-accounts", "/desk/account/view/tree", "/app/account/view/tree"}:
@@ -36,7 +49,8 @@ def ensure_operating_navigation():
 			doc = frappe.get_doc(doctype, name)
 			if doctype == "Workspace Sidebar":
 				modified = reconcile_links(
-					doc, "items", entries=ENTRIES, targets=TARGETS, anchor=_anchor(doc, "items")
+					doc, "items", entries=ENTRIES, targets=TARGETS, anchor=_anchor(doc, "items"),
+					child=int(_expense_group_anchor(doc, "items") is not None),
 				)
 			else:
 				modified = reconcile_workspace(
