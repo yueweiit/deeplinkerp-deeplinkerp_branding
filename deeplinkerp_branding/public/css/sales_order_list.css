@@ -48,6 +48,14 @@ body.dlp-sales-order-grid-active .dlp-po-grid-row:has([data-fieldname=dlp_receip
 .dlp-sales-name,.dlp-sales-expand{border:0;background:transparent;padding:0;color:var(--text-color,#171717);text-align:left;max-width:100%;cursor:pointer}
 .dlp-sales-name:hover{text-decoration:underline}.dlp-sales-name{white-space:normal;word-break:break-word;font-size:13px}.dlp-sales-expand{font-size:12px}
 .dlp-sales-state{display:inline-block;font-size:12px;padding:3px 6px;background:#edf5ff;border-radius:4px;white-space:normal}
+.dlp-sales-state.dlp-sales-financial-pending{color:#805400;background:#fff4d2;border:1px solid #e8ca83;font-weight:600}
+.dlp-sales-state.dlp-sales-financial-approved{color:#176534;background:#e3f4e8;border:1px solid #a8d8b4;font-weight:600}
+.dlp-sales-state.dlp-sales-financial-rejected{color:#a12828;background:#fde6e4;border:1px solid #e9b3af;font-weight:600}
+.dlp-sales-state.dlp-sales-financial-unknown{color:#566273;background:#f1f3f5;border:1px solid #d7dde5;font-weight:600}
+:is([data-theme=dark] body,body[data-theme=dark]) .dlp-sales-state.dlp-sales-financial-pending{color:#f6ca73;background:#3d2e16;border-color:#7b6030}
+:is([data-theme=dark] body,body[data-theme=dark]) .dlp-sales-state.dlp-sales-financial-approved{color:#93dfaa;background:#183b2b;border-color:#3c7550}
+:is([data-theme=dark] body,body[data-theme=dark]) .dlp-sales-state.dlp-sales-financial-rejected{color:#ffaea8;background:#442324;border-color:#91514e}
+:is([data-theme=dark] body,body[data-theme=dark]) .dlp-sales-state.dlp-sales-financial-unknown{color:#cbd3dd;background:#293443;border-color:#576477}
 .dlp-sales-expanded{padding:8px 10px;background:#fff;width:100cqw;max-width:100%;min-width:0;box-sizing:border-box;position:sticky;left:0;border-bottom:1px solid var(--dlp-po-border,#d9e3ed)}
 .dlp-sales-expanded>strong{display:block;line-height:20px;margin-bottom:4px}
 .dlp-sales-items-scroll{overflow-x:auto;overflow-y:hidden;max-height:none;margin:6px 0;width:100%;background:#fff}

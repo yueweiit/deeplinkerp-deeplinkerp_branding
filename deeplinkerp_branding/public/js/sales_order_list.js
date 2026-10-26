@@ -8,7 +8,8 @@
 	const API = "deeplinkerp_branding.services.compact_sales_service.";
 	const financialGroups = { pending: ["Pending Deposit Confirmation", "Deposit Confirmation Processing"], approved: ["Pending Production", "Pending Final Payment", "Deliverable", "Partially Delivered", "Completed"], rejected: ["Rejected"] };
 	const financialLabels = { pending: "待财务审核", approved: "已放行生产", rejected: "已驳回" };
-	const financialLabel = value => financialLabels[Object.keys(financialGroups).find(group => financialGroups[group].includes(value))] || "—";
+	const financialGroup = value => Object.keys(financialGroups).find(group => financialGroups[group].includes(value));
+	const financialLabel = value => financialLabels[financialGroup(value)] || "—";
 	const statusLabels = { "Pending Confirmation": "待确认", "Pending Deposit Confirmation": "待财务放行", "Deposit Confirmation Processing": "CRM/MES 同步中", "Pending Production": "生产已放行", "Pending Final Payment": "待尾款确认", "Deliverable": "可发货", "Partially Delivered": "部分发货", "Completed": "已完成", "Rejected": "已驳回", "Cancelled": "已取消", "Closed": "已关闭" };
 	const orderStatusLabels = { Draft: "草稿", "To Deliver and Bill": "待交付及开票", "To Bill": "待开票", "To Deliver": "待交付", Completed: "已完成", Cancelled: "已取消", Closed: "已关闭", "On Hold": "已暂停" };
 	const COLUMNS = [
@@ -81,7 +82,7 @@
 		const tr = formatters.translate || t;
 		if (field === "advance_paid") return prepayment(doc);
 		if (field === "name") return `${esc(doc.custom_crm_order_no || doc.name)}${doc.custom_crm_order_no ? `<small class="dlp-sales-erp-number">ERP: ${esc(doc.name)}</small>` : ""}`;
-		if (field === "custom_process_status") return `<span class="dlp-sales-state">${esc(tr(financialLabel(doc[field])))}</span>`;
+		if (field === "custom_process_status") return `<span class="dlp-sales-state dlp-sales-financial-${financialGroup(doc[field]) || "unknown"}">${esc(tr(financialLabel(doc[field])))}</span>`;
 		if (field === "status") return `<span class="dlp-sales-state">${esc(tr(orderStatusLabels[doc[field]] || doc[field] || "—"))}</span>`;
 		if (field === "dlp_product") return esc(doc.dlp_product || "—") + (doc.dlp_item_count > 1 ? `<small> · ${doc.dlp_item_count} ${esc(tr("项"))}</small>` : "");
 		if (field === "dlp_quantity") return doc.dlp_quantity == null ? "—" : esc(doc.dlp_quantity);
