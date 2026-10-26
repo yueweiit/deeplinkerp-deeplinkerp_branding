@@ -95,4 +95,17 @@ body:not(.dlp-sales-order-grid-active) .dlp-sales-scroll-top{display:none !impor
 .dlp-sales-receipt{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid var(--border-color,#e2e2e2)}
 .dlp-sales-receipt:last-child{border-bottom:0}.dlp-sales-receipt strong{margin-left:auto;font-variant-numeric:tabular-nums}
 .dlp-sales-receipts .text-warning{margin:8px 0 0;font-size:12px}
+.dlp-sales-receipt-editor{margin-top:12px;padding:16px;border:1px solid var(--border-color,#d8e0e9);border-radius:8px;background:var(--fg-color,#fff)}
+.dlp-sales-receipt-editor[hidden]{display:none !important}
+.dlp-sales-receipt-title,.dlp-sales-receipt-actions,.dlp-sales-draft-choice{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.dlp-sales-receipt-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 16px}
+.dlp-sales-receipt-fields>div:last-child{grid-column:1/-1}
+.dlp-sales-receipt-actions{justify-content:flex-start;margin:14px 0 0}
+.dlp-sales-receipt-editor .dlp-attachment-title{display:flex;justify-content:space-between;margin:12px 0 8px}
+.dlp-sales-receipt-editor .dlp-attachment-drop{display:flex;gap:12px;align-items:center;border:1px dashed var(--border-color,#b8c7d9);border-radius:6px;padding:14px}
+.dlp-sales-receipt-editor .dlp-attachment-row{display:flex;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border-color,#e2e2e2)}
+.dlp-sales-receipt-editor .dlp-attachment-row>a,.dlp-sales-receipt-editor .dlp-attachment-row>span:first-child{min-width:0;flex:1;overflow-wrap:anywhere}
+.dlp-sales-receipt-existing{padding-top:12px}.dlp-sales-receipt-existing p{margin:5px 0;overflow-wrap:anywhere}
+.dlp-sales-receipt-notice:empty{display:none}.dlp-sales-receipt-notice{margin-top:10px;font-size:12px}
+@media(max-width:600px){.dlp-sales-receipt-fields{grid-template-columns:1fr}.dlp-sales-receipt-actions>button{flex:1 1 auto}}
 @media(max-width:800px){.dlp-sales-detail-layout{grid-template-columns:1fr}.dlp-sales-release-action{flex:1 1 100%;justify-content:space-between}body.dlp-sales-order-grid-active .dlp-po-filter{flex:1 1 130px}body.dlp-sales-order-grid-active .dlp-po-filter[data-fieldname=search]{flex:1 1 100%}.dlp-sales-scroll-top{right:16px}}

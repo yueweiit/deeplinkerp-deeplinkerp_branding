@@ -12,6 +12,39 @@ SESSION = "12345678-1234-1234-1234-123456789abc"
 
 
 class PaymentAttachmentTests(unittest.TestCase):
+	def test_sales_order_upload_context_uses_customer_receipt_permissions(self):
+		with patch("deeplinkerp_branding.services.sales_receipt_service._order") as order:
+			self.assertIs(files._context("Sales Order", "SO-1"), order.return_value)
+			order.assert_called_once_with("SO-1", create=True)
+
+	def test_sales_uploads_bind_only_to_same_customer_order_and_receive_direction(self):
+		for overrides in ({}, {"party": "OTHER"}, {"payment_type": "Pay"}, {"party_type": "Supplier"},
+			{"references": [frappe._dict(reference_doctype="Sales Order", reference_name="SO-2")]},
+			{"references": [frappe._dict(reference_doctype="Sales Order", reference_name="SO-1"),
+				frappe._dict(reference_doctype="Sales Order", reference_name="SO-2")]}):
+			doc = frappe._dict(name="PE", company="C", party="CUSTOMER", party_type="Customer", payment_type="Receive",
+				references=[frappe._dict(reference_doctype="Sales Order", reference_name="SO-1")])
+			doc.update(overrides)
+			doc.check_permission = Mock()
+			source = frappe._dict(name="SO-1", doctype="Sales Order", company="C", customer="CUSTOMER")
+			intent = {"context": ["Sales Order", "SO-1"], "files": ["FILE"]}
+			with (
+				self.subTest(overrides=overrides),
+				patch.object(frappe, "cache", return_value=MagicMock()),
+				patch.object(frappe, "db", MagicMock()), patch.object(files, "_put"),
+				patch.object(files, "_intent", return_value=intent),
+				patch.object(files, "_context", return_value=source),
+				patch.object(files, "_temporary") as temporary,
+				patch.object(files.service, "_read"),
+			):
+				if overrides:
+					with self.assertRaises(frappe.PermissionError):
+						files.bind(doc, SESSION, ["FILE"])
+					temporary.assert_not_called()
+				else:
+					files.bind(doc, SESSION, ["FILE"])
+					temporary.return_value.create_attachment_copy.assert_called_once_with("Payment Entry", "PE")
+
 	def setUp(self):
 		for name, value in (
 			("session", frappe._dict(user="qa5-finance@example.invalid")),

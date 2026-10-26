@@ -1850,3 +1850,61 @@ ai 助手,ai assistant
 新增行已撤回，请核对当前单据后重试,The new row was removed. Review this document before trying again.
 新行仍在当前单据中，请检查后再操作,The new row remains in this document. Review it before taking further action.
 新行可能仍在当前单据中，请检查后再操作,The new row may remain in this document. Review it before taking further action.
+上次保存结果未确认，请先重试原请求或核对已有草稿。,The previous save is unconfirmed. Retry the original request or check existing drafts first.
+保存收款草稿,Save receipt draft
+保存结果未确认，请重试原请求，勿重复新增。,The save is unconfirmed. Retry the original request; do not create another receipt.
+原请求已有保存记录，但当前无法读取草稿。请联系财务核对，勿重复新增。,"The original request has a saved record, but its draft cannot currently be read. Ask Finance to review it; do not create another receipt."
+发现已有收款草稿，请选择继续编辑；另一笔真实收款请另行新增。,"Receipt drafts already exist. Select one to continue editing, or create a separate draft for a different receipt."
+另记一笔收款,Record another receipt
+尚有未保存的收款资料或附件，是否放弃本次编辑？,There are unsaved receipt details or attachments. Discard these changes?
+已保存的凭证,Saved supporting documents
+已有多张收款草稿，请先选择要继续编辑的草稿。,Multiple receipt drafts exist. Select a draft to continue editing first.
+已有待编辑草稿，请核对后再保存；本次尚未修改该草稿。,An existing draft is ready for editing. Review it before saving; this request has not changed it.
+当前单据不可在订单内编辑，请打开完整付款单。,This entry cannot be edited within the order. Open the full Payment Entry form.
+打开完整付款单,Open full Payment Entry
+收付款方式,Mode of Payment
+收款凭证,Receipt supporting documents
+收款单已提交或取消，请刷新后核对。,This receipt has been submitted or cancelled. Refresh and review it.
+收款备注,Receipt remarks
+收款字段无效，请刷新后重试。,Invalid receipt fields. Refresh and try again.
+收款操作失败，请核对后重试。,The receipt operation failed. Review it and try again.
+收款日期,Receipt date
+收款草稿与当前订单、客户或公司不一致。,"The receipt draft does not match this order, customer or company."
+收款草稿已保存，尚未计入已到账；可继续编辑或打开完整付款单审核提交。,Receipt draft saved. It is not yet counted as received; continue editing or open the full Payment Entry to review and submit.
+收款草稿未保存，请核对后重试。,The receipt draft was not saved. Review it and try again.
+收款账户,Receiving account
+收款金额,Receipt amount
+收款金额必须是大于 0 的有效数字。,The receipt amount must be a valid number greater than zero.
+收款金额超过订单当前可分配余额，或按币种精度取整后为 0。,"The receipt amount exceeds the order balance available for allocation, or rounds to zero at the currency precision."
+本次保存结果尚未确认。关闭后请先核对草稿，勿重复录入同一笔收款。是否关闭？,"This save is unconfirmed. After closing, check the draft before recording the same receipt again. Close now?"
+正在读取收款资料…,Loading receipt details…
+此收款包含跨币种、工作流或复杂核销，请在完整付款单处理。,"This receipt involves multiple currencies, a workflow or complex allocations. Use the full Payment Entry form."
+没有创建收款草稿的权限。,You do not have permission to create receipt drafts.
+确认这是另一笔真实收款，需要新增独立草稿？,Is this a different receipt that needs a separate draft?
+继续编辑草稿,Continue editing draft
+编辑收款草稿,Edit receipt draft
+草稿不代表已到账；财务审核与提交请使用完整付款单。,A draft does not confirm receipt of funds. Use the full Payment Entry for financial review and submission.
+草稿已保存，但页面刷新失败。请核对该草稿，勿重复新增。,"The draft was saved, but the page could not refresh. Check that draft; do not create another."
+订单未提交、已关闭或暂停，不能录入收款。,"Receipts cannot be recorded for an unsubmitted, closed or paused order."
+订单金额为 0，请先核实价格；未分配预收款请在完整付款单处理。,The order amount is zero. Verify prices first; use the full Payment Entry for unallocated advances.
+请填写收款日期和收款账户。,Enter the receipt date and receiving account.
+重试保存,Retry save
+银行流水号,Bank transaction reference
+银行流水日期,Bank transaction date
+此收款涉及本位币换算、税费、工作流或复杂核销，请在完整付款单处理。,"This receipt involves conversion to company currency, taxes, a workflow or complex allocations. Use the full Payment Entry form."
+当前浏览器不支持安全随机标识，请升级浏览器后重试。,This browser cannot generate secure random identifiers. Update your browser and try again.
+上次提交结果未确认，请先重试原请求，勿重复提交。,The previous submission is unconfirmed. Retry the original request; do not submit again.
+原请求已有处理记录，但当前单据状态或权限已变化。请联系财务核对，勿重复提交。,"The original request has a processing record, but the document status or permissions have changed. Ask Finance to review it; do not submit again."
+已提交收款,Submitted receipt
+当前草稿不可在订单内提交，请打开完整付款单核对权限或审批设置。,This draft cannot be submitted within the order. Open the full Payment Entry to review permissions or approval settings.
+提交收款,Submit receipt
+提交结果未确认，请重试原请求，勿重复提交。,The submission is unconfirmed. Retry the original request; do not submit again.
+收款已提交，但页面刷新失败。请核对该收款单，勿重复提交。,"The receipt was submitted, but the page could not refresh. Check that receipt; do not submit again."
+收款已提交，已按原生规则记账并更新订单预付款汇总。,Receipt submitted. Accounting entries and order advances were updated using the native rules.
+收款已提交，相关记账和订单预付款汇总以 ERP 记录为准。,Receipt submitted. Refer to ERP records for accounting entries and order advances.
+收款未提交，请核对后重试。,The receipt was not submitted. Review it and try again.
+收款草稿已保存，尚未计入已到账；可继续编辑或由有权限的财务人员提交。,Receipt draft saved. It is not yet counted as received; continue editing or ask an authorized Finance user to submit it.
+确认提交收款单 {0}，金额 {1} {2}？提交后将按原生规则记账，并更新订单预付款汇总。,Submit receipt {0} for {1} {2}? Submission creates accounting entries and updates order advances using the native rules.
+草稿不代表已到账；保存后可由有权限的财务人员提交。,"A draft does not confirm receipt of funds. After saving, an authorized Finance user can submit it."
+请先保存或核对未确认的收款资料和附件，再提交草稿。,Save or review unconfirmed receipt details and attachments before submitting the draft.
+重试提交,Retry submission

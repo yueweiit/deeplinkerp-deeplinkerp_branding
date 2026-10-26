@@ -75,13 +75,21 @@
    dirty(){return Object.keys(header).length>0 || items.size>0;},
   }; return session;
  }
+ function requestId() {
+  if(typeof root.crypto?.randomUUID==='function')return root.crypto.randomUUID();
+  if(typeof root.crypto?.getRandomValues!=='function')throw new Error(t('当前浏览器不支持安全随机标识，请升级浏览器后重试。'));
+  const bytes=new Uint8Array(16);root.crypto.getRandomValues(bytes);
+  bytes[6]=(bytes[6]&15)|64;bytes[8]=(bytes[8]&63)|128;
+  const hex=Array.from(bytes,byte=>byte.toString(16).padStart(2,'0')).join('');
+  return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+ }
  function retryToken(uuid,storageKey=null) {
   let token=null,signature=null;
   const persist=()=>{try{if(storageKey){if(token)root.sessionStorage?.setItem(storageKey,JSON.stringify({token,signature}));else root.sessionStorage?.removeItem(storageKey);}}catch(error){/* optional browser recovery */}};
   try{const previous=storageKey && JSON.parse(root.sessionStorage?.getItem(storageKey) || 'null');if(previous?.token && typeof previous.signature==='string'){token=previous.token;signature=previous.signature;}}catch(error){/* optional browser recovery */}
   return {forPayload(payload){const next=JSON.stringify(payload);if(signature!==null && next!==signature)throw new Error(t("上次响应不确定，内容已改变。请先核对记录并刷新，不要重复建单。"));if(!token){token=uuid();signature=next;persist();}return token;},pending(){return signature?JSON.parse(signature):null;},succeeded(){token=null;signature=null;persist();}};
  }
- function paymentToken(sourceType,sourceName){return retryToken(()=>root.crypto.randomUUID(),`dlp-payment-retry:${frappe.boot?.sitename || root.location?.host}:${frappe.session?.user}:${sourceType}:${sourceName}`);}
+ function paymentToken(sourceType,sourceName){return retryToken(requestId,`dlp-payment-retry:${frappe.boot?.sitename || root.location?.host}:${frappe.session?.user}:${sourceType}:${sourceName}`);}
  async function sendPayment(drawer,args,token,context){
   if(drawer.busy || drawer.paymentCompleted)return;drawer.setBusy(true);
   try{
@@ -196,8 +204,8 @@
  function body(drawer,html){disposeControls(drawer.controls);drawer.panel.find('.dlp-payment-body').html(`${html}<div class="dlp-error text-danger" role="alert"></div>`);}
  async function mountAttachments(drawer,doctype,name,restored=null) {
   const holder=drawer.panel.find('.dlp-attachments'),docs=new Map((restored?.files || []).map(doc=>[doc.name,doc]));
-  let uploader=null,timer=null,started=0,removing=false,committed=false,stopped=false;
-  const context=restored?.context || [doctype,name],sessionId=restored?.sessionId || root.crypto.randomUUID();
+  let uploader=null,timer=null,started=0,adding=0,removing=false,committed=false,stopped=false;
+  const context=restored?.context || [doctype,name],sessionId=restored?.sessionId || requestId();
   holder.html(`<div class="dlp-attachment-title"><strong>${esc(t('付款凭证'))}</strong><span>${esc(t('可多选'))}</span></div><div class="dlp-attachment-drop"><span>${esc(t('拖放文件'))}</span><button type="button" class="btn btn-default dlp-choose-files">${esc(t('选择文件'))}</button><input type="file" multiple hidden></div><div class="dlp-attachment-list"></div><div class="dlp-native-uploader" hidden></div><p class="dlp-attachment-error text-danger" role="alert"></p>`);
   const queue=()=>uploader?.uploader.files || [];
   const pending=()=>queue().filter(file=>!docs.has(file.doc?.name));
@@ -206,7 +214,7 @@
    add:files=>add(files),
    retry(index){const file=pending()[index];if(file && canRetry(file) && !drawer.busy && !drawer.pendingPayment?.()){file.failed=false;file.error_message=null;started=Date.now();monitor();uploader.uploader.upload_file(file,queue().indexOf(file)).catch(()=>refresh());}},
    refresh,
-   ready:()=>!removing && !pending().length,
+   ready:()=>!adding && !removing && !pending().length,
    args:()=>docs.size?{attachment_session:sessionId,attachments:[...docs.keys()]}:{},
    snapshot:()=>({sessionId,context,files:[...docs.values()]}),
    committed(){committed=true;docs.clear();this.stop();},
@@ -216,19 +224,27 @@
   function refresh(){
    if(stopped || !drawer.alive())return;
    const waiting=pending();
-   holder.find('.dlp-attachment-list').html([...docs.values()].map(doc=>`<div class="dlp-attachment-row"><a href="${esc(doc.file_url)}" target="_blank" rel="noopener" title="${esc(doc.file_name)}">${esc(doc.file_name)}</a><span class="text-success">${esc(t('已上传'))}</span><button type="button" class="btn btn-link dlp-remove-file" data-id="${esc(doc.name)}">${esc(t('移除'))}</button></div>`).join('')+waiting.map((file,index)=>`<div class="dlp-attachment-row"><span title="${esc(file.name)}">${esc(file.name)}</span><span class="${file.failed?'text-danger':''}">${esc(t(file.failed?(canRetry(file)?'上传失败':'上传未确认'):started && Date.now()-started>45000?'上传未确认':'正在上传…'))}</span>${canRetry(file)?`<button type="button" class="btn btn-link dlp-retry-file" data-index="${index}">${esc(t('重试'))}</button>`:''}<button type="button" class="btn btn-link dlp-remove-pending" data-index="${index}">${esc(t('移除'))}</button></div>`).join(''));
-   drawer.panel.find('.dlp-create,.dlp-submit').prop('disabled',drawer.busy || !manager.ready());
+   holder.find('.dlp-attachment-list').html([...docs.values()].map(doc=>`<div class="dlp-attachment-row"><a href="${esc(doc.file_url)}" target="_blank" rel="noopener" title="${esc(doc.file_name)}">${esc(doc.file_name)}</a><span class="text-success">${esc(t('已上传'))}</span><button type="button" class="btn btn-link dlp-remove-file" data-id="${esc(doc.name)}">${esc(t('移除'))}</button></div>`).join('')+waiting.map((file,index)=>`<div class="dlp-attachment-row"><span title="${esc(file.name)}">${esc(file.name)}</span><span class="${file.failed?'text-danger':''}">${esc(t(file.failed?(canRetry(file)?'上传失败':'上传未确认'):started && Date.now()-started>45000?'上传未确认':'正在上传…'))}</span>${canRetry(file)?`<button type="button" class="btn btn-link dlp-retry-file" data-index="${index}">${esc(t('重试'))}</button>`:''}<button type="button" class="btn btn-link dlp-remove-pending" data-index="${index}">${esc(t('移除'))}</button></div>`).join('')+(adding && !waiting.length?`<p>${esc(t('正在上传…'))}</p>`:''));
+   drawer.panel.find('.dlp-create,.dlp-submit,.dlp-receipt-submit').prop('disabled',drawer.busy || !manager.ready());
    holder.find('.dlp-choose-files,.dlp-remove-file,.dlp-remove-pending,.dlp-retry-file').prop('disabled',drawer.busy || Boolean(drawer.pendingPayment?.()));
   }
   function monitor(){refresh();if(!stopped && drawer.alive() && pending().length && root.setTimeout)timer=root.setTimeout(monitor,250);}
   let initialization=null;
   async function ensure(){
-   initialization ||= (async()=>{await call('begin_upload',{doctype:context[0],name:context[1],session_id:sessionId},FILES);await frappe.require('file_uploader.bundle.js');if(!drawer.alive())return;
+   initialization ||= (async()=>{await call('begin_upload',{doctype:context[0],name:context[1],session_id:sessionId},FILES);await frappe.require('file_uploader.bundle.js');if(stopped || !drawer.alive())return;
     uploader=new frappe.ui.FileUploader({wrapper:holder.find('.dlp-native-uploader'),method:FILES+'upload_file',fieldname:sessionId,allow_multiple:true,make_attachments_public:false,allow_toggle_private:false,allow_toggle_optimize:false,disable_file_browser:true,allow_web_link:false,allow_take_photo:false,allow_google_drive:false,
      on_success:doc=>{if(doc?.doctype==='File' && doc.name && doc.is_private){docs.set(doc.name,doc);refresh();}else holder.find('.dlp-attachment-error').text(t('附件上传未完成'));}});
    })();return initialization;
   }
-  async function add(files){if(drawer.busy || drawer.pendingPayment?.() || stopped || !files?.length)return;try{await ensure();if(!uploader)return;const previous=new Set(queue());uploader.uploader.add_files(files);started=Date.now();monitor();for(const file of queue().filter(row=>!previous.has(row)))uploader.uploader.upload_file(file,queue().indexOf(file)).catch(()=>refresh());}catch(error){initialization=null;holder.find('.dlp-attachment-error').text(error.message || t('附件上传未完成'));}}
+  async function add(files){
+   if(drawer.busy || drawer.pendingPayment?.() || stopped || !files?.length)return;
+   // File selection precedes the asynchronous session and bundle initialization.
+   // Count every batch now so a save/submit cannot miss files awaiting ensure().
+   adding++;refresh();
+   try{await ensure();if(stopped || !drawer.alive() || drawer.busy || drawer.pendingPayment?.() || !uploader)return;const previous=new Set(queue());uploader.uploader.add_files(files);started=Date.now();monitor();for(const file of queue().filter(row=>!previous.has(row)))uploader.uploader.upload_file(file,queue().indexOf(file)).catch(()=>refresh());}
+   catch(error){initialization=null;if(!stopped && drawer.alive())holder.find('.dlp-attachment-error').text(error.message || t('附件上传未完成'));}
+   finally{adding--;refresh();}
+  }
   holder.find('.dlp-choose-files').on('click.dlpDrawer',()=>holder.find('input[type=file]').trigger('click'));
   holder.find('input[type=file]').on('change.dlpDrawer',event=>{add(Array.from(event.target.files || []));event.target.value='';});
   holder.find('.dlp-attachment-drop').on('dragover.dlpDrawer',event=>event.preventDefault()).on('drop.dlpDrawer',event=>{event.preventDefault();add((event.originalEvent || event).dataTransfer?.files);});
@@ -263,7 +279,7 @@
   if(sourceType==='Purchase Order' && targetType==='Purchase Invoice')return;
   const drawer=newDrawer(targetType==='Purchase Receipt'?'批量采购入库':'确认采购应付',true);if(!drawer)return;
   let sources=[...selected].sort((a,b)=>a.name.localeCompare(b.name)),merge=0,projections=[],sessions=[],saved=false;
-  const token=retryToken(()=>root.crypto.randomUUID(),`dlp-document-batch:${frappe.session?.user}:${sourceType}:${sources.map(row=>row.name).join(',')}:${targetType}`);
+  const token=retryToken(requestId,`dlp-document-batch:${frappe.session?.user}:${sourceType}:${sources.map(row=>row.name).join(',')}:${targetType}`);
   const context=()=>({source_doctype:sourceType,target_doctype:targetType,sources,merge});
   async function display(result){
    projections=result.documents;sessions=projections.map(editSession);saved=projections.every(row=>Boolean(row.document.name));if(result.sources)sources=result.sources;
@@ -387,7 +403,7 @@
  async function documentDrawer(sourceType,sourceName,targetType,targetName=null){
   if(sourceType==='Purchase Order' && targetType==='Purchase Invoice')return;
   const drawer=newDrawer(targetType==='Purchase Receipt'?'采购订单 → 入库':'采购入库 → 确认应付',true);if(!drawer)return;
-  const token=retryToken(()=>root.crypto.randomUUID());let projection,session,allowAnother=false;
+  const token=retryToken(requestId);let projection,session,allowAnother=false;
   const context={source_doctype:sourceType,source_name:sourceName,target_doctype:targetType};
   async function load(){
    const generation=++drawer.loadId;
@@ -498,7 +514,7 @@
   try{await showAttachments(drawer,doc.name);}catch(error){if(drawer.alive())drawer.error(new Error(t('付款已提交，附件读取失败。请打开付款单核对。')));}
  }
  async function paymentDrawer(name,context={}){
-  const drawer=newDrawer('采购付款');if(!drawer)return;let projection,session,completed=false;const token=retryToken(()=>root.crypto.randomUUID(),`dlp-existing-payment:${frappe.boot?.sitename || root.location?.host}:${frappe.session?.user}:${name}`);drawer.pendingPayment=()=>Boolean(token.pending());
+  const drawer=newDrawer('采购付款');if(!drawer)return;let projection,session,completed=false;const token=retryToken(requestId,`dlp-existing-payment:${frappe.boot?.sitename || root.location?.host}:${frappe.session?.user}:${name}`);drawer.pendingPayment=()=>Boolean(token.pending());
   async function load(){const generation=++drawer.loadId;if(await reversalDrawer(drawer,[{doctype:'Payment Entry',name}],load))return;const result=await call('preview_payment',{name},ACTIONS);if(!drawer.alive() || generation!==drawer.loadId)return;await loadMetadata('Payment Entry');if(!drawer.alive() || generation!==drawer.loadId)return;projection=result;session=editSession(result);await render();}
   async function render(){
    const doc=projection.document,notice=context.notice || (doc.docstatus===0 && !projection.allowed_actions?.includes('Submit')?(projection.allowed_actions?.length?'付款待审批，尚未计已付。':'当前没有提交或审批权限。'):'');
@@ -601,5 +617,5 @@
   c.$procurementTabs?.remove();
   c.$procurementTabs=c.root.$(`<nav class="dlp-procurement-tabs" aria-label="${esc(t('采购流程'))}">${entries.map(([key,path,label])=>!finance && key.startsWith('purchase-')?`<button type="button" disabled title="${esc(t('财务办理入口；请在订单查看进度'))}">${esc(t(label))}</button>`:`<a class="${key===current?'active':''}" href="/desk/${path}?sidebar=Buying" ${key===current?'aria-current="page"':''}>${esc(t(label))}</a>`).join('')}</nav>`).insertBefore(c.list.$result.parent('.result-container'));
  }
- root.DeepLinkERPPurchasePayments={pay,batchPay,batchDocumentDrawer,formRefresh,recordsPage,balanceHTML,documentDrawer,paymentDrawer,voucherDrawer,orderReceiptAction,nativeAction,openNative,vouchersHTML,paymentSummary,editSession,retryToken,operationGate,recordsRequest,recordsExport,receiptDrafts,mountRecordsFilters,disposeControls,mountProcurementTabs,mountAttachments,createDrawer:newDrawer,drawerBody:body,drawerInput:input,loadMetadata,reversalHTML,reversalBlocked,refreshReversal,cancelCrossborderForList:c=>root.DeepLinkERPCrossborderProcurement?.cancelForList(c),formatMoney:money,formatQuantity:quantity,formatNumericInput};
+ root.DeepLinkERPPurchasePayments={pay,batchPay,batchDocumentDrawer,formRefresh,recordsPage,balanceHTML,documentDrawer,paymentDrawer,voucherDrawer,orderReceiptAction,nativeAction,openNative,vouchersHTML,paymentSummary,editSession,requestId,retryToken,operationGate,recordsRequest,recordsExport,receiptDrafts,mountRecordsFilters,disposeControls,mountProcurementTabs,mountAttachments,createDrawer:newDrawer,drawerBody:body,drawerInput:input,loadMetadata,reversalHTML,reversalBlocked,refreshReversal,cancelCrossborderForList:c=>root.DeepLinkERPCrossborderProcurement?.cancelForList(c),formatMoney:money,formatQuantity:quantity,formatNumericInput};
 })(typeof globalThis!=='undefined'?globalThis:this);

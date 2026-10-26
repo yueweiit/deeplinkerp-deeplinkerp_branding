@@ -56,7 +56,7 @@ class PurchaseOrderAssetsTest(unittest.TestCase):
 
 	def test_crossborder_drawer_reuses_the_loaded_payment_shell_once(self):
 		scripts = hooks.app_include_js
-		payments = "/assets/deeplinkerp_branding/js/purchase_payments.js?v=0.0.29"
+		payments = "/assets/deeplinkerp_branding/js/purchase_payments.js?v=0.0.31"
 		crossborder = "/assets/deeplinkerp_branding/js/crossborder_procurement.js?v=0.0.5"
 		self.assertIn(payments, scripts)
 		self.assertIn(crossborder, scripts)

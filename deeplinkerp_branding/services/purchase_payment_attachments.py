@@ -29,6 +29,10 @@ def _context(doctype, name):
 		doc.check_permission("write")
 		if doc.docstatus != 0:
 			frappe.throw(_("付款单已改变，请刷新"))
+	elif doctype == "Sales Order":
+		from .sales_receipt_service import _order
+
+		doc = _order(name, create=True)
 	else:
 		doc = service._source(doctype, name)
 		if doc.docstatus != 1 or doc.get("is_return"):
@@ -150,6 +154,11 @@ def bind(doc, session_id=None, attachments=None):
 			frappe.throw(_("附件不可用于本次付款"), frappe.PermissionError)
 		if source.doctype == "Payment Entry":
 			valid_source = source.name == doc.name
+		elif source.doctype == "Sales Order":
+			valid_source = (doc.party_type == "Customer" and doc.payment_type == "Receive"
+				and source.customer == doc.party and bool(doc.references) and all(
+					ref.reference_doctype == "Sales Order" and ref.reference_name == source.name
+					for ref in doc.references))
 		else:
 			invoices = set(service._invoice_names(source.doctype, source.name))
 			valid_source = source.supplier == doc.party and any(

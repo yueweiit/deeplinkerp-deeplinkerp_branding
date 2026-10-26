@@ -352,6 +352,19 @@ async function attachmentFixture(restored=null){
  const h=harness();const drawer={panel:new Surface(),busy:false,alive:()=>true,setBusy(value){this.busy=value;},error(error){this.errorMessage=error.message;}};
  const manager=await h.api.mountAttachments(drawer,'Purchase Receipt','PR',restored);return {...h,drawer,manager};
 }
+test('attachment sessions and multi-file upload work without crypto.randomUUID',async()=>{
+ const h=harness(),crypto=require('node:crypto').webcrypto;
+ h.host.crypto={getRandomValues:bytes=>crypto.getRandomValues(bytes)};
+ const drawer={panel:new Surface(),busy:false,alive:()=>true,setBusy(value){this.busy=value;},error(error){this.errorMessage=error.message;}};
+ const manager=await h.api.mountAttachments(drawer,'Sales Order','SO');
+ const sessionId=manager.snapshot().sessionId;
+ assert.match(sessionId,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+ await manager.add([{name:'receipt.pdf'},{name:'transfer.pdf'}]);
+ assert.equal(h.requests.find(request=>request.method.endsWith('.begin_upload')).args.session_id,sessionId);
+ h.uploaders[0].ack(0,'FILE-A');h.uploaders[0].ack(1,'FILE-B');
+ assert.equal(manager.ready(),true);assert.equal(manager.args().attachments.length,2);
+ manager.stop();
+});
 test('file selection survives clearing the native input during asynchronous upload initialization',async()=>{
  const h=await attachmentFixture(),input=h.drawer.panel.find('.dlp-attachments').find('input[type=file]');
  const live={0:{name:'receipt.pdf'},length:1};input.node.files=live;

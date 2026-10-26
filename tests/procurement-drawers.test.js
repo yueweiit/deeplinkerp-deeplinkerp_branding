@@ -12,6 +12,85 @@ function payments(call, extras={}, capture=()=>{}) {
 }
 function functionFrom(name) { const fn = payments()[name]; assert.equal(typeof fn, 'function', `${name} is used by drawers`); return fn; }
 
+function attachmentFixture() {
+ class Box {
+  constructor(){this.children=new Map();this.props={};}
+  find(key){if(!this.children.has(key))this.children.set(key,new Box());return this.children.get(key);}
+  html(value){this.markup=value;return this;}
+  text(value){this.label=value;return this;}
+  prop(key,value){this.props[key]=value;return this;}
+  on(){return this;}
+ }
+ let begin, beginFailed, bundle, uploader, bundleReady, constructions=0;
+ const bundleStarted=new Promise(resolve=>bundleReady=resolve);
+ const calls=[],uploads=[],panel=new Box();
+ const api=payments(async request=>{calls.push(request);if(request.method.endsWith('begin_upload'))await new Promise((resolve,reject)=>{begin=resolve;beginFailed=reject;});return {message:{}};},
+  {crypto:require('node:crypto').webcrypto,frappe:{require:()=>{bundleReady();return new Promise(resolve=>bundle=resolve);},ui:{FileUploader:class {
+   constructor(options){constructions++;uploader=this;this.options=options;this.uploader={files:[],add_files:files=>this.uploader.files.push(...files.map(file=>({...file}))),upload_file:file=>new Promise(resolve=>uploads.push({file,resolve}))};}
+  }}}});
+ const drawer={panel,busy:false,alive:()=>true,setBusy(value){this.busy=value;},error(error){throw error;}};
+ return {api,drawer,calls,uploads,async begin(){begin();await bundleStarted;},failBegin:()=>beginFailed(new Error('session failed')),bundle:()=>bundle(),get uploader(){return uploader;},get constructions(){return constructions;},
+  complete(index){const {file,resolve}=uploads[index];file.doc={doctype:'File',name:`FILE-${index}`,file_name:file.name,file_url:`/private/files/${file.name}`,is_private:1};uploader.options.on_success(file.doc);resolve();}};
+}
+
+test('selected attachment batches block writes throughout session and bundle initialization and upload',async()=>{
+ const h=attachmentFixture(),manager=await h.api.mountAttachments(h.drawer,'Payment Entry','PE-1');
+ const first=manager.add([{name:'one.pdf'}]),second=manager.add([{name:'two.pdf'}]);
+ assert.equal(manager.ready(),false);
+ assert.equal(h.drawer.panel.find('.dlp-create,.dlp-submit,.dlp-receipt-submit').props.disabled,true);
+ assert.match(h.drawer.panel.find('.dlp-attachments').find('.dlp-attachment-list').markup,/正在上传/);
+ await h.begin();
+ assert.equal(manager.ready(),false,'bundle loading is still part of the pending selection');
+ h.bundle();await Promise.all([first,second]);
+ assert.equal(h.constructions,1);assert.equal(h.uploads.length,2);assert.equal(manager.ready(),false);
+ h.complete(0);assert.equal(manager.ready(),false);
+ h.complete(1);assert.equal(manager.ready(),true);
+ assert.deepEqual(Array.from(manager.args().attachments),['FILE-0','FILE-1']);
+});
+
+test('disposing an editor during attachment initialization never starts its late uploads',async()=>{
+ const h=attachmentFixture(),manager=await h.api.mountAttachments(h.drawer,'Payment Entry','PE-1');
+ const adding=manager.add([{name:'one.pdf'}]);manager.stop();
+ await h.begin();h.bundle();await adding;
+ assert.equal(h.constructions,0);assert.equal(h.uploads.length,0);
+});
+
+test('cancelling during attachment initialization waits for cleanup without starting uploads',async()=>{
+ const h=attachmentFixture(),manager=await h.api.mountAttachments(h.drawer,'Payment Entry','PE-1');
+ const adding=manager.add([{name:'one.pdf'}]),closing=h.drawer.beforeClose();
+ await h.begin();h.bundle();await adding;
+ assert.equal(await closing,true);assert.equal(h.uploads.length,0);
+ assert.match(h.calls.at(-1).method,/discard$/);assert.equal(h.calls.at(-1).args.cancel,1);
+});
+
+test('failed attachment session initialization reports the error and permits a fresh selection',async()=>{
+ const h=attachmentFixture(),manager=await h.api.mountAttachments(h.drawer,'Payment Entry','PE-1');
+ const failed=manager.add([{name:'one.pdf'}]);h.failBegin();await failed;
+ assert.equal(h.drawer.panel.find('.dlp-attachments').find('.dlp-attachment-error').label,'session failed');
+ const retried=manager.add([{name:'one.pdf'}]);assert.equal(manager.ready(),false);
+ await h.begin();h.bundle();await retried;h.complete(0);
+ assert.equal(manager.ready(),true);assert.equal(manager.args().attachments.length,1);
+});
+
+test('request identifiers prefer native randomUUID when available',()=>{
+ let calls=0;
+ const api=payments(undefined,{crypto:{randomUUID(){calls++;return 'native-uuid';},getRandomValues(){throw new Error('unexpected fallback');}}});
+ assert.equal(api.requestId(),'native-uuid');assert.equal(calls,1);
+});
+test('request identifiers fall back to Web Crypto bytes and retain UUID v4 format and retry identity',()=>{
+ const crypto=require('node:crypto').webcrypto;
+ const api=payments(undefined,{crypto:{getRandomValues:bytes=>crypto.getRandomValues(bytes)}});
+ const ids=new Set(Array.from({length:100},()=>api.requestId()));
+ assert.equal(ids.size,100);
+ for(const id of ids)assert.match(id,/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+ const token=api.retryToken(api.requestId),first=token.forPayload({amount:10});
+ assert.equal(token.forPayload({amount:10}),first);assert.throws(()=>token.forPayload({amount:11}));
+ token.succeeded();assert.notEqual(token.forPayload({amount:11}),first);
+});
+test('missing Web Crypto produces an actionable error instead of weak identifiers or a TypeError',()=>{
+ for(const crypto of [undefined,{}])assert.throws(()=>payments(undefined,{crypto}).requestId(),/当前浏览器不支持安全随机标识/);
+});
+
 test('operating expenses can reuse the accessible procurement drawer shell factory', () => {
   assert.equal(typeof payments().createDrawer,'function');
 });

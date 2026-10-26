@@ -45,6 +45,35 @@ test("detail receipts escape identifiers and distinguish draft, submitted and hi
  assert.match(grid.receiptsHTML({reason:'denied'}),/收款记录不可用/);
 });
 
+test("receipt submit action is present only for server-authorized drafts",()=>{
+ const review={receipts:[{name:'PE-1',docstatus:0},{name:'PE-2',docstatus:1}]};
+ assert.doesNotMatch(grid.receiptsHTML(review),/dlp-sales-receipt-submit/);
+ const html=grid.receiptsHTML(review,{'PE-1':{can_submit:true},'PE-2':{can_submit:true}});
+ assert.equal((html.match(/dlp-sales-receipt-submit/g)||[]).length,1);
+ assert.match(html,/dlp-sales-receipt-submit[^>]*data-name="PE-1"/);
+ assert.match(grid.detailsHTML({header:{name:'SO',advance_paid:0},items:[],item_fields:[]}),/data-sales-field="advance_paid"/);
+});
+
+test('late initial receipt reads and errors cannot replace the refreshed submitted state',async()=>{
+ const previous=global.frappe;
+ try {
+  for(const failOld of [false,true]) {
+   const reads=[];
+   global.frappe={call:request=>new Promise((resolve,reject)=>reads.push({request,resolve,reject}))};
+   const body={html(value){this.content=value;},text(value){this.content=value;}};
+   const dialog={$wrapper:{find:()=>body}};
+   const older=grid.loadDetailReceipts(dialog,'SO-1'),newer=grid.loadDetailReceipts(dialog,'SO-1');
+   reads[2].resolve({message:{orders:[{receipts:[{name:'PE-1',docstatus:1,allocated_amount:100,currency:'MXN'}]}]}});
+   reads[3].resolve({message:{}});await newer;
+   const submitted=body.content;assert.match(submitted,/PE-1.*已提交.*100\.00 MXN/);
+   if(failOld)reads[0].reject(new Error('late network failure'));
+   else reads[0].resolve({message:{orders:[{receipts:[]}]}});
+   reads[1].resolve({message:{}});await older;
+   assert.equal(body.content,submitted);
+  }
+ } finally {global.frappe=previous;}
+});
+
 test("main quantity summary renders authorized totals without units and removes the price renderer", () => {
  const render=grid.renderValue;
  for(const [doc,expected] of [[{dlp_quantity:3,dlp_uom:'件'},'3'],[{dlp_quantity:3.75,dlp_multiple_units:true},'3.75'],[{dlp_multiple_units:true},'—'],[{dlp_quantity:0,dlp_uom:'件'},'0']])assert.equal(render("dlp_quantity",doc,{translate:x=>x}),expected);
