@@ -101,7 +101,8 @@
 	}
 	function syncWarning(doc) {
 		if ((doc.dlp_finance?.process_status || doc.custom_process_status) === "Deposit Confirmation Processing") return "CRM/MES 同步中";
-		return doc.dlp_finance?.last_confirmation?.status === "Failed" ? "CRM/MES 同步失败" : "";
+		if (doc.dlp_finance?.sync_error?.message) return doc.dlp_finance.sync_error.message;
+		return doc.dlp_finance?.sync_status === "Failed" || doc.dlp_finance?.last_confirmation?.status === "Failed" ? "CRM/MES 同步失败" : "";
 	}
 	function transformQuery(args, controller) {
 		if (controller.salesView === "finance" && ["approved", "rejected"].includes(controller.quick.financial_status) && controller.allowed.has("custom_process_status")) switchView(controller, "all");
@@ -267,7 +268,7 @@
 			if (!releaseSelectionCurrent(controller, version)) return;
 			const names = [...controller.salesReleaseNames];
 			if (!names.length) return;
-			if (!root.CRMFinanceRelease) await root.frappe.require("/assets/crm_integration/js/finance_release.js");
+			if (!root.CRMFinanceRelease) await root.frappe.require("/assets/crm_integration/js/finance_release.js?v=0.0.4");
 			if (!releaseSelectionCurrent(controller, version)) return;
 			root.CRMFinanceRelease.open(names, () => { controller.list.clear_checked_items?.(); updateSelection(); controller.refresh(); });
 		});

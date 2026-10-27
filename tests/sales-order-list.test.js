@@ -126,6 +126,12 @@ test('sync warnings stay supplemental to approval and permission denial is never
  const failed={custom_process_status:'Pending Deposit Confirmation',dlp_finance:{can_release:false,last_confirmation:{user:'finance',creation:'today',status:'Failed'}}};
  assert.match(render('dlp_last_confirmation',failed),/CRM\/MES 同步失败/);
  assert.match(render('dlp_sync',failed),/CRM\/MES 同步失败/);
+ const financeOnly={custom_process_status:'Pending Deposit Confirmation',dlp_finance:{can_release:true,sync_status:'Failed',last_confirmation:null}};
+ assert.match(render('dlp_sync',financeOnly),/CRM\/MES 同步失败/);
+ const mesFailed={...failed,dlp_finance:{...failed.dlp_finance,sync_error:{code:'ERP_SALES_ORDER_IDENTITY_CONFLICT',message:'MES 订单映射冲突，请核对 ERP/CRM 单号与 MES 既有映射，处理冲突后重试。'}}};
+ assert.match(render('dlp_last_confirmation',mesFailed),/MES 订单映射冲突/);
+ assert.match(render('dlp_sync',mesFailed),/MES 订单映射冲突/);
+ assert.doesNotMatch(render('dlp_sync',mesFailed),/CRM\/MES 同步失败/);
  const denied={custom_process_status:'Pending Production',dlp_finance:{can_release:false,reason:'no permission'}};
  assert.equal(render('dlp_last_confirmation',denied),'—');assert.equal(render('dlp_sync',denied),'—');
 });
