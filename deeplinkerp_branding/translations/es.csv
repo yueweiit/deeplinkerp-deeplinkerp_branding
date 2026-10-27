@@ -2187,3 +2187,4 @@ updated at,actualizado en
 驳回未完成，请核对 ERP 订单和 CRM 状态后重试。,El rechazo no se completó. Verifique el pedido en ERP y el estado en CRM antes de reintentarlo.
 财务操作资格核验失败，请重新选择或刷新后重试。,No se pudieron verificar las acciones financieras. Vuelva a seleccionar el pedido o actualice e inténtelo de nuevo.
 不可驳回：{0},No se puede rechazar: {0}
+驳回,Rechazar

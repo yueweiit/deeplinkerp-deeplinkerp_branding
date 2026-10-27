@@ -257,7 +257,7 @@
 		controller.salesView = "finance"; controller.salesExpanded = new Map();
 		if (!root.$ || !controller.$toolbar) return;
 		dismissAutomaticOnboarding(controller);
-		const bar = root.$(`<div class="dlp-sales-viewbar"><div class="dlp-sales-tabs">${[["all", "全部订单"], ["mine", "我的订单"], ["finance", "待财务审核"]].map(([value, label]) => `<button class="btn btn-default btn-sm" type="button" data-sales-view="${value}" aria-pressed="${value === "finance"}">${esc(t(label))}</button>`).join("")}</div><div class="dlp-sales-release-action"><span class="dlp-sales-selected" role="status">${esc(t("未选择订单"))}</span><button type="button" class="btn btn-primary dlp-sales-release" disabled>${esc(t("允许生产（{0}单）", [0]))}</button><button type="button" class="btn btn-default dlp-sales-reject" disabled>${esc(t("财务驳回"))}</button></div></div>`).prependTo(controller.$toolbar);
+		const bar = root.$(`<div class="dlp-sales-viewbar"><div class="dlp-sales-tabs">${[["all", "全部订单"], ["mine", "我的订单"], ["finance", "待财务审核"]].map(([value, label]) => `<button class="btn btn-default btn-sm" type="button" data-sales-view="${value}" aria-pressed="${value === "finance"}">${esc(t(label))}</button>`).join("")}</div><div class="dlp-sales-release-action"><span class="dlp-sales-selected" role="status">${esc(t("未选择订单"))}</span><button type="button" class="btn btn-primary dlp-sales-release" disabled>${esc(t("允许生产（{0}单）", [0]))}</button><button type="button" class="btn btn-default dlp-sales-reject" disabled>${esc(t("驳回"))}</button></div></div>`).prependTo(controller.$toolbar);
 		controller.$salesViewbar = bar;
 		controller.$salesNotice = root.$(`<p class="dlp-sales-notice text-muted">${esc(t("收款记录未录入不代表未收款；定金由财务按线下约定判断。"))}</p>`).insertAfter(controller.$toolbar);
 		const updateSelection = () => updateReleaseSelection(controller);
@@ -268,7 +268,7 @@
 			if (!releaseSelectionCurrent(controller, version)) return;
 			const names = [...controller.salesReleaseNames];
 			if (!names.length) return;
-			if (!root.CRMFinanceRelease) await root.frappe.require("/assets/crm_integration/js/finance_release.js?v=0.0.4");
+			if (!root.CRMFinanceRelease) await root.frappe.require("/assets/crm_integration/js/finance_release.js?v=0.0.5");
 			if (!releaseSelectionCurrent(controller, version)) return;
 			root.CRMFinanceRelease.open(names, () => { controller.list.clear_checked_items?.(); updateSelection(); controller.refresh(); });
 		});

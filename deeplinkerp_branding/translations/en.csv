@@ -1914,3 +1914,4 @@ ai 助手,ai assistant
 驳回未完成，请核对 ERP 订单和 CRM 状态后重试。,Rejection did not complete. Check the ERP order and CRM status before retrying.
 财务操作资格核验失败，请重新选择或刷新后重试。,Could not verify financial actions. Reselect the order or refresh and try again.
 不可驳回：{0},Cannot reject: {0}
+驳回,Reject

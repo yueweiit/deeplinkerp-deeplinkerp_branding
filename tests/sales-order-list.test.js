@@ -174,7 +174,7 @@ test('sales scope and release controls mount inside the existing personal-column
  f.env.$=html=>new Surface(html);f.controller.$toolbar=new Surface('existing toolbar');
  const columns=f.controller.preferences.columns.slice();f.config.mountControls(f.controller);
  assert.equal(f.controller.$salesViewbar.parent,f.controller.$toolbar);
- assert.match(f.controller.$salesViewbar.html,/class="btn btn-default dlp-sales-reject" disabled>财务驳回<\/button>/);
+ assert.match(f.controller.$salesViewbar.html,/class="btn btn-default dlp-sales-reject" disabled>驳回<\/button>/);
  assert.equal(f.controller.$salesNotice.after,f.controller.$toolbar);
  assert.equal(nodes.find(node=>node.html.includes('dlp-sales-preset')).parent,f.controller.$toolbar);
  assert.match(nodes.find(node=>node.html.includes('dlp-sales-preset')).html,/<option value="finance">收款与预付<\/option>/);
