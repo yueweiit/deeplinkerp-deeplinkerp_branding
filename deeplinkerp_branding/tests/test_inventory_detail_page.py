@@ -21,6 +21,58 @@ def run_js(body: str) -> dict:
 	return json.loads(result.stdout)
 
 
+def test_all_inventory_pages_default_to_yuewei_mx_without_changing_global_default() -> None:
+	result = run_js("""
+const allowed = new Set(['YUEWEI MX', 'Other Company']);
+const queries = [];
+global.frappe = {
+  defaults:{get_default:()=>"Other Company"},
+  call:async({method,args})=>{
+    queries.push({method,doctype:args.doctype,filters:args.filters});
+    return {message:args.filters.name[1].filter(name=>allowed.has(name)).map(name=>({name}))};
+  },
+  msgprint(){},
+};
+(async()=>{
+const results = [];
+for (const isMaterial of [true, false]) {
+  const fields = {};
+  const page = {
+    add_field(df) {
+      fields[df.fieldname] = {df, value:df.default || '', get_value(){return this.value;},
+        set_value(value){this.value=value;}, refresh(){}};
+      return fields[df.fieldname];
+    },
+    set_primary_action(){}, add_inner_button(){},
+  };
+  const view = {isMaterial, page, $root:{find:()=>({text(){}})}, refresh(){this.requested=this.fields.company.get_value()}};
+  inventory.InventoryDetailPage.prototype.makeFilters.call(view);
+  await inventory.InventoryDetailPage.prototype.initializeDefaultCompany.call(view);
+  view.fields.keyword.set_value('test');
+  inventory.InventoryDetailPage.prototype.clearFilters.call(view);
+  results.push({company:view.company, field:fields.company.get_value(),
+    warehouseCompany:fields.warehouse.df.get_query().filters.company,
+    keyword:fields.keyword.get_value(),requested:view.requested});
+}
+allowed.delete('YUEWEI MX');
+const fallback = await inventory.resolveDefaultCompany(frappe);
+allowed.clear();
+const empty = await inventory.resolveDefaultCompany(frappe);
+console.log(JSON.stringify({results, fallback, empty, queries, globalDefault:frappe.defaults.get_default('company')}));
+})();
+""")
+	assert result == {
+		"results": [
+			{"company": "YUEWEI MX", "field": "YUEWEI MX", "warehouseCompany": "YUEWEI MX", "keyword": "", "requested": "YUEWEI MX"},
+			{"company": "YUEWEI MX", "field": "YUEWEI MX", "warehouseCompany": "YUEWEI MX", "keyword": "", "requested": "YUEWEI MX"},
+		],
+		"fallback": "Other Company",
+		"empty": "",
+		"queries": [{"method": "frappe.client.get_list", "doctype": "Company", "filters": {"name": ["in", ["YUEWEI MX", "Other Company"]]}}] * 4,
+		"globalDefault": "Other Company",
+	}
+
+
 def test_reversal_stage_blocks_existing_inventory_movement_without_losing_selection():
 	result = run_js("""
 const group={item_code:'I',warehouse:'W',reversal:{stage:'failed'},locations:[{}]};
@@ -217,6 +269,21 @@ def test_company_switch_cancel_keeps_filters_and_selections_and_ignores_pending_
 })();
 """)
 	assert result == {"pending": {"company": "C1", "warehouse": "W1", "loading": True}, "company": "C1", "warehouse": "W1", "count": 1, "effective": "C1", "groups": 1, "movable": True, "loading": False, "recoveryCompany": "C1", "recovering": {"loading": True, "movable": False}}
+
+
+def test_clearing_company_restores_the_selected_company_without_querying_another() -> None:
+	result = run_js(LIFECYCLE_SETUP + """
+(async()=>{
+ const {page,values}=makePage();
+ let calls=0,message;
+ frappe.call=async()=>{calls++;return {message:{company:'C2'}}};
+ frappe.msgprint=value=>message=value;
+ values.company='';
+ await page.changeCompany();
+ console.log(JSON.stringify({company:values.company,current:page.company,calls,message}));
+})();
+""")
+	assert result == {"company": "C1", "current": "C1", "calls": 0, "message": "请先选择公司或设置默认公司。"}
 
 
 def test_movement_context_permission_failure_preserves_selection_and_requires_fresh_inventory() -> None:

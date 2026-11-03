@@ -37,11 +37,21 @@
 		return value ? globalThis.frappe?.datetime?.str_to_user?.(value) || value : "";
 	}
 
-	function resolveDefaultCompany(framework) {
-		const getter = framework?.defaults?.get_default;
-		return typeof getter === "function"
-			? String(getter.call(framework.defaults, "company") || "").trim()
-			: "";
+	async function resolveDefaultCompany(framework) {
+		const preferred = "YUEWEI MX";
+		const userDefault = String(framework?.defaults?.get_default?.("company") || "").trim();
+		const candidates = [...new Set([preferred, userDefault].filter(Boolean))];
+		const response = await framework.call({
+			method: "frappe.client.get_list",
+			args: {
+				doctype: "Company",
+				fields: ["name"],
+				filters: { name: ["in", candidates] },
+				limit_page_length: candidates.length,
+			},
+		});
+		const allowed = new Set((response.message || []).map((row) => row.name));
+		return candidates.find((name) => allowed.has(name)) || "";
 	}
 
 	function escapeHtml(value) {
@@ -329,22 +339,39 @@
 			this.makeFilters();
 			this.renderShell();
 			this.bindEvents();
-			this.refresh();
+			this.initializeDefaultCompany();
+		}
+
+		async initializeDefaultCompany() {
+			try {
+				const company = await resolveDefaultCompany(frappe);
+				if (this.companyTouched || this.company) return;
+				this.suppressFilterChanges = true;
+				this.company = company;
+				try {
+					await this.fields.company.set_value(company);
+				} finally {
+					this.suppressFilterChanges = false;
+				}
+				if (company) await this.refresh();
+				else this.$root.find(".id-summary").text(__("请先选择公司或设置默认公司。"));
+			} catch (error) {
+				this.$root.find(".id-summary").text(error.message || __("库存明细读取失败。"));
+			}
 		}
 
 		makeFilters() {
 			const resetAndRefresh = () => {
 				if (!this.suppressFilterChanges) this.refresh(true);
 			};
-			const defaultCompany = resolveDefaultCompany(frappe);
-			this.company = defaultCompany;
+			this.company = "";
 			this.fields = {};
 			this.fields.company = this.page.add_field({
 				fieldname: "company",
 				label: __("公司"),
 				fieldtype: "Link",
 				options: "Company",
-				default: defaultCompany,
+				default: "",
 				change: () => this.changeCompany(),
 			});
 			if (this.isMaterial) {
@@ -363,7 +390,7 @@
 				options: "Warehouse",
 				get_query: () => ({
 					filters: {
-						company: this.fields.company.get_value() || defaultCompany,
+						company: this.fields.company.get_value() || this.company,
 						is_group: 0,
 					},
 				}),
@@ -433,9 +460,15 @@
 
 		async changeCompany() {
 			if (this.suppressFilterChanges || this.companyChangePending) return;
+			this.companyTouched = true;
 			const nextCompany = this.fields.company.get_value() || "";
 			const previousCompany = this.company || "";
 			if (nextCompany === previousCompany) return;
+			if (!nextCompany) {
+				await this.fields.company.set_value(previousCompany);
+				frappe.msgprint(__("请先选择公司或设置默认公司。"));
+				return;
+			}
 			const interruptedRefresh = Boolean(this.loading);
 			let changedCompany = false;
 			this.companyChangePending = true;
@@ -680,6 +713,10 @@
 			if ((this.fields.company.get_value() || "") !== (this.company || "")) {
 				return this.changeCompany();
 			}
+			if (!this.company) {
+				this.$root.find(".id-summary").text(__("请先选择公司或设置默认公司。"));
+				return;
+			}
 			if (resetStart) this.start = 0;
 			try {
 				this.pageLength = normalizePageLength(this.fields.page_length.get_value());
@@ -800,6 +837,10 @@
 		}
 
 		async exportExcel() {
+			if (!this.fields.company.get_value()) {
+				frappe.msgprint(__("请先选择公司或设置默认公司。"));
+				return;
+			}
 			const method = this.isMaterial
 				? "deeplinkerp_branding.services.inventory_detail_service.export_inventory_location_detail"
 				: "deeplinkerp_branding.services.inventory_detail_service.export_categorized_inventory_detail";

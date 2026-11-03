@@ -77,7 +77,7 @@ assert.equal(formats.at(-1).field.precision, 2);
 assert.throws(() => inventory.normalizePageLength(0),
   error => error.message === __('每页行数必须是 {0} 到 {1} 的整数。', [1, 2500]));
 const proto = inventory.InventoryDetailPage.prototype;
-for (const name of ['makeFilters', 'renderShell', 'bindEvents', 'refresh']) proto[name] = () => {};
+for (const name of ['makeFilters', 'renderShell', 'bindEvents', 'initializeDefaultCompany']) proto[name] = () => {};
 frappe.ui = {make_app_page: config => config};
 const page = new inventory.InventoryDetailPage({}, {category:'finished_goods', title:'成品库存明细'});
 assert.equal(page.page.title, translations['成品库存明细']);
