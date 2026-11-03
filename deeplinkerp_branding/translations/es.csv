@@ -570,6 +570,11 @@ DPCI,DPCI
 实时库存,Existencias actuales
 库存差异,Diferencia de existencias
 库存状态,Estado de existencias
+BOM 用料状态,Estado de uso en BOM
+已用于 BOM,Usado en BOM
+未用于 BOM,No usado en BOM
+不支持的 BOM 用料状态。,Estado de uso en BOM no admitido.
+BOM 用料状态读取失败，请刷新页面后重试。,No se pudo cargar el estado de uso en BOM. Actualice la página e inténtelo de nuevo.
 快照日期,Fecha de referencia
 库位待维护,Ubicación pendiente
 库存一致,Existencias coincidentes

@@ -192,13 +192,14 @@ def test_xlsx_export_merges_group_fields_but_keeps_location_rows_separate() -> N
 	sheet = workbook.active
 
 	assert sheet.title == "物料库存明细"
-	assert [sheet.cell(1, column).value for column in range(1, 12)] == [
+	assert [sheet.cell(1, column).value for column in range(1, 13)] == [
 		"正式物料编码",
 		"物料名称（双语）",
 		"仓库",
 		"原始库位",
 		"库位数量",
 		"总库存",
+		"BOM 用料状态",
 		"库存单位",
 		"物料组",
 		"DPCI",
@@ -207,8 +208,9 @@ def test_xlsx_export_merges_group_fields_but_keeps_location_rows_separate() -> N
 	]
 	# FL002917 has two locations; shared fields are true merged cells.
 	merged = {str(cell_range) for cell_range in sheet.merged_cells.ranges}
-	for column in ("A", "B", "C", "F", "G", "H", "I", "J", "K"):
+	for column in ("A", "B", "C", "F", "G", "H", "I", "J", "K", "L"):
 		assert f"{column}2:{column}3" in merged
+	assert sheet["G2"].value == "未用于 BOM"
 	assert sheet["D2"].value == "AI-11-A02"
 	assert sheet["D3"].value == "AI-12-T02"
 	assert sheet["E2"].value == 1865
@@ -216,6 +218,47 @@ def test_xlsx_export_merges_group_fields_but_keeps_location_rows_separate() -> N
 	assert sheet["F2"].value == 2560
 	assert sheet["E2"].number_format == "#,##0"
 	assert sheet["E4"].number_format == "#,##0.00"
+
+
+def test_material_bom_usage_filter_runs_before_pagination_and_export() -> None:
+	rows = [*ROWS, {**ROWS[0], "warehouse": "SECOND W", "original_location": "L-X"}]
+	statuses = {"FL002917": "used", "FL007979": "unused"}
+	payload = build_inventory_location_payload(
+		rows, {"bom_usage_status": "used"},
+		bom_usage_statuses=statuses, start=1, page_length=1,
+	)
+	assert payload["total_count"] == 2
+	assert payload["has_previous"] is True
+	assert payload["has_next"] is False
+	assert payload["groups"][0]["item_code"] == "FL002917"
+	assert payload["groups"][0]["bom_usage_status"] == "used"
+
+	full = build_inventory_location_payload(
+		ROWS, {"bom_usage_status": "used"}, bom_usage_statuses=statuses, page_length=None,
+	)
+	sheet = load_workbook(BytesIO(build_inventory_location_xlsx(full))).active
+	assert sheet["G1"].value == "BOM 用料状态"
+	assert sheet["G2"].value == "已用于 BOM"
+	assert "G2:G3" in {str(merged) for merged in sheet.merged_cells.ranges}
+
+	unused = build_inventory_location_payload(
+		ROWS, {"bom_usage_status": "unused"}, bom_usage_statuses=statuses,
+	)
+	assert unused["total_count"] == 1
+	assert unused["groups"][0]["bom_usage_status"] == "unused"
+	legacy_other = build_inventory_location_payload(
+		ROWS, {"bom_usage_status": "other_company"}, bom_usage_statuses=statuses,
+	)
+	assert legacy_other["total_count"] == full["total_count"]
+	assert build_inventory_location_payload(
+		ROWS, {"bom_usage_status": "unknown"}, bom_usage_statuses=statuses,
+	)["total_count"] == 0
+	with pytest.raises(ValueError, match="不支持的 BOM 用料状态"):
+		build_inventory_location_payload(ROWS, {"bom_usage_status": "bogus"})
+	assert service._material_bom_candidate_codes(ROWS, {"keyword": "no-match"}) == set()
+	assert service._material_bom_candidate_codes(
+		ROWS, {"original_location": "AI-11", "bom_usage_status": "used"}
+	) == {"FL002917"}
 
 
 CATEGORY_STOCK_ROWS = [
@@ -502,7 +545,7 @@ def test_categorized_xlsx_exports_all_reference_locations_and_real_time_status()
 	sheet = workbook.active
 
 	assert sheet.title == "半成品库存明细"
-	assert [sheet.cell(1, column).value for column in range(1, 15)] == [
+	assert [sheet.cell(1, column).value for column in range(1, 16)] == [
 		"正式物料编码",
 		"物料名称（双语）",
 		"仓库",
@@ -511,6 +554,7 @@ def test_categorized_xlsx_exports_all_reference_locations_and_real_time_status()
 		"实时库存",
 		"库存差异",
 		"库存状态",
+		"BOM 用料状态",
 		"快照日期",
 		"库存单位",
 		"物料组",
@@ -523,3 +567,105 @@ def test_categorized_xlsx_exports_all_reference_locations_and_real_time_status()
 	assert sheet["F2"].value == 12
 	assert sheet["G2"].value == 2
 	assert sheet["H2"].value == "库存差异"
+	assert sheet["I2"].value == "未用于 BOM"
+
+
+def test_bom_usage_query_batches_direct_components_across_companies(monkeypatch) -> None:
+	queries: list[tuple[str, dict]] = []
+
+	class FakeDB:
+		@staticmethod
+		def sql(query: str, params: dict, as_dict: bool):
+			assert as_dict is True
+			assert "`tabBOM Item`" in query and "`tabBOM`" in query
+			assert "component.parentfield = 'items'" in query
+			assert "bom.docstatus = 1" in query and "bom.is_active = 1" in query
+			assert "company" not in query
+			queries.append((query, params))
+			return [{"item_code": code} for code in params["item_codes"] if code in ("B", "C")]
+
+	monkeypatch.setattr(service, "frappe", SimpleNamespace(db=FakeDB()))
+	monkeypatch.setattr(service, "BOM_USAGE_BATCH_SIZE", 2)
+	assert service._load_bom_usage_statuses([]) == {}
+	assert queries == []
+	assert service._load_bom_usage_statuses(["C", "A", "B", "A"]) == {
+		"A": "unused", "B": "used", "C": "used"
+	}
+	assert [params["item_codes"] for _, params in queries] == [("A", "B"), ("C",)]
+
+
+@pytest.mark.parametrize("category", ["semi_finished", "finished_goods", "mold"])
+def test_categorized_bom_usage_filter_runs_before_group_pagination(category: str) -> None:
+	rows = [
+		{
+			"item_code": item_code,
+			"item_name": item_code,
+			"warehouse": warehouse,
+			"actual_qty": 2,
+			"stock_uom": "个：pieza",
+			"item_group": "成品",
+		}
+		for item_code, warehouse in (("A", "W1"), ("A", "W2"), ("B", "W1"))
+	]
+	payload = build_categorized_inventory_payload(
+		rows, [], category=category, filters={"bom_usage_status": "used"},
+		bom_usage_statuses={"A": "used", "B": "unused"}, start=1, page_length=1,
+	)
+	assert payload["total_count"] == 2
+	assert payload["has_previous"] is True
+	assert payload["has_next"] is False
+	assert [(row["item_code"], row["bom_usage_status"]) for row in payload["groups"]] == [("A", "used")]
+
+	unused = build_categorized_inventory_payload(
+		rows, [], category=category, filters={"bom_usage_status": "unused"},
+		bom_usage_statuses={"A": "used", "B": "unused"}, page_length=None,
+	)
+	assert unused["total_count"] == 1
+	assert {row["bom_usage_status"] for row in unused["groups"]} == {"unused"}
+	legacy_other = build_categorized_inventory_payload(
+		rows, [], category=category, filters={"bom_usage_status": "other_company"},
+		bom_usage_statuses={"A": "used", "B": "unused"}, page_length=None,
+	)
+	assert legacy_other["total_count"] == payload["total_count"]
+	assert build_categorized_inventory_payload(
+		rows, [], category=category, filters={"bom_usage_status": "unknown"},
+		bom_usage_statuses={"A": "used", "B": "unused"}, page_length=None,
+	)["total_count"] == 0
+	with pytest.raises(ValueError, match="不支持的 BOM 用料状态"):
+		build_categorized_inventory_payload(
+			rows, [], category=category, filters={"bom_usage_status": "bogus"},
+		)
+
+
+def test_category_bom_candidates_keep_snapshot_only_groups_and_apply_location_filter() -> None:
+	stock = [
+		{"item_code": "A", "item_name": "Alpha", "warehouse": "W1", "actual_qty": 2},
+		{"item_code": "B", "item_name": "Beta", "warehouse": "", "actual_qty": 0},
+	]
+	snapshots = [
+		{"item_code": "A", "warehouse": "W1", "original_location": "L1"},
+		{"item_code": "B", "warehouse": "W2", "original_location": "L2"},
+	]
+	lookup = service._category_bom_candidate_codes
+	assert lookup(stock, snapshots, {"keyword": "no-match"}) == set()
+	assert lookup(stock, snapshots, {"keyword": "Beta", "warehouse": "W2"}) == {"B"}
+	assert lookup(stock, snapshots, {"warehouse": "W2", "reference_location": "L2"}) == {"B"}
+	assert lookup(stock, snapshots, {"warehouse": "W2", "reference_location": "L1"}) == set()
+	assert lookup(stock, snapshots, {"warehouse": "W2", "only_with_stock": 1}) == set()
+	assert lookup(stock, snapshots, {"bom_usage_status": "unknown"}) == set()
+
+
+@pytest.mark.parametrize("category", ["semi_finished", "finished_goods", "mold"])
+def test_categorized_xlsx_exports_bom_usage_for_every_category(category: str) -> None:
+	payload = build_categorized_inventory_payload(
+		[CATEGORY_STOCK_ROWS[0]], CATEGORY_SNAPSHOT_ROWS,
+		category=category, filters={},
+		bom_usage_statuses={"NSEMI-001": "used"}, page_length=None,
+	)
+	sheet = load_workbook(BytesIO(build_categorized_inventory_xlsx(payload))).active
+	assert sheet.max_column == 15
+	assert sheet["H1"].value == "库存状态"
+	assert sheet["I1"].value == "BOM 用料状态"
+	assert sheet["I2"].value == "已用于 BOM"
+	assert "I2:I3" in {str(merged) for merged in sheet.merged_cells.ranges}
+	assert sheet["J2"].value == "2026-09-29"

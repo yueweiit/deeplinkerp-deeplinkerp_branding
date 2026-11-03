@@ -433,3 +433,62 @@ def test_prepare_rejects_cross_company_and_group_target_warehouses(
 			"W2",
 			[{"item_code": "ITEM-1", "source_warehouse": "W1", "qty": 1}],
 		)
+
+
+def test_bom_usage_queries_current_page_without_filter_and_all_candidates_with_filter(monkeypatch) -> None:
+	snapshot_rows = [
+		{
+			"company": "YUEWEI MX", "snapshot_key": "SNAPSHOT", "item_code": code,
+			"item_name": code, "warehouse": "W1", "original_location": "L1", "location_qty": 1,
+		}
+		for code in ("A", "B")
+	]
+	stock_rows = [
+		{"item_code": code, "item_name": code, "warehouse": "W1", "actual_qty": 1}
+		for code in ("A", "B")
+	]
+	for name in ("_require_read_permission", "_require_categorized_inventory_read_permission"):
+		monkeypatch.setattr(service, name, lambda: None)
+	monkeypatch.setattr(service, "_require_company_permission", lambda _company: None)
+	monkeypatch.setattr(service, "_load_snapshot_rows", lambda _filters: snapshot_rows)
+	monkeypatch.setattr(service, "_list_snapshot_options", lambda _company: [])
+	monkeypatch.setattr(service, "_category_query_context", lambda _category, _filters: {})
+	monkeypatch.setattr(service, "_load_category_stock_rows", lambda _context: stock_rows)
+	monkeypatch.setattr(service, "_load_category_snapshot_rows", lambda _context: [])
+	monkeypatch.setattr(service, "_list_category_item_groups", lambda _context: [])
+	monkeypatch.setattr(service, "_movement_permission_payload", lambda: {})
+	monkeypatch.setattr(service, "_attach_reversal_progress", lambda payload, _selections: payload)
+	queried: list[tuple[str, ...]] = []
+
+	def load_bom_usage(codes) -> dict[str, str]:
+		unique = tuple(sorted(set(codes)))
+		queried.append(unique)
+		return {code: "used" if code == "A" else "unused" for code in unique}
+
+	monkeypatch.setattr(service, "_load_bom_usage_statuses", load_bom_usage)
+	for get_page in (
+		lambda filters: service.get_inventory_location_detail(filters=filters, page_length=1),
+		lambda filters: service.get_categorized_inventory_detail("semi_finished", filters=filters, page_length=1),
+	):
+		queried.clear()
+		unfiltered = get_page({"company": "YUEWEI MX"})
+		assert unfiltered["total_count"] == 2
+		assert unfiltered["bom_usage_scope"] == service.BOM_USAGE_SCOPE
+		assert unfiltered["groups"][0]["bom_usage_status"] == "used"
+		assert queried == [("A",)]
+
+		queried.clear()
+		filtered = get_page({"company": "YUEWEI MX", "bom_usage_status": "used"})
+		assert filtered["total_count"] == 1
+		assert filtered["groups"][0]["bom_usage_status"] == "used"
+		assert queried == [("A", "B")]
+
+		queried.clear()
+		empty = get_page({"company": "YUEWEI MX", "keyword": "no-match", "bom_usage_status": "used"})
+		assert empty["total_count"] == 0
+		assert queried == [()]
+
+		queried.clear()
+		legacy_unknown = get_page({"company": "YUEWEI MX", "bom_usage_status": "unknown"})
+		assert legacy_unknown["total_count"] == 0
+		assert queried == [()]

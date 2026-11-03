@@ -38,6 +38,7 @@ def test_inventory_catalogs_cover_the_shared_page_and_export(language):
 	keys.update(service.EXPORT_HEADERS + service.CATEGORY_EXPORT_HEADERS)
 	keys.update(definition["title"] for definition in service.CATEGORY_DEFINITIONS.values())
 	keys.update(["物料库存明细", "库存差异", "库存一致", "库位待维护", "待库存重算", "重算中", "校验中", "冲销完成", "失败待处理"])
+	keys.update(service.BOM_USAGE_LABELS.values())
 	for key in keys:
 		assert key in translations, (language, key)
 		original = {(field, spec) for _, field, spec, _ in Formatter().parse(key) if field is not None}
@@ -110,10 +111,20 @@ def test_exports_translate_labels_and_keep_numbers_and_business_names(monkeypatc
 	assert sheet["F2"].value == 5
 	assert sheet["F2"].data_type == "n"
 	assert sheet["H2"].value == translations["库存差异"]
-	assert sheet["K2"].value == "业务分类"
+	assert sheet["I2"].value == translations["未用于 BOM"]
+	assert sheet["L2"].value == "业务分类"
 	material = load_workbook(BytesIO(service.build_inventory_location_xlsx({"groups": []}))).active
 	assert material.title == translations["物料库存明细"][:31]
 	assert [cell.value for cell in material[1]] == [translations[key] for key in service.EXPORT_HEADERS]
+	material_payload = service.build_inventory_location_payload(
+		[{"item_code": "I-1", "warehouse": "中文仓库", "original_location": "L1", "location_qty": 5}],
+		bom_usage_statuses={"I-1": "used"},
+	)
+	material_with_status = load_workbook(BytesIO(service.build_inventory_location_xlsx(material_payload))).active
+	assert material_with_status["G2"].value == translations["已用于 BOM"]
+	material_payload["groups"][0]["bom_usage_status"] = "unused"
+	material_unused = load_workbook(BytesIO(service.build_inventory_location_xlsx(material_payload))).active
+	assert material_unused["G2"].value == translations["未用于 BOM"]
 	with pytest.raises(ValueError) as error:
 		service.get_category_definition("invalid")
 	assert str(error.value) == translations["不支持的库存分类：{0}"].format("invalid")

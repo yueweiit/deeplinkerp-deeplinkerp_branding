@@ -22,6 +22,11 @@ DPCI,DPCI
 实时库存,Live Stock
 库存差异,Stock Difference
 库存状态,Inventory Status
+BOM 用料状态,BOM Component Status
+已用于 BOM,Used in BOM
+未用于 BOM,Not Used in BOM
+不支持的 BOM 用料状态。,Unsupported BOM component status.
+BOM 用料状态读取失败，请刷新页面后重试。,BOM component status could not be loaded. Refresh the page and try again.
 快照日期,Snapshot Date
 库位待维护,Location Not Maintained
 库存一致,Stock Matches

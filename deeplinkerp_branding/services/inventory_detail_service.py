@@ -40,7 +40,7 @@ COUNT_UOM_TOKENS = (
 	"barra",
 	"unidad",
 )
-COMMON_EXPORT_COLUMNS = (1, 2, 3, 6, 7, 8, 9, 10, 11)
+COMMON_EXPORT_COLUMNS = (1, 2, 3, 6, 7, 8, 9, 10, 11, 12)
 EXPORT_HEADERS = (
 	"正式物料编码",
 	"物料名称（双语）",
@@ -48,6 +48,7 @@ EXPORT_HEADERS = (
 	"原始库位",
 	"库位数量",
 	"总库存",
+	"BOM 用料状态",
 	"库存单位",
 	"物料组",
 	"DPCI",
@@ -83,6 +84,7 @@ CATEGORY_EXPORT_HEADERS = (
 	"实时库存",
 	"库存差异",
 	"库存状态",
+	"BOM 用料状态",
 	"快照日期",
 	"库存单位",
 	"物料组",
@@ -90,7 +92,13 @@ CATEGORY_EXPORT_HEADERS = (
 	"外部编码",
 	"原始标识/别名",
 )
-CATEGORY_EXPORT_MERGE_COLUMNS = (1, 2, 3, 6, 7, 8, 10, 11, 12, 13, 14)
+CATEGORY_EXPORT_MERGE_COLUMNS = (1, 2, 3, 6, 7, 8, 9, 11, 12, 13, 14, 15)
+BOM_USAGE_LABELS = {
+	"used": "已用于 BOM",
+	"unused": "未用于 BOM",
+}
+BOM_USAGE_SCOPE = "all_companies"
+BOM_USAGE_BATCH_SIZE = 500
 DEFAULT_PAGE_LENGTH = 200
 MIN_PAGE_LENGTH = 1
 MAX_PAGE_LENGTH = 2500
@@ -163,6 +171,18 @@ def _contains(value: Any, keyword: Any) -> bool:
 	return _text(keyword).casefold() in _text(value).casefold()
 
 
+def _bom_usage_filter(filters: dict[str, Any]) -> str:
+	status = _text(filters.get("bom_usage_status"))
+	# Old browser tabs can still submit the retired four-state filter values.
+	if status == "other_company":
+		return "used"
+	if status == "unknown":
+		return status  # No BOM is unviewable under the current aggregate rule.
+	if status and status not in BOM_USAGE_LABELS:
+		raise ValueError(_("不支持的 BOM 用料状态。"))
+	return status
+
+
 def _matches_group_filters(row: dict[str, Any], filters: dict[str, Any]) -> bool:
 	for fieldname in ("company", "warehouse", "item_group", "snapshot_key"):
 		selected = _text(filters.get(fieldname))
@@ -188,16 +208,34 @@ def _matches_group_filters(row: dict[str, Any], filters: dict[str, Any]) -> bool
 	return True
 
 
+def _material_bom_candidate_codes(rows: Iterable[dict[str, Any]], filters: dict[str, Any]) -> set[str]:
+	"""Limit BOM lookups to snapshot items surviving non-BOM filters."""
+
+	if _bom_usage_filter(filters) == "unknown":
+		return set()
+	location = _text(filters.get("original_location"))
+	return {
+		_text(row.get("item_code"))
+		for row in rows
+		if _matches_group_filters(row, filters)
+		and (not location or _contains(row.get("original_location"), location))
+		and _text(row.get("item_code"))
+	}
+
+
 def build_inventory_location_payload(
 	rows: Iterable[dict[str, Any]],
 	filters: dict[str, Any] | None = None,
 	*,
+	bom_usage_statuses: dict[str, str] | None = None,
 	start: int = 0,
 	page_length: int | None = DEFAULT_PAGE_LENGTH,
 ) -> dict[str, Any]:
 	"""按物料和仓库分组；库位筛选不改变完整仓库小计。"""
 
 	filters = dict(filters or {})
+	bom_usage_statuses = bom_usage_statuses or {}
+	bom_usage_filter = _bom_usage_filter(filters)
 	all_rows = [dict(row) for row in rows]
 	group_rows = [row for row in all_rows if _matches_group_filters(row, filters)]
 	groups: OrderedDict[tuple[str, str], dict[str, Any]] = OrderedDict()
@@ -239,6 +277,9 @@ def build_inventory_location_payload(
 	location_filter = _text(filters.get("original_location"))
 	visible_groups: list[dict[str, Any]] = []
 	for group in groups.values():
+		bom_usage_status = bom_usage_statuses.get(group["item_code"], "unused")
+		if bom_usage_filter and bom_usage_status != bom_usage_filter:
+			continue
 		if location_filter:
 			visible_locations = [
 				location
@@ -248,6 +289,7 @@ def build_inventory_location_payload(
 			if not visible_locations:
 				continue
 			group["locations"] = visible_locations
+		group["bom_usage_status"] = bom_usage_status
 		visible_groups.append(group)
 
 	total_count = len(visible_groups)
@@ -305,6 +347,7 @@ def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 					location.get("original_location") or "",
 					float(location.get("location_qty") or 0),
 					float(group.get("total_qty") or 0),
+					_(BOM_USAGE_LABELS[group.get("bom_usage_status", "unused")]),
 					group.get("stock_uom") or "",
 					group.get("item_group") or "",
 					group.get("dpci") or "",
@@ -318,6 +361,7 @@ def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 					"",
 					location.get("original_location") or "",
 					float(location.get("location_qty") or 0),
+					"",
 					"",
 					"",
 					"",
@@ -348,7 +392,7 @@ def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 			for column in range(1, len(EXPORT_HEADERS) + 1):
 				sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
 
-	widths = (18, 32, 24, 18, 15, 15, 15, 28, 18, 20, 28)
+	widths = (18, 32, 24, 18, 15, 15, 17, 15, 28, 18, 20, 28)
 	for index, width in enumerate(widths, start=1):
 		sheet.column_dimensions[chr(64 + index)].width = width
 
@@ -405,12 +449,49 @@ def _matches_category_filters(group: dict[str, Any], filters: dict[str, Any]) ->
 	return True
 
 
+def _category_bom_candidate_codes(
+	stock_rows: list[dict[str, Any]], snapshot_rows: list[dict[str, Any]], filters: dict[str, Any]
+) -> set[str]:
+	"""Keep item codes from groups surviving warehouse, stock, keyword and location filters."""
+
+	if _bom_usage_filter(filters) == "unknown":
+		return set()
+	item_rows: dict[str, dict[str, Any]] = {}
+	codes: set[str] = set()
+	for row in stock_rows:
+		item_code = _text(row.get("item_code"))
+		if not item_code:
+			continue
+		item_rows.setdefault(item_code, row)
+		if _matches_category_filters(row, filters):
+			codes.add(item_code)
+	if not _truthy(filters.get("only_with_stock")):
+		for row in snapshot_rows:
+			item_code = _text(row.get("item_code"))
+			base = item_rows.get(item_code)
+			if base and _matches_category_filters(
+				{**base, "warehouse": row.get("warehouse"), "actual_qty": 0}, filters
+			):
+				codes.add(item_code)
+	location = _text(filters.get("reference_location") or filters.get("original_location"))
+	if location:
+		selected_warehouse = _text(filters.get("warehouse"))
+		codes.intersection_update(
+			_text(row.get("item_code"))
+			for row in snapshot_rows
+			if (not selected_warehouse or _text(row.get("warehouse")) == selected_warehouse)
+			and _contains(row.get("original_location") or "库位待维护", location)
+		)
+	return codes
+
+
 def build_categorized_inventory_payload(
 	stock_rows: Iterable[dict[str, Any]],
 	snapshot_rows: Iterable[dict[str, Any]],
 	*,
 	category: str,
 	filters: dict[str, Any] | None = None,
+	bom_usage_statuses: dict[str, str] | None = None,
 	start: int = 0,
 	page_length: int | None = DEFAULT_PAGE_LENGTH,
 ) -> dict[str, Any]:
@@ -418,6 +499,8 @@ def build_categorized_inventory_payload(
 
 	definition = get_category_definition(category)
 	filters = dict(filters or {})
+	bom_usage_statuses = bom_usage_statuses or {}
+	bom_usage_filter = _bom_usage_filter(filters)
 	groups: OrderedDict[tuple[str, str], dict[str, Any]] = OrderedDict()
 	item_metadata: dict[str, dict[str, Any]] = {}
 
@@ -472,6 +555,10 @@ def build_categorized_inventory_payload(
 	for group in groups.values():
 		if not _matches_category_filters(group, filters):
 			continue
+		bom_usage_status = bom_usage_statuses.get(group["item_code"], "unused")
+		if bom_usage_filter and bom_usage_status != bom_usage_filter:
+			continue
+		group["bom_usage_status"] = bom_usage_status
 		all_locations = list(group.pop("_snapshot_locations", []))
 		snapshot_qty = (
 			sum(float(location.get("snapshot_location_qty") or 0) for location in all_locations)
@@ -569,28 +656,31 @@ def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 		start_row = current_row
 		for index, location in enumerate(locations):
 			shared = index == 0
-			sheet.append(
-				[
-					group.get("item_code") or "" if shared else "",
-					group.get("item_name") or "" if shared else "",
-					group.get("warehouse") or "" if shared else "",
-					(
-						location.get("reference_location")
-						if location.get("reference_location") not in (None, "", "库位待维护")
-						else _("库位待维护")
-					),
-					location.get("snapshot_location_qty"),
-					float(group.get("actual_qty") or 0) if shared else "",
-					group.get("difference_qty") if shared else "",
-					_(group.get("inventory_status") or "") if shared else "",
-					location.get("snapshot_date") or "",
-					group.get("stock_uom") or "" if shared else "",
-					group.get("item_group") or "" if shared else "",
-					group.get("dpci") or "" if shared else "",
-					group.get("external_code") or "" if shared else "",
-					group.get("original_identifier_alias") or "" if shared else "",
-				]
+			values = [
+				group.get("item_code") or "" if shared else "",
+				group.get("item_name") or "" if shared else "",
+				group.get("warehouse") or "" if shared else "",
+				(
+					location.get("reference_location")
+					if location.get("reference_location") not in (None, "", "库位待维护")
+					else _("库位待维护")
+				),
+				location.get("snapshot_location_qty"),
+				float(group.get("actual_qty") or 0) if shared else "",
+				group.get("difference_qty") if shared else "",
+				_(group.get("inventory_status") or "") if shared else "",
+				location.get("snapshot_date") or "",
+				group.get("stock_uom") or "" if shared else "",
+				group.get("item_group") or "" if shared else "",
+				group.get("dpci") or "" if shared else "",
+				group.get("external_code") or "" if shared else "",
+				group.get("original_identifier_alias") or "" if shared else "",
+			]
+			values.insert(
+				8,
+				_(BOM_USAGE_LABELS[group.get("bom_usage_status", "unused")]) if shared else "",
 			)
+			sheet.append(values)
 			if location.get("snapshot_location_qty") is not None:
 				sheet.cell(current_row, 5).number_format = _number_format(
 					group.get("stock_uom"), location.get("snapshot_location_qty")
@@ -618,7 +708,7 @@ def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 			for column in range(1, len(CATEGORY_EXPORT_HEADERS) + 1):
 				sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
 
-	widths = (18, 32, 24, 18, 15, 15, 15, 14, 14, 15, 28, 18, 20, 28)
+	widths = (18, 32, 24, 18, 15, 15, 15, 14, 17, 14, 15, 28, 18, 20, 28)
 	for index, width in enumerate(widths, start=1):
 		sheet.column_dimensions[chr(64 + index)].width = width
 
@@ -684,6 +774,52 @@ def _accessible_items() -> tuple[str, ...]:
 		for row in rows
 		if _text(row.get("name") if isinstance(row, dict) else getattr(row, "name", row))
 	)
+
+
+def _load_bom_usage_statuses(item_codes: Iterable[str]) -> dict[str, str]:
+	"""Check direct components in active submitted BOMs for already authorized inventory items.
+
+	Only item codes scoped by the inventory query enter this aggregate check. BOM
+	identities, companies and child rows are never returned to the page.
+	"""
+
+	codes = tuple(sorted({_text(code) for code in item_codes if _text(code)}))
+	if not codes:
+		return {}
+	if frappe is None:
+		return dict.fromkeys(codes, "unused")
+
+	used: set[str] = set()
+	for offset in range(0, len(codes), BOM_USAGE_BATCH_SIZE):
+		batch = codes[offset : offset + BOM_USAGE_BATCH_SIZE]
+		rows = frappe.db.sql(
+			"""
+			SELECT DISTINCT component.item_code
+			FROM `tabBOM Item` component
+			INNER JOIN `tabBOM` bom ON bom.name = component.parent
+			WHERE component.parenttype = 'BOM'
+			  AND component.parentfield = 'items'
+			  AND bom.docstatus = 1
+			  AND bom.is_active = 1
+			  AND component.item_code IN %(item_codes)s
+			""",
+			{"item_codes": batch},
+			as_dict=True,
+		)
+		for row in rows:
+			item_code = _text(row.get("item_code"))
+			if item_code in batch:
+				used.add(item_code)
+	return {code: "used" if code in used else "unused" for code in codes}
+
+
+def _attach_page_bom_usage(payload: dict[str, Any]) -> None:
+	"""Resolve BOM usage only for displayed groups when no BOM status filter is active."""
+
+	groups = payload.get("groups") or []
+	statuses = _load_bom_usage_statuses(group["item_code"] for group in groups)
+	for group in groups:
+		group["bom_usage_status"] = statuses.get(group["item_code"], "unused")
 
 
 def _latest_snapshot_key(company: str) -> str:
@@ -1268,12 +1404,22 @@ def get_inventory_location_detail(
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
 	_require_company_permission(company)
+	bom_filter = _bom_usage_filter(parsed)
+	snapshot_rows = _load_snapshot_rows(parsed)
 	payload = build_inventory_location_payload(
-		_load_snapshot_rows(parsed),
+		snapshot_rows,
 		parsed,
+		bom_usage_statuses=(
+			_load_bom_usage_statuses(_material_bom_candidate_codes(snapshot_rows, parsed))
+			if bom_filter
+			else None
+		),
 		start=_parse_start(start),
 		page_length=_request_page_length(page_length),
 	)
+	if not bom_filter:
+		_attach_page_bom_usage(payload)
+	payload["bom_usage_scope"] = BOM_USAGE_SCOPE
 	payload["snapshot_options"] = _list_snapshot_options(company)
 	payload.update(_movement_permission_payload())
 	return _attach_reversal_progress(payload, progress_selections)
@@ -1286,13 +1432,22 @@ def export_inventory_location_detail(filters: Any = None, **kwargs: Any) -> dict
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
 	_require_company_permission(company)
-	payload = build_inventory_location_payload(_load_snapshot_rows(parsed), parsed, start=0, page_length=None)
+	_bom_usage_filter(parsed)
+	snapshot_rows = _load_snapshot_rows(parsed)
+	payload = build_inventory_location_payload(
+		snapshot_rows,
+		parsed,
+		bom_usage_statuses=_load_bom_usage_statuses(_material_bom_candidate_codes(snapshot_rows, parsed)),
+		start=0,
+		page_length=None,
+	)
 	content = build_inventory_location_xlsx(payload)
 	snapshot = payload.get("snapshot_date") or "latest"
 	return {
 		"file_name": f"material-inventory-detail-{snapshot}.xlsx",
 		"mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"content_base64": base64.b64encode(content).decode("ascii"),
+		"bom_usage_scope": BOM_USAGE_SCOPE,
 	}
 
 
@@ -1310,17 +1465,28 @@ def get_categorized_inventory_detail(
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
 	_require_company_permission(company)
+	bom_filter = _bom_usage_filter(parsed)
 	get_category_definition(category)
 	context = _category_query_context(category, parsed)
 	missing_item_group = _text(context.get("missing_item_group"))
+	stock_rows = [] if missing_item_group else _load_category_stock_rows(context)
+	snapshot_rows = [] if missing_item_group else _load_category_snapshot_rows(context)
 	payload = build_categorized_inventory_payload(
-		[] if missing_item_group else _load_category_stock_rows(context),
-		[] if missing_item_group else _load_category_snapshot_rows(context),
+		stock_rows,
+		snapshot_rows,
 		category=category,
 		filters=parsed,
+		bom_usage_statuses=(
+			_load_bom_usage_statuses(_category_bom_candidate_codes(stock_rows, snapshot_rows, parsed))
+			if bom_filter
+			else None
+		),
 		start=_parse_start(start),
 		page_length=_request_page_length(page_length),
 	)
+	if not bom_filter:
+		_attach_page_bom_usage(payload)
+	payload["bom_usage_scope"] = BOM_USAGE_SCOPE
 	payload["company"] = company
 	payload["item_group_options"] = [] if missing_item_group else _list_category_item_groups(context)
 	if missing_item_group:
@@ -1336,14 +1502,18 @@ def export_categorized_inventory_detail(category: str, filters: Any = None, **kw
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
 	_require_company_permission(company)
+	_bom_usage_filter(parsed)
 	definition = get_category_definition(category)
 	context = _category_query_context(category, parsed)
 	missing_item_group = _text(context.get("missing_item_group"))
+	stock_rows = [] if missing_item_group else _load_category_stock_rows(context)
+	snapshot_rows = [] if missing_item_group else _load_category_snapshot_rows(context)
 	payload = build_categorized_inventory_payload(
-		[] if missing_item_group else _load_category_stock_rows(context),
-		[] if missing_item_group else _load_category_snapshot_rows(context),
+		stock_rows,
+		snapshot_rows,
 		category=category,
 		filters=parsed,
+		bom_usage_statuses=_load_bom_usage_statuses(_category_bom_candidate_codes(stock_rows, snapshot_rows, parsed)),
 		start=0,
 		page_length=None,
 	)
@@ -1352,4 +1522,5 @@ def export_categorized_inventory_detail(category: str, filters: Any = None, **kw
 		"file_name": f"{definition['file_prefix']}.xlsx",
 		"mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"content_base64": base64.b64encode(content).decode("ascii"),
+		"bom_usage_scope": BOM_USAGE_SCOPE,
 	}

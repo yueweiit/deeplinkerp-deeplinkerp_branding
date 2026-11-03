@@ -4,6 +4,11 @@
 	const DEFAULT_PAGE_LENGTH = 200;
 	const MIN_PAGE_LENGTH = 1;
 	const MAX_PAGE_LENGTH = 2500;
+	const BOM_USAGE_LABELS = {
+		used: "已用于 BOM",
+		unused: "未用于 BOM",
+	};
+	const BOM_USAGE_SCOPE = "all_companies";
 	const COUNT_UOM_TOKENS = [
 		"个",
 		"件",
@@ -149,9 +154,16 @@
 		return next;
 	}
 
+	function bomUsageCell(group, rowspan) {
+		const status = group.bom_usage_status;
+		if (!Object.hasOwn(BOM_USAGE_LABELS, status)) return `<td${rowspan}>—</td>`;
+		const statusClass = status === "used" ? "is-balanced" : "is-difference";
+		return `<td${rowspan}><span class="id-status ${statusClass}">${escapeHtml(__(BOM_USAGE_LABELS[status]))}</span></td>`;
+	}
+
 	function renderMaterialRows(groups, selectedKeys = new Set()) {
 		if (!Array.isArray(groups) || !groups.length) {
-			return `<tr class="id-empty"><td colspan="12">${escapeHtml(__("没有符合条件的库存库位记录。"))}</td></tr>`;
+			return `<tr class="id-empty"><td colspan="13">${escapeHtml(__("没有符合条件的库存库位记录。"))}</td></tr>`;
 		}
 		return groups
 			.map((group) => {
@@ -172,6 +184,7 @@
 						group.total_qty,
 						group.stock_uom
 					)}</td>`,
+					bomUsageCell(group, rowspan),
 					`<td${rowspan}>${escapeHtml(group.stock_uom)}</td>`,
 					`<td${rowspan}>${escapeHtml(group.item_group)}</td>`,
 					`<td${rowspan}>${escapeHtml(group.dpci)}</td>`,
@@ -197,7 +210,7 @@
 
 	function renderCategorizedRows(groups, selectedKeys = new Set()) {
 		if (!Array.isArray(groups) || !groups.length) {
-			return `<tr class="id-empty"><td colspan="15">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
+			return `<tr class="id-empty"><td colspan="16">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
 		}
 		return groups
 			.map((group) => {
@@ -237,6 +250,7 @@
 						group.stock_uom
 					)}</td>`,
 					`<td${rowspan}><span class="id-status${statusClass}">${status}</span></td>`,
+					bomUsageCell(group, rowspan),
 				].join("");
 				const sharedAfter = [
 					`<td${rowspan}>${escapeHtml(group.stock_uom)}</td>`,
@@ -285,35 +299,35 @@
 	}
 
 	function materialTable() {
-		return `<table aria-label="${escapeHtml(__("物料库存明细表"))}">
+		return `<table class="id-material-table" aria-label="${escapeHtml(__("物料库存明细表"))}">
       <colgroup>
         <col class="id-col-select"><col class="id-col-code"><col class="id-col-name"><col class="id-col-warehouse">
         <col class="id-col-location"><col class="id-col-quantity"><col class="id-col-quantity">
-        <col class="id-col-uom"><col class="id-col-group"><col class="id-col-code-extra">
+        <col class="id-col-bom-status"><col class="id-col-uom"><col class="id-col-group"><col class="id-col-code-extra">
         <col class="id-col-code-extra"><col class="id-col-alias">
       </colgroup>
       <thead><tr>
         <th class="id-select"><input type="checkbox" data-select-current-page aria-label="${escapeHtml(__("全选当前页"))}"></th>
         <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th><th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("原始库位"))}</th>
-        <th>${escapeHtml(__("库位数量"))}</th><th>${escapeHtml(__("总库存"))}</th><th>${escapeHtml(__("库存单位"))}</th><th>${escapeHtml(__("物料组"))}</th>
+        <th>${escapeHtml(__("库位数量"))}</th><th>${escapeHtml(__("总库存"))}</th><th>${escapeHtml(__("BOM 用料状态"))}</th><th>${escapeHtml(__("库存单位"))}</th><th>${escapeHtml(__("物料组"))}</th>
         <th>DPCI</th><th>${escapeHtml(__("外部编码"))}</th><th>${escapeHtml(__("原始标识/别名"))}</th>
       </tr></thead><tbody></tbody>
     </table>`;
 	}
 
 	function categorizedTable(title) {
-		return `<table aria-label="${escapeHtml(__("{0}表", [title]))}">
+		return `<table class="id-categorized-table" aria-label="${escapeHtml(__("{0}表", [title]))}">
       <colgroup>
         <col class="id-col-select"><col class="id-col-code"><col class="id-col-name"><col class="id-col-warehouse">
         <col class="id-col-location"><col class="id-col-quantity"><col class="id-col-quantity">
-        <col class="id-col-quantity"><col class="id-col-status"><col class="id-col-date">
+        <col class="id-col-quantity"><col class="id-col-status"><col class="id-col-bom-status"><col class="id-col-date">
         <col class="id-col-uom"><col class="id-col-group"><col class="id-col-code-extra">
         <col class="id-col-code-extra"><col class="id-col-alias">
       </colgroup>
       <thead><tr>
         <th class="id-select"><input type="checkbox" data-select-current-page aria-label="${escapeHtml(__("全选当前页"))}"></th>
         <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th><th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("参考库位"))}</th>
-        <th>${escapeHtml(__("快照库位数量"))}</th><th>${escapeHtml(__("实时库存"))}</th><th>${escapeHtml(__("库存差异"))}</th><th>${escapeHtml(__("库存状态"))}</th>
+        <th>${escapeHtml(__("快照库位数量"))}</th><th>${escapeHtml(__("实时库存"))}</th><th>${escapeHtml(__("库存差异"))}</th><th>${escapeHtml(__("库存状态"))}</th><th>${escapeHtml(__("BOM 用料状态"))}</th>
         <th>${escapeHtml(__("快照日期"))}</th><th>${escapeHtml(__("库存单位"))}</th><th>${escapeHtml(__("物料组"))}</th><th>DPCI</th>
         <th>${escapeHtml(__("外部编码"))}</th><th>${escapeHtml(__("原始标识/别名"))}</th>
       </tr></thead><tbody></tbody>
@@ -438,6 +452,17 @@
 					change: resetAndRefresh,
 				});
 			}
+			this.fields.bom_usage_status = this.page.add_field({
+				fieldname: "bom_usage_status",
+				label: __("BOM 用料状态"),
+				fieldtype: "Select",
+				options: [
+					"",
+					{ value: "used", label: __("已用于 BOM") },
+					{ value: "unused", label: __("未用于 BOM") },
+				],
+				change: resetAndRefresh,
+			});
 			this.fields.page_length = this.page.add_field({
 				fieldname: "page_length",
 				label: __("每页行数"),
@@ -752,6 +777,10 @@
 				if (payload.company && payload.company !== requestedCompany) {
 					throw new Error(__("公司信息已变化，请重新选择公司后读取库存。"));
 				}
+				if (payload.bom_usage_scope !== BOM_USAGE_SCOPE ||
+					(payload.groups || []).some((group) => !Object.hasOwn(BOM_USAGE_LABELS, group.bom_usage_status))) {
+					throw new Error(__("BOM 用料状态读取失败，请刷新页面后重试。"));
+				}
 				this.lastPayload = payload;
 				this.currentGroups = payload.groups || [];
 				for (const group of this.currentGroups) {
@@ -852,7 +881,12 @@
 				freeze: true,
 				freeze_message: __("正在生成 Excel…"),
 			});
-			downloadBase64File(response.message || {});
+			const file = response.message || {};
+			if (file.bom_usage_scope !== BOM_USAGE_SCOPE) {
+				frappe.msgprint(__("BOM 用料状态读取失败，请刷新页面后重试。"));
+				return;
+			}
+			downloadBase64File(file);
 		}
 
 		canMoveSelection() {

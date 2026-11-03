@@ -100,7 +100,7 @@ console.log(JSON.stringify({html}));
 	)
 	html = result["html"]
 	assert html.count('type="checkbox"') == 1
-	assert html.count('rowspan="2"') == 10
+	assert html.count('rowspan="2"') == 11
 	assert "data-selection-key" in html
 
 
@@ -188,8 +188,8 @@ function makePage(){
   setItemGroupOptions(){},renderPager(){}});
  return {page,values};
 }
-const group=(code)=>({item_code:code,item_name:'Name '+code,warehouse:'W1',locations:[]});
-global.frappe={msgprint(){},call:async()=>({message:{company:'C1',groups:[group('A')],can_create_stock_entry:true}})};
+const group=(code)=>({item_code:code,item_name:'Name '+code,warehouse:'W1',locations:[],bom_usage_status:'used'});
+global.frappe={msgprint(){},call:async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('A')],can_create_stock_entry:true}})};
 """
 
 
@@ -205,12 +205,12 @@ def test_pending_inventory_auto_refresh_updates_selection_and_disposes_stale_pag
  page.fitViewport(true);const subscribed=handlers.has('purchase_reversal_progress'),scheduled=timers.size;
  const poll=timers.values().next().value;timers.clear();await poll();
  const failed={stage:page.selected.values().next().value.reversal.stage,blocked:!page.canCreateStockEntry,rows:page.currentGroups.length};
- frappe.call=async()=>{calls++;return {message:{company:'C1',groups:[group('B')],can_create_stock_entry:true,
+ frappe.call=async()=>{calls++;return {message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('B')],can_create_stock_entry:true,
   selected_reversals:[{item_code:'A',warehouse:'W1',reversal:null}]}}};
  await handlers.get('purchase_reversal_progress')({operation_id:'OP',stage:'completed'});
  const completed={size:page.selected.size,reversal:page.selected.values().next().value.reversal,canMove:page.canCreateStockEntry,timers:timers.size};
  let resolve;frappe.call=()=>new Promise(r=>{resolve=r});const pending=page.refresh();page.fitViewport(false);
- resolve({message:{company:'C1',groups:[group('STALE')],can_create_stock_entry:true}});await pending;
+ resolve({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('STALE')],can_create_stock_entry:true}});await pending;
  console.log(JSON.stringify({subscribed,scheduled,failed,completed,disposed:{handlers:handlers.size,timers:timers.size,code:page.currentGroups[0].item_code},calls}));
 })();
 """)
@@ -228,7 +228,7 @@ def test_actual_refresh_retains_selection_across_search_filter_paging_and_errors
  page.config.category=category;page.isMaterial=category==='material';page.setSnapshotOptions=()=>{};
  await page.refresh();
  page.selected=inventory.updateCurrentPageSelection(page.currentGroups,page.selected,true);
- values.keyword='B'; frappe.call=async()=>({message:{company:'C1',groups:[group('B')],can_create_stock_entry:true}});
+ values.keyword='B'; frappe.call=async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('B')],can_create_stock_entry:true}});
  await page.refresh(true);
  page.selected=inventory.updateCurrentPageSelection(page.currentGroups,page.selected,true);
  values.warehouse=''; page.start=1; await page.refresh();
@@ -260,9 +260,9 @@ def test_company_switch_cancel_keeps_filters_and_selections_and_ignores_pending_
   return new Promise(resolve=>resolveRecovery=resolve)};
  cancel(); await recovery;
  const recovering={loading:page.loading,movable:page.canMoveSelection()};
- resolveRecovery({message:{company:'C1',groups:[group('A')],can_create_stock_entry:true}});
+ resolveRecovery({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('A')],can_create_stock_entry:true}});
  await changing;
- resolve({message:{company:'C2',groups:[group('B')],can_create_stock_entry:true}}); await loading;
+ resolve({message:{bom_usage_scope:'all_companies',company:'C2',groups:[group('B')],can_create_stock_entry:true}}); await loading;
  console.log(JSON.stringify({pending,company:values.company,warehouse:values.warehouse,
   count:page.selected.size,effective:page.effectiveCompany,groups:page.currentGroups.length,
   movable:page.canMoveSelection(),loading:page.loading,recoveryCompany,recovering}));
@@ -294,7 +294,7 @@ def test_movement_context_permission_failure_preserves_selection_and_requires_fr
  frappe.call=async()=>{calls++;throw Error('permission revoked')};
  await page.openMovementDialog();await page.openMovementDialog();
  const failure={calls,count:page.selected.size,movable:page.canMoveSelection(),message};
- frappe.call=async()=>({message:{company:'C1',groups:[group('A')],can_create_stock_entry:true}});
+ frappe.call=async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('A')],can_create_stock_entry:true}});
  await page.refresh();
  console.log(JSON.stringify({failure,recovered:page.canMoveSelection(),count:page.selected.size}));
 })();
@@ -325,12 +325,12 @@ def test_persistent_header_reenables_after_initial_and_repeated_refresh(category
  const initialLoad=page.refresh();const during=header.state.disabled;await initialLoad;
  const initial=header.state.disabled;
  events['[data-select-current-page]']({currentTarget:{checked:true}});
- frappe.call=async()=>({message:{company:'C1',groups:[group('B')],can_create_stock_entry:false}});
+ frappe.call=async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('B')],can_create_stock_entry:false}});
  await page.refresh();const repeated={disabled:header.state.disabled,checked:header.state.checked};
  events['[data-select-current-page]']({currentTarget:{checked:true}});
  const count=page.selected.size;
  frappe.call=async()=>{throw Error('permission denied')};await page.refresh();const failed=header.state.disabled;
- frappe.call=async()=>({message:{company:'C1',groups:[group('B')],can_create_stock_entry:true}});
+ frappe.call=async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('B')],can_create_stock_entry:true}});
  await page.refresh();
  console.log(JSON.stringify({during,initial,repeated,count,failed,recovered:header.state.disabled,
   recoveredChecked:header.state.checked}));
@@ -349,7 +349,7 @@ def test_company_confirmation_accept_clears_once_and_cancel_restores_racing_fiel
  values.company='C3'; no(); await cancelled;
  const cancelCompany=values.company;
  values.company='C2'; const accepted=page.changeCompany();
- frappe.call=async()=>{calls++;return {message:{company:'C2',groups:[group('B')],can_create_stock_entry:true}}};
+ frappe.call=async()=>{calls++;return {message:{bom_usage_scope:'all_companies',company:'C2',groups:[group('B')],can_create_stock_entry:true}}};
  yes(); await accepted;
  console.log(JSON.stringify({cancelCompany,company:values.company,warehouse:values.warehouse,
   count:page.selected.size,calls,movable:page.canMoveSelection()}));
@@ -476,7 +476,7 @@ const root={{find(){{return button}}}};
 global.$=(value)=>typeof value==='string' ? (html=value,root) :
  {{children:()=>({{remove(){{}}}}),append(){{}}}};
 const page=Object.assign(Object.create(inventory.InventoryDetailPage.prototype),{{
- config:{{title:'库存明细'}},isMaterial:{json.dumps(category == 'material')},
+ config:{{title:'库存明细',category:{json.dumps(category)}}},isMaterial:{json.dumps(category == 'material')},
  page:{{body:{{}}}},selected:new Map(),canCreateStockEntry:false
 }});
 page.renderShell();
@@ -485,9 +485,83 @@ console.log(JSON.stringify({{html}}));
 	)
 	assert 'data-inventory-action="movement"' in result["html"]
 	assert 'class="id-actions"' in result["html"]
+	assert "BOM 用料状态" in result["html"]
 	source = SHARED_JS.read_text(encoding="utf-8")
 	assert 'add_inner_button("物料移动' not in source
 	assert "'[data-inventory-action=\"movement\"]'" in source
+
+
+def test_bom_status_renders_on_material_and_categorized_pages() -> None:
+	result = run_js("""
+const group={item_code:'A',item_name:'成品A',warehouse:'W1',actual_qty:1,stock_uom:'个：pieza',
+ inventory_status:'库位待维护',bom_usage_status:'used',total_qty:1,
+ locations:[{reference_location:'库位待维护',original_location:'L1',location_qty:1}]};
+const categorized=inventory.renderCategorizedRows([group]);
+const material=inventory.renderMaterialRows([group]);
+const unused=inventory.renderMaterialRows([{...group,bom_usage_status:'unused'}]);
+const missing=inventory.renderMaterialRows([{...group,bom_usage_status:undefined}]);
+console.log(JSON.stringify({categorized,material,unused,missing,categorizedEmpty:inventory.renderCategorizedRows([]),
+ materialEmpty:inventory.renderMaterialRows([])}));
+""")
+	assert "已用于 BOM" in result["categorized"] and "已用于 BOM" in result["material"]
+	assert "库位待维护" in result["categorized"]
+	assert result["categorized"].count("<td") == 16
+	assert result["material"].count("<td") == 13
+	assert "未用于 BOM" in result["unused"] and "is-difference" in result["unused"]
+	assert "未用于 BOM" not in result["missing"] and ">—</td>" in result["missing"]
+	assert 'colspan="16"' in result["categorizedEmpty"]
+	assert 'colspan="13"' in result["materialEmpty"]
+
+
+def test_inventory_page_rejects_missing_or_older_bom_usage_contract() -> None:
+	result = run_js(LIFECYCLE_SETUP + """
+(async()=>{
+ const {page}=makePage();let summary='';
+ page.$root={...element,find(selector){
+  if(selector==='.id-summary') return {text(value){summary=value;return this}};
+  return element;
+ }};
+ const outcomes=[];
+ for(const message of [
+  {company:'C1',groups:[group('A')],can_create_stock_entry:true},
+  {bom_usage_scope:'all_companies',company:'C1',groups:[{...group('A'),bom_usage_status:undefined}],can_create_stock_entry:true},
+ ]){
+  frappe.call=async()=>({message});await page.refresh();
+  outcomes.push({summary,groups:page.currentGroups.length,canMove:page.canCreateStockEntry});
+ }
+ let exportWarning='';frappe.msgprint=value=>exportWarning=value;
+ frappe.call=async()=>({message:{file_name:'old.xlsx',content_base64:'AA=='}});
+ await page.exportExcel();
+ console.log(JSON.stringify({outcomes,exportWarning}));
+})();
+""")
+	assert result["outcomes"] == [
+		{"summary": "BOM 用料状态读取失败，请刷新页面后重试。", "groups": 0, "canMove": False},
+		{"summary": "BOM 用料状态读取失败，请刷新页面后重试。", "groups": 0, "canMove": False},
+	]
+	assert result["exportWarning"] == "BOM 用料状态读取失败，请刷新页面后重试。"
+
+
+@pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
+def test_all_inventory_pages_send_bom_filter_as_stable_code(category: str) -> None:
+	result = run_js(f"""
+const fields={{}};
+const page={{
+ add_field(df){{
+  const field={{df,value:df.default || '',get_value(){{return this.value}},set_value(value){{this.value=value}}}};
+  fields[df.fieldname]=field;return field;
+ }},set_primary_action(){{}},add_inner_button(){{}}
+}};
+const view={{page,config:{{category:{json.dumps(category)}}},isMaterial:{json.dumps(category == 'material')},refresh(){{}}}};
+inventory.InventoryDetailPage.prototype.makeFilters.call(view);
+fields.bom_usage_status.set_value('used');
+console.log(JSON.stringify({{options:fields.bom_usage_status.df.options,filters:
+ inventory.InventoryDetailPage.prototype.filters.call(view)}}));
+""")
+	assert [option["value"] for option in result["options"][1:]] == [
+		"used", "unused"
+	]
+	assert result["filters"] == {"bom_usage_status": "used"}
 
 
 @pytest.mark.parametrize("count,can_create", [(0, True), (1, True), (200, True), (2, False)])

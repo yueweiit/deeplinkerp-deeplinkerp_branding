@@ -37,7 +37,7 @@ def test_export_formats_fixed_columns_without_scanning_all_existing_cells(monkey
 	book = load_workbook(BytesIO(content))
 	sheet = book.active
 	assert sheet.max_row == 3
-	assert sheet.max_column == (14 if categorized else 11)
+	assert sheet.max_column == (15 if categorized else 12)
 	assert sheet["F2"].value == 5
 	assert sheet["E2"].value + sheet["E3"].value == 5
 	assert "A2:A3" in sheet.merged_cells

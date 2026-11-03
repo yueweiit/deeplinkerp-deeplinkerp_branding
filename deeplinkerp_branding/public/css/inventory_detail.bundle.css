@@ -34,9 +34,13 @@
 .inventory-detail table {
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 1840px;
+  min-width: 2160px;
   table-layout: fixed;
   width: 100%;
+}
+
+.inventory-detail table.id-categorized-table {
+  min-width: 2600px;
 }
 
 .inventory-detail th,
@@ -106,10 +110,13 @@
 
 .inventory-detail .id-status {
   border-radius: 999px;
-  display: inline-flex;
+  box-sizing: border-box;
+  display: inline-block;
   font-size: 12px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
   padding: 2px 8px;
-  white-space: nowrap;
+  white-space: normal;
 }
 
 .inventory-detail .id-status.is-balanced {
@@ -152,8 +159,9 @@
 .inventory-detail .id-col-warehouse { width: 210px; }
 .inventory-detail .id-col-location { width: 150px; }
 .inventory-detail .id-col-quantity { width: 120px; }
-.inventory-detail .id-col-status { width: 110px; }
-.inventory-detail .id-col-date { width: 120px; }
+.inventory-detail .id-col-status { width: 180px; }
+.inventory-detail .id-col-bom-status { width: 170px; }
+.inventory-detail .id-col-date { width: 140px; }
 .inventory-detail .id-col-uom { width: 110px; }
 .inventory-detail .id-col-group { width: 230px; }
 .inventory-detail .id-col-code-extra { width: 150px; }

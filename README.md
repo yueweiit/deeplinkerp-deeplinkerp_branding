@@ -2,6 +2,13 @@
 
 DeeplinkERP 的品牌、导航和跨业务通用定制。目前包含四个库存明细页面、库存快照及标准物料移动单预填入口。
 
+四个库存明细页面的“BOM 用料状态”按当前页面有权查看的物料编码，在本站点任一公司已提交、
+已启用 BOM 的直接 `BOM Item.item_code` 中查找：有匹配显示“已用于 BOM”，否则显示“未用于 BOM”。
+列表筛选及 Excel 导出沿用同一口径。该状态与库位快照的“库存状态”独立，实时计算且不写入
+物料、BOM 或库存单据；查询不向页面返回 BOM 编号或所属公司。跨公司出现仅说明有用料引用，
+不代表该 BOM 已适用于当前公司生产。列表和导出响应以 `bom_usage_scope=all_companies` 标识此口径。
+为兼容仍打开的旧页面，旧筛选值 `other_company` 按 `used` 处理，`unknown` 返回空结果；新页面只提供两项。
+
 ### 协作主线与线上基线
 
 本应用独立仓库为 [yueweiit/deeplinkerp-deeplinkerp_branding](https://github.com/yueweiit/deeplinkerp-deeplinkerp_branding)，统一使用 **`main`**。采购、销售、库存页面及共享服务的修改，从 `main` 拉取并向 `main` 提交 PR，Frappe App 名保持 `deeplinkerp_branding`。
