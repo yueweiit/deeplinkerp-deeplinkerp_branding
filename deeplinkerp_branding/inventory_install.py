@@ -79,23 +79,44 @@ def ensure_stock_sidebar_inventory_pages() -> dict:
 	if missing_pages:
 		return {"ok": False, "message": f"库存明细页面尚未安装：{', '.join(missing_pages)}"}
 
-	sidebar_name = (
-		frappe.db.exists("Workspace Sidebar", {"module": "Stock"})
-		or frappe.db.exists("Workspace Sidebar", "Stock")
-		or frappe.db.exists("Workspace Sidebar", {"title": "库存"})
+	sidebars = frappe.get_all(
+		"Workspace Sidebar",
+		fields=["name", "title", "module", "for_user"],
+		limit_page_length=0,
+	)
+	sidebar_name = next(
+		(
+			row.name for row in sidebars
+			if not row.for_user and row.name == "Stock"
+		),
+		None,
+	) or next(
+		(
+			row.name for row in sidebars
+			if not row.for_user and (row.module == "Stock" or row.title == "库存")
+		),
+		None,
 	)
 	if not sidebar_name:
 		return {"ok": False, "message": "未找到库存 Workspace Sidebar。"}
 
-	sidebar = frappe.get_doc("Workspace Sidebar", sidebar_name)
-	changed = upsert_stock_sidebar_inventory_pages(sidebar)
-	if changed:
-		sidebar.save(ignore_permissions=True)
+	private_names = [
+		row.name for row in sidebars
+		if row.for_user and row.name == f"{sidebar_name}-{row.for_user}"
+	]
+	updated = []
+	for name in [sidebar_name, *private_names]:
+		sidebar = frappe.get_doc("Workspace Sidebar", name)
+		if upsert_stock_sidebar_inventory_pages(sidebar):
+			sidebar.save(ignore_permissions=True)
+			updated.append(name)
+	if updated:
 		frappe.db.commit()
 	return {
 		"ok": True,
-		"changed": changed,
-		"sidebar": sidebar.name,
+		"changed": bool(updated),
+		"sidebar": sidebar_name,
+		"updated_sidebars": updated,
 		"pages": [page["link_to"] for page in INVENTORY_DETAIL_PAGES],
 	}
 
@@ -146,19 +167,52 @@ def upsert_stock_sidebar_inventory_pages(sidebar) -> bool:
 
 	for target in targets:
 		items.remove(target)
-	anchor_index = next(
+	bin = next(
+		(
+			row for row in items
+			if getattr(row, "link_type", None) == "DocType" and getattr(row, "link_to", None) == "Bin"
+		),
+		None,
+	)
+	if bin:
+		items.remove(bin)
+	top_index = next(
 		(
 			index
 			for index, row in enumerate(items)
-			if getattr(row, "link_to", None) == "Stock Projected Qty"
-			or getattr(row, "label", None) in {"可用数量", "Stock Projected Qty"}
+			if getattr(row, "link_type", None) == "Dashboard" and getattr(row, "link_to", None) == "Stock"
 		),
 		-1,
 	)
-	desired_index = anchor_index + 1 if anchor_index >= 0 else len(items)
+	if top_index < 0:
+		top_index = next(
+			(
+				index for index, row in enumerate(items)
+				if getattr(row, "link_type", None) == "Workspace" and getattr(row, "link_to", None) == "Stock"
+			),
+			-1,
+		)
 	original_order = list(sidebar.get("items") or [])
 	for offset, target in enumerate(targets):
-		items.insert(desired_index + offset, target)
+		items.insert(top_index + 1 + offset, target)
+	if bin:
+		report_index = next(
+			(
+				index for index, row in enumerate(items)
+				if getattr(row, "link_to", None) == "Stock Projected Qty"
+			),
+			-1,
+		)
+		if report_index < 0:
+			report_index = next(
+				(
+					index for index, row in enumerate(items)
+					if getattr(row, "type", None) == "Section Break"
+					and getattr(row, "label", None) in {"Reports", "报表"}
+				),
+				len(items) - 1,
+			)
+		items.insert(report_index + 1, bin)
 	if items != original_order:
 		changed = True
 
