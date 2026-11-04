@@ -163,6 +163,27 @@ class OAHttpTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 client._get("http://oa:3000", "/api/v1/approvals", {}, max_bytes=3)
 
+    def test_transient_disconnect_retries_once_without_leaking_remote_details(self):
+        class Response:
+            status_code = 200
+            headers = {}
+            def __enter__(self): return self
+            def __exit__(self, *_args): pass
+            def iter_content(self, _size): yield b"safe response"
+        for error_type in (client.requests.exceptions.ConnectionError, client.requests.exceptions.ChunkedEncodingError):
+            with self.subTest(error_type=error_type.__name__), \
+                    patch.object(client.requests, "get", side_effect=[error_type("private source URL"), Response()]) as request, \
+                    patch.object(client, "sleep") as pause:
+                self.assertEqual(client._get("http://oa:3000", "/api/v1/attachments", {}), b"safe response")
+                self.assertEqual(request.call_count, 2)
+                pause.assert_called_once_with(0.2)
+        with patch.object(client.requests, "get", side_effect=client.requests.exceptions.ConnectionError("private source URL")) as request, \
+                patch.object(client, "sleep"), patch.object(client.frappe, "throw", side_effect=fail):
+            with self.assertRaisesRegex(ValueError, "运营支出 OA 读取暂不可用") as raised:
+                client._get("http://oa:3000", "/api/v1/attachments", {})
+            self.assertNotIn("private source URL", str(raised.exception))
+            self.assertEqual(request.call_count, 2)
+
     def test_only_remote_invalid_cursor_is_restartable_and_rate_limit_is_distinct(self):
         class Response:
             headers = {}
@@ -180,7 +201,8 @@ class OAHttpTests(unittest.TestCase):
                 client._get("http://oa:3000", "/api/v1/approvals", {"cursor": "bad"})
         limited = Response(429)
         limited.headers = {"Retry-After": "17"}
-        with patch.object(client.requests, "get", return_value=limited):
+        with patch.object(client.requests, "get", return_value=limited) as request:
             with self.assertRaises(client.OARateLimited) as raised:
                 client._get("http://oa:3000", "/api/v1/approvals", {})
+        request.assert_called_once()
         self.assertEqual(raised.exception.retry_after, 17)

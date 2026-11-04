@@ -7,6 +7,7 @@ from __future__ import annotations
 import base64
 import binascii
 import json
+from time import sleep
 from urllib.parse import urlsplit
 
 import frappe
@@ -58,42 +59,50 @@ def configuration():
 
 
 def _get(url, path, params, *, max_bytes=MAX_PAGE_BYTES):
-    try:
-        with requests.get(url + path, params=params, timeout=(5, 30),
-                          allow_redirects=False, stream=True) as response:
-            if response.status_code == 400 and params.get("cursor"):
-                # Only this stable remote error code permits a safe full rescan.
-                # Never surface the remote response body or its URL.
-                body = bytearray()
-                for chunk in response.iter_content(2048):
-                    body.extend(chunk)
-                    if len(body) > 2048:
-                        break
-                if len(body) <= 2048:
+    for attempt in range(2):
+        try:
+            with requests.get(url + path, params=params, timeout=(5, 30),
+                              allow_redirects=False, stream=True) as response:
+                if response.status_code == 400 and params.get("cursor"):
+                    # Only this stable remote error code permits a safe full rescan.
+                    # Never surface the remote response body or its URL.
+                    body = bytearray()
+                    for chunk in response.iter_content(2048):
+                        body.extend(chunk)
+                        if len(body) > 2048:
+                            break
+                    if len(body) <= 2048:
+                        try:
+                            if json.loads(body).get("code") == "INVALID_CURSOR":
+                                raise OAInvalidCursor()
+                        except (ValueError, TypeError, AttributeError):
+                            pass
+                if response.status_code == 429:
                     try:
-                        if json.loads(body).get("code") == "INVALID_CURSOR":
-                            raise OAInvalidCursor()
-                    except (ValueError, TypeError, AttributeError):
-                        pass
-            if response.status_code == 429:
-                try:
-                    retry_after = min(60, max(1, int(response.headers.get("Retry-After", "60"))))
-                except (ValueError, TypeError):
-                    retry_after = 60
-                raise OARateLimited(retry_after)
-            if response.status_code != 200:
-                raise ValueError("OA API status")
-            if int(response.headers.get("Content-Length", "0")) > max_bytes:
-                raise ValueError("OA API size")
-            content = bytearray()
-            for chunk in response.iter_content(65536):
-                content.extend(chunk)
-                if len(content) > max_bytes:
+                        retry_after = min(60, max(1, int(response.headers.get("Retry-After", "60"))))
+                    except (ValueError, TypeError):
+                        retry_after = 60
+                    raise OARateLimited(retry_after)
+                if response.status_code != 200:
+                    raise ValueError("OA API status")
+                if int(response.headers.get("Content-Length", "0")) > max_bytes:
                     raise ValueError("OA API size")
-            return bytes(content)
-    except (requests.RequestException, ValueError, TypeError):
-        # Never expose the unauthenticated API's URL, content, or raw failure.
-        frappe.throw(_("运营支出 OA 读取暂不可用，请管理员检查服务与配置"))
+                content = bytearray()
+                for chunk in response.iter_content(65536):
+                    content.extend(chunk)
+                    if len(content) > max_bytes:
+                        raise ValueError("OA API size")
+                return bytes(content)
+        except (requests.exceptions.ConnectionError, requests.exceptions.ChunkedEncodingError):
+            # A GET can be repeated after the peer drops the connection.
+            # Never retry protocol errors, rate limits, or an invalid cursor.
+            if attempt == 0:
+                sleep(0.2)
+                continue
+        except (requests.RequestException, ValueError, TypeError):
+            break
+    # Never expose the unauthenticated API's URL, content, or raw failure.
+    frappe.throw(_("运营支出 OA 读取暂不可用，请管理员检查服务与配置"))
 
 
 def _page(url, resource, params):
