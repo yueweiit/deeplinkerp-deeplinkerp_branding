@@ -195,9 +195,15 @@ def _audit_financial(operation, source, document, amount, result, *, error=None,
 def get_sync_settings():
     _manager()
     settings = _settings()
+    mode = _source_mode()
+    if mode == "oa_cashier":
+        from deeplinkerp_branding.services import operating_oa_http as oa_http
+        source_url, _ = oa_http.configuration()
+    else:
+        source_url = SOURCE_URL
     return {key: settings.get(key) for key in ("enabled", "changed_since", "until", "last_sync_at", "last_error", "preview_fingerprint")} | {
-        "company_mappings": _maps(settings), "token_configured": bool(settings.get_password("api_token", raise_exception=False)), "source_url": SOURCE_URL,
-        "source_mode": _source_mode(),
+        "company_mappings": _maps(settings), "token_configured": bool(settings.get_password("api_token", raise_exception=False)), "source_url": source_url,
+        "source_mode": mode,
     }
 
 
@@ -230,6 +236,11 @@ def save_sync_settings(company_mappings, api_token=None):
         settings.api_token = api_token
     settings.enabled = 0
     settings.preview_fingerprint = None
+    if _source_mode() == "oa_cashier":
+        # Mapping edits are followed by a new preview and a new full OA scan.
+        # An old remote cursor may have expired while synchronization was off.
+        settings.cursor = None
+        settings.until = None
     _save(settings)
     return get_sync_settings()
 
@@ -349,6 +360,8 @@ def _source_page(params):
     if _source_mode() == "cashier":
         return _request("/api/integrations/erp/operating-expenses", params)
     from deeplinkerp_branding.services import operating_oa_source as oa
+    from deeplinkerp_branding.services import operating_oa_http as oa_http
+    url, corps = oa_http.configuration()
     until = params.get("until") or datetime.now(timezone.utc).isoformat()
     if oa.timestamp(until) > datetime.now(timezone.utc):
         frappe.throw(_i18n("来源快照时间无效"))
@@ -359,21 +372,20 @@ def _source_page(params):
         identity = cached_raw.get(params["source_id"], {}).get("oa_identity")
         if not identity:
             return {"items": [], "end": True, "until": until, "next_cursor": None}
-    source = _oa_connection()
-    rows, cursor = oa.read_page(source._connection if source else None, params.get("limit", 500), until, cursor=params.get("cursor"), identity=identity)
+    if any(raw["oa_identity"]["corp_id"] not in corps for _, raw in cached):
+        frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
+    rows, cursor = oa_http.read_page(url, corps, params.get("limit", 500), until,
+                                     cursor=params.get("cursor"), identity=identity)
     # Periodic bounded rescans also observe new cashier payments and employee mappings
     # when the original application itself has not changed. Only changed fingerprints
     # are written to the cache; the checkpoint is never advanced on a failed page.
     selected = [row for row in rows if oa.in_scope(row)]
-    cashier = _cashier_snapshot(until)
-    manifests = []
-    if selected and source:
-        with source._connection() as connection:
-            with connection.cursor() as query:
-                query.execute("SELECT corp_id,process_instance_id,file_id,file_name,archive_status,sha256,actual_size FROM costing_read.attachment_archives_v1 WHERE corp_id=ANY(%s) AND process_instance_id=ANY(%s)",
-                              (list({r["corp_id"] for r in selected}), [r["process_instance_id"] for r in selected]))
-                manifests = [dict(r) for r in query.fetchall()]
-    if selected:
+    # OA is the application authority. The cashier token is optional for this
+    # read path; without it, payment/workflow/company evidence stays unknown.
+    cashier_available = bool(_settings().get_password("api_token", raise_exception=False))
+    cashier = _cashier_snapshot(until) if cashier_available else []
+    manifests = oa_http.attachment_manifests(url, selected, exact=bool(identity)) if selected else []
+    if selected and cashier_available:
         identities = [{"corp_id": r["corp_id"], "process_instance_id": r["process_instance_id"], "source_id": oa.application_id(r)} for r in selected]
         workflow_items = _request("/api/integrations/erp/operating-expenses/workflow", data={"identities": identities})["items"]
         workflows = {(e.get("corp_id"), e.get("process_instance_id")): e for e in workflow_items}
@@ -385,12 +397,27 @@ def _source_page(params):
         except ValueError as error:
             frappe.throw(str(error))
     cashier_index = oa.cashier_index(cashier)
+    # The new API has no global business_count. Only use number-only cashier
+    # links after an exact same-corporation approvalNo query proves uniqueness;
+    # exact instance links continue to work without this extra request.
+    fallback_numbers = {}
+    for row in selected:
+        number = row.get("business_id")
+        if isinstance(number, str) and number and cashier_index[1].get((row["corp_id"], number)):
+            fallback_numbers.setdefault(row["corp_id"], set()).add(number)
+    for corp, numbers in fallback_numbers.items():
+        counts = oa_http.approval_number_counts(url, corp, numbers)
+        for row in selected:
+            if row["corp_id"] == corp:
+                row["business_count"] = counts.get(row.get("business_id"), 0)
     candidates = [oa.cashier_candidates(r, cashier_index) for r in selected]
     manifests_by_identity = {}
     for manifest in manifests:
         manifests_by_identity.setdefault((manifest["corp_id"], manifest["process_instance_id"]), []).append(manifest)
     applicants = [{"corp_id": r["corp_id"], **oa.resolution_applicant(r, cashier, candidates=c)} for r, c in zip(selected, candidates)]
-    resolutions = _request("/api/integrations/erp/resolve-applicant-companies", data={"applicants": applicants})["items"] if applicants else []
+    resolutions = (_request("/api/integrations/erp/resolve-applicant-companies", data={"applicants": applicants})["items"]
+                   if applicants and cashier_available else
+                   [{**applicant, "status": "unavailable"} for applicant in applicants])
     if len(resolutions) != len(applicants):
         frappe.throw(_i18n("申请人归属返回数量不符"))
     items = []
@@ -432,6 +459,8 @@ def _source_page(params):
         for row in rows:
             if oa.in_scope(row):
                 continue
+            if oa.timestamp(row["updated_at"]) > oa.timestamp(until):
+                continue
             name = roots.get((row.get("corp_id"), row.get("process_instance_id")), oa.application_id(row))
             raw = frappe.db.get_value(SOURCE, name, "source_json")
             if raw:
@@ -442,28 +471,53 @@ def _source_page(params):
 def _reconcile_oa_cache(until, maps):
     """Retain removed/out-of-scope sources as blocked audit rows, never stale payables."""
     from deeplinkerp_branding.services import operating_oa_source as oa
+    from deeplinkerp_branding.services import operating_oa_http as oa_http
     cached, _ = _oa_cached_identities()
     if not cached:
         return 0
+    url, corps = oa_http.configuration()
+    if any(raw["oa_identity"]["corp_id"] not in corps for _, raw in cached):
+        frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
+    # A complete HTTP rescan replaces the former single PostgreSQL bulk query.
+    # Do not withdraw absent records until every configured segment was read.
+    target_keys = {(raw["oa_identity"]["corp_id"], raw["oa_identity"]["process_instance_id"])
+                   for _, raw in cached}
+    originals = {}
+    cursor = None
+    for _ in range(10000):
+        rows, next_cursor = oa_http.read_page(url, corps, 200, until, cursor=cursor)
+        originals.update({(row["corp_id"], row["process_instance_id"]): row for row in rows
+                          if (row["corp_id"], row["process_instance_id"]) in target_keys})
+        if next_cursor is None:
+            break
+        if next_cursor == cursor:
+            frappe.throw(_i18n("运营支出 OA 分页未前进，请管理员核查"))
+        cursor = next_cursor
+    else:
+        frappe.throw(_i18n("运营支出 OA 核对超过本次上限，请管理员核查"))
+    missing = [(doc, raw) for doc, raw in cached if
+               (raw["oa_identity"]["corp_id"], raw["oa_identity"]["process_instance_id"]) not in originals]
+    if len(missing) > 100:
+        frappe.throw(_i18n("运营支出 OA 缺失来源过多，已停止撤回判定，请管理员核查"))
+    # Cross-request pagination is not a snapshot. An updated approval can move
+    # across the page boundary, so verify every absent identity before blocking
+    # its cached finance record. A failed exact lookup aborts the entire page.
+    for _, raw in missing:
+        identity = raw["oa_identity"]
+        rows, _ = oa_http.read_page(url, corps, 2, until, identity=identity)
+        if rows:
+            originals[(identity["corp_id"], identity["process_instance_id"])] = rows[0]
     changed = 0
-    with _oa_connection()._connection() as connection:
-        for offset in range(0, len(cached), 100):
-            batch = cached[offset:offset + 100]
-            identities = [raw["oa_identity"] for _, raw in batch]
-            with connection.cursor() as query:
-                query.execute("SELECT corp_id,process_instance_id,process_code,create_time,updated_at,status,result,"
-                              + oa._OPERATING_FORM_VALUES + "::text AS form_component_values FROM costing_read.approval_instances_v2 WHERE corp_id=ANY(%s) AND process_instance_id=ANY(%s)",
-                              (list({i["corp_id"] for i in identities}), [i["process_instance_id"] for i in identities]))
-                originals = {(r["corp_id"], r["process_instance_id"]): dict(r) for r in query.fetchall()}
-            for doc, raw in batch:
-                identity = raw["oa_identity"]
-                row = originals.get((identity["corp_id"], identity["process_instance_id"]))
-                if row and (oa.in_scope(row) or oa.timestamp(row["updated_at"]) > oa.timestamp(until)):
-                    continue
-                withdrawn = oa.withdrawn_source(raw, row)
-                if withdrawn["version"] != doc.source_version:
-                    _upsert(withdrawn, maps)
-                    changed += 1
+    for doc, raw in cached:
+        identity = raw["oa_identity"]
+        row = originals.get((identity["corp_id"], identity["process_instance_id"]))
+        if row and (oa.timestamp(row["updated_at"]) > oa.timestamp(until)
+                    or (oa.in_scope(row) and not row.get("deleted_at"))):
+            continue
+        withdrawn = oa.withdrawn_source(raw, row)
+        if withdrawn["version"] != doc.source_version:
+            _upsert(withdrawn, maps)
+            changed += 1
     return changed
 
 
@@ -480,7 +534,17 @@ def preview_sync():
 
 
 def _sync_preview_fingerprint(settings, result):
-    return digest({"company_mappings": _maps(settings), "mode": _source_mode(), "url": _base_url(), "token": digest(settings.get_password("api_token")), "sources": [[i.get("source_id"), i.get("version")] for i in result["items"]], "has_more": not result["end"]})
+    mode = _source_mode()
+    oa_config = None
+    token = settings.get_password("api_token", raise_exception=False)
+    if mode == "oa_cashier":
+        from deeplinkerp_branding.services import operating_oa_http as oa_http
+        oa_config = oa_http.configuration()
+    return digest({"company_mappings": _maps(settings), "mode": mode,
+                   "url": _base_url() if token or mode == "cashier" else None,
+                   "oa_config": oa_config, "token": digest(token),
+                   "sources": [[i.get("source_id"), i.get("version")] for i in result["items"]],
+                   "has_more": not result["end"]})
 
 
 @frappe.whitelist(methods=["POST"])
@@ -492,6 +556,9 @@ def enable_sync(preview_fingerprint):
     if not _maps(settings) or not settings.preview_fingerprint or preview_fingerprint != settings.preview_fingerprint or expected != preview_fingerprint:
         frappe.throw(_i18n("请先预览并确认法律公司映射"))
     settings.enabled = 1
+    if _source_mode() == "oa_cashier":
+        settings.cursor = None
+        settings.until = None
     _save(settings)
     return get_sync_settings()
 
@@ -604,7 +671,16 @@ def _sync_page():
         params["changed_since"] = settings.changed_since
     if settings.cursor:
         params.update(cursor=settings.cursor, until=settings.until)
-    result = _source_page(params)
+    if settings.cursor and _source_mode() == "oa_cashier":
+        from deeplinkerp_branding.services.operating_oa_http import OAInvalidCursor
+        try:
+            result = _source_page(params)
+        except OAInvalidCursor:
+            # The OA cursor lasts 24 hours. Rebuild the scan from its first
+            # page; only a successful page replaces the persisted checkpoint.
+            result = _source_page({"limit": 500})
+    else:
+        result = _source_page(params)
     seen = set()
     for item in result["items"]:
         root = identifier(item.get("source_id"))
@@ -646,9 +722,11 @@ def scheduled_sync():
             frappe.db.commit()
             if result["end"]:
                 return result
-    except Exception:
+    except Exception as error:
         frappe.db.rollback()
-        notice = "同步失败，请管理员重试"
+        from deeplinkerp_branding.services.operating_oa_http import OARateLimited
+        notice = (_i18n("OA 接口限流，将在下次计划同步重试") if isinstance(error, OARateLimited)
+                  else "同步失败，请管理员重试")
         # Write only the error field; a concurrent manual page can advance its
         # cursor after our rollback without being overwritten by a stale doc.
         frappe.db.set_single_value(SETTINGS, "last_error", notice)
@@ -1421,10 +1499,16 @@ def download_operating_expense_attachment(source_id, attachment_source_id):
         frappe.throw(_i18n("附件已变化或撤回，请重新同步"))
     # Exact persisted, typed URL. A fresh technical copy does not authorize arbitrary fetching.
     if attachment_path(current["url"]).startswith("/oa-archive/"):
+        from deeplinkerp_branding.services import operating_oa_http as oa_http
         identity = current.get("archive_identity") or {}
         if identity.get("corp_id") != fresh.get("oa_identity", {}).get("corp_id") or identity.get("process_instance_id") != fresh.get("oa_identity", {}).get("process_instance_id"):
             frappe.throw(_i18n("归档附件来源身份不符"))
-        manifest = _oa_connection().get_attachment_manifest(identity["process_instance_id"], identity["file_id"])
+        url, corps = oa_http.configuration()
+        if identity["corp_id"] not in corps:
+            frappe.throw(_i18n("归档附件来源身份不符"))
+        manifests = oa_http.attachment_manifests(url, [{"corp_id": identity["corp_id"],
+            "process_code": None, "process_instance_id": identity["process_instance_id"]}])
+        manifest = next((row for row in manifests if row["file_id"] == identity["file_id"]), None)
         if not manifest or manifest.get("corp_id") != identity["corp_id"] or manifest.get("archive_status") != "archived":
             frappe.throw(_i18n("附件尚未归档或无权读取，请在钉钉原单核对"))
         from deeplinkerp_branding.services.operating_oa_source import archive_attachments, archive_integrity
@@ -1437,11 +1521,7 @@ def download_operating_expense_attachment(source_id, attachment_source_id):
             frappe.throw(str(error))
         if expected_size > 20 * 1024 * 1024:
             frappe.throw(_i18n("附件超过本次下载上限"))
-        from overseas_costing.services.import_service import _get_minio_archive_client
-        try:
-            content, _ = _get_minio_archive_client().download(manifest)
-        except Exception:
-            frappe.throw(_i18n("归档附件暂不可读取，请在钉钉原单核对"))
+        content = oa_http.download_attachment(url, identity, expected_size)
         if len(content) > 20 * 1024 * 1024:
             frappe.throw(_i18n("附件超过本次下载上限"))
         if len(content) != expected_size or hashlib.sha256(content).hexdigest() != expected_hash:

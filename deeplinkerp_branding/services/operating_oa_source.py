@@ -320,8 +320,14 @@ def archive_attachments(row, manifests):
         identity = {k: str(manifest[k]) for k in ("corp_id", "process_instance_id", "file_id")}
         token = digest(identity)
         value = {"source_id": "oa-attachment:" + token, "url": "/oa-archive/" + token, "archive_identity": identity,
-                 "filename": str(manifest.get("file_name") or manifest["file_id"]), "archive_status": manifest.get("archive_status")}
-        value["version"] = digest({**value, "sha256": manifest.get("sha256"), "actual_size": manifest.get("actual_size")})
+                 "filename": str(manifest.get("file_name") or manifest["file_id"]),
+                 "archive_status": manifest.get("archive_status"), "content_quality": manifest.get("content_quality")}
+        # content_quality is display metadata introduced after archived files
+        # were already used in confirmed finance mappings. Keep the historical
+        # financial fingerprint stable when only that metadata is added.
+        version_basis = {key: field for key, field in value.items() if key != "content_quality"}
+        value["version"] = digest({**version_basis, "sha256": manifest.get("sha256"),
+                                   "actual_size": manifest.get("actual_size")})
         result[value["source_id"]] = value
     return list(result.values())
 

@@ -618,6 +618,8 @@ test("source evidence view separates original approved facts, cashier payment ev
 	d.source.source_sheet = "BU归档";
 	d.source.attachments = [
 		{ source_id: "att:1", filename: "proof<&.pdf", payment_source_id: "pay:1" },
+		{ source_id: "att:2", filename: "preview.pdf", content_quality: "preview" },
+		{ source_id: "att:3", filename: "unknown.pdf", content_quality: "unknown" },
 	];
 	d.events = [
 		{
@@ -629,6 +631,8 @@ test("source evidence view separates original approved facts, cashier payment ev
 		},
 	];
 	const html = a.sourceHTML(d);
+	assert.match(html, /preview\.pdf[^]*预览件/);
+	assert.match(html, /unknown\.pdf[^]*文件质量待核对/);
 	assert.match(html, /原始批准金额.*98\.77 USD/);
 	assert.match(html, /原文&lt;&amp;/);
 	assert.match(html, /原始审批编号.*AP&lt;&amp;-001/);
@@ -987,6 +991,27 @@ test("settings manual sync requires explicit enabled state and never dispatches 
 		"deeplinkerp_branding.services.operating_expenses.sync_operating_expenses"
 	);
 });
+test("OA source preview works without a cashier token and never starts sync implicitly", async () => {
+	const calls = [];
+	const a = create({
+		frappe: {
+			...host().frappe,
+			session: { user: "Administrator" },
+			call: async (req) => {
+				calls.push(req.method);
+				return { message: req.method.endsWith("get_sync_settings")
+					? { enabled: 0, token_configured: false, source_mode: "oa_cashier", company_mappings: { Legal: "C" } }
+					: { preview_fingerprint: "oa-preview", sources: [], has_more: false } };
+			},
+		},
+	});
+	const w = a.settingsWorkflow(drawer());
+	await w.load();
+	assert.equal(w.canPreview(), true);
+	await w.preview();
+	assert.ok(calls.some((method) => method.endsWith("preview_sync")));
+	assert.ok(calls.every((method) => !method.endsWith("sync_operating_expenses")));
+});
 test("late settings preview after token or mapping edits cannot restore enable eligibility", async () => {
 	let finish;
 	const a = create({
@@ -1240,6 +1265,8 @@ test("settlement terms stay unavailable until the mapping has a saved explicit p
 test("settings drawer uses a native Password input and an explicit preview confirmation Check", async () => {
 	const defs = [],
 		html = [];
+	let sourceMode = "cashier",
+		sourceUrl = "https://payment.yueweiportal.com";
 	const surface = {
 		length: 1,
 		addClass() {
@@ -1307,7 +1334,8 @@ test("settings drawer uses a native Password input and an explicit preview confi
 					enabled: 0,
 					token_configured: true,
 					company_mappings: { Legal: "C" },
-					source_url: "https://payment.yueweiportal.com",
+					source_mode: sourceMode,
+					source_url: sourceUrl,
 				},
 			})).frappe,
 			session: { user: "Administrator" },
@@ -1330,8 +1358,15 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	await a.openSettings();
 	assert.equal(defs.find((df) => df.fieldname === "api_token").fieldtype, "Password");
 	assert.equal(defs.find((df) => df.fieldname === "confirm_sync_preview").fieldtype, "Check");
-	assert.match(html.join(""), /固定来源/);
+	assert.match(html.join(""), /当前来源模式.*旧出纳接口/);
+	assert.match(html.join(""), /当前手动同步仍读取旧出纳接口/);
 	assert.doesNotMatch(html.join(""), /name="source_url"/);
+	sourceMode = "oa_cashier";
+	sourceUrl = "http://8.135.70.135:3005";
+	await a.openSettings();
+	assert.match(html.at(-1), /当前来源模式.*OA 新接口/);
+	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.135:3005/);
+	assert.doesNotMatch(html.at(-1), /payment\.yueweiportal\.com/);
 });
 test("native recognition history separates immutable expense controls from available settlement controls", async () => {
 	const requests = [],

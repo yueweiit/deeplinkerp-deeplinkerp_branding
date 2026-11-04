@@ -548,7 +548,7 @@
 				)}</div></details>${detail.issues ? `<p class="text-warning">${display(detail.issues)}</p>` : ""}${detail.mapping_issue ? `<p class="text-warning">${display(detail.mapping_issue)}</p>` : ""}</section>
 		<section class="dlp-operating-section" data-operating-pane="request"><strong>${esc(
 			t("来源附件")
-		)}</strong>${(s.attachments || []).map((file) => `<p class="dlp-operating-proof"><button type="button" class="btn btn-link dlp-operating-download" data-attachment="${esc(file.source_id)}">${display(file.filename)}</button> · ${esc(t(file.payment_source_id ? "实际付款附件" : "申请附件"))} ${display(file.payment_source_id)} · ${esc(t("版本"))} ${display(file.version)}</p>`).join("") || `<p>${esc(t("暂无附件"))}</p>`}</section>
+		)}</strong>${(s.attachments || []).map((file) => `<p class="dlp-operating-proof"><button type="button" class="btn btn-link dlp-operating-download" data-attachment="${esc(file.source_id)}">${display(file.filename)}</button> · ${esc(t(file.payment_source_id ? "实际付款附件" : "申请附件"))} ${display(file.payment_source_id)}${file.content_quality === "preview" ? ` · ${esc(t("预览件"))}` : file.content_quality === "unknown" ? ` · ${esc(t("文件质量待核对"))}` : ""} · ${esc(t("版本"))} ${display(file.version)}</p>`).join("") || `<p>${esc(t("暂无附件"))}</p>`}</section>
 		<section class="dlp-operating-section" data-operating-pane="payments"><div class="dlp-operating-payment-heading"><strong>${esc(t("付款明细"))}</strong><div class="dlp-operating-register"></div></div><div class="dlp-operating-local-payments"></div><div class="dlp-operating-history-payments">${(s.payments || []).filter(p=>p.source_type!=="erp").map((p,index) => `<article class="dlp-operating-payment-card"><strong>${esc(t("第"))} ${index+1} ${esc(t("笔"))} · ${money(p.amount)} ${display(p.currency)}</strong><p>${display(p.payment_date)} · ${display(p.payer)}</p><p>${esc(t("来源：历史付款"))} · ${display(p.evidence_status)}</p><details class="dlp-operating-advanced"><summary>${esc(t("实际付款证据"))}</summary><p>${display(p.source_id)} · ${display(p.bank_reference)}</p><p>${display(p.remark)}</p></details></article>`).join("") || `<p class="text-muted">${esc(t("尚无历史付款证据"))}</p>`}</div></section>
 		<section class="dlp-operating-section" data-operating-pane="vouchers"><strong>${esc(
 			t("原生凭证关联与历史")
@@ -1366,6 +1366,7 @@
 					"enabled",
 					"token_configured",
 					"company_mappings",
+					"source_mode",
 					"source_url",
 					"last_sync_at",
 					"last_error",
@@ -1474,10 +1475,10 @@
 				return saveValues(this.settings.company_mappings || {}, "");
 			},
 			canPreview() {
-				return Boolean(this.settings?.token_configured && !this.dirty());
+				return Boolean((this.settings?.source_mode === "oa_cashier" || this.settings?.token_configured) && !this.dirty());
 			},
 			async preview() {
-				if (!this.canPreview()) throw new Error(t("请先保存公司映射和同步密钥，再预览"));
+				if (!this.canPreview()) throw new Error(t(this.settings?.source_mode === "oa_cashier" ? "请先保存公司映射，再预览" : "请先保存公司映射和同步密钥，再预览"));
 				const start = revision;
 				this.invalidate();
 				return task(async (current) => {
@@ -1590,7 +1591,10 @@
 		async function renderSettings() {
 			drawer.operatingControlGeneration = (drawer.operatingControlGeneration || 0) + 1;
 			const load = drawer.loadId,
-				settings = w.settings;
+				settings = w.settings,
+				mode = settings.source_mode,
+				modeLabel = mode === "oa_cashier" ? t("OA 新接口") : mode === "cashier" ? t("旧出纳接口") : t("未返回，请核对部署版本"),
+				urlLabel = mode === "oa_cashier" ? t("OA 审批接口地址") : t("当前来源地址");
 			root.DeepLinkERPPurchasePayments.disposeControls(drawer.controls);
 			drawer.actions = [];
 			confirmControl = null;
@@ -1600,14 +1604,14 @@
 					`<section class="dlp-operating-section"><div class="dlp-operating-facts"><div>${esc(
 						t("同步状态")
 					)} · ${esc(t(settings.enabled ? "已启用" : "未启用"))}</div><div>${esc(
-						t("同步密钥")
+						t("出纳接口密钥")
 					)} · ${esc(
 						t(settings.token_configured ? "已配置" : "未配置")
-					)}</div><div>${esc(t("固定来源"))} · ${display(
-						settings.source_url || "https://payment.yueweiportal.com"
+					)}</div><div>${esc(t("当前来源模式"))} · ${esc(modeLabel)}</div><div>${esc(urlLabel)} · ${display(
+						settings.source_url || "—"
 					)}</div><div>${esc(t("上次同步"))} · ${display(
 						settings.last_sync_at
-					)}</div></div>${
+					)}</div></div>${mode === "cashier" ? `<p class="text-warning">${esc(t("当前手动同步仍读取旧出纳接口；新 OA 接口需启用站点来源模式。"))}</p>` : ""}${mode === "oa_cashier" && !settings.token_configured ? `<p class="text-warning">${esc(t("出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。"))}</p>` : ""}${
 						settings.last_error
 							? `<p class="text-warning">${display(settings.last_error)}</p>`
 							: ""

@@ -195,6 +195,44 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
         self.db.rollback.assert_called_once_with()
         self.db.commit.assert_called_once_with()
 
+    def test_rate_limit_keeps_checkpoint_and_explains_scheduled_retry(self):
+        from deeplinkerp_branding.services import operating_oa_http as http
+        with patch.object(http, "_", side_effect=lambda message: message), \
+                patch.object(service, "_i18n", side_effect=lambda message: message):
+            with patch.object(service, "_sync_page", side_effect=http.OARateLimited(17)):
+                with self.assertRaisesRegex(RuntimeError, "OA 接口限流"):
+                    service.scheduled_sync()
+        self.assertEqual(self.settings.cursor, "completed-page")
+        self.assertEqual(self.settings.last_error, "OA 接口限流，将在下次计划同步重试")
+
+    def test_expired_oa_cursor_restarts_from_first_page_before_replacing_checkpoint(self):
+        from deeplinkerp_branding.services.operating_oa_http import OAInvalidCursor
+        self.settings.until = "2026-10-06T00:00:00Z"
+        self.settings.changed_since = None
+        fresh = {"items": [], "end": False, "until": "2026-10-07T00:00:00Z", "next_cursor": "fresh-cursor"}
+        with patch.object(service, "_source_mode", return_value="oa_cashier"), \
+                patch.object(service, "_maps", return_value={}), \
+                patch.object(service, "now_datetime", return_value="2026-10-07 00:00:00"), \
+                patch.object(service, "_source_page", side_effect=[OAInvalidCursor(), fresh]) as reader:
+            result = service._sync_page()
+        self.assertFalse(result["end"])
+        self.assertEqual(reader.call_args_list[0].args[0]["cursor"], "completed-page")
+        self.assertNotIn("cursor", reader.call_args_list[1].args[0])
+        self.assertEqual(self.settings.cursor, "fresh-cursor")
+        self.assertEqual(self.settings.until, "2026-10-07T00:00:00Z")
+
+    def test_failed_oa_restart_does_not_replace_checkpoint(self):
+        from deeplinkerp_branding.services.operating_oa_http import OAInvalidCursor
+        self.settings.until = "2026-10-06T00:00:00Z"
+        self.settings.changed_since = None
+        with patch.object(service, "_source_mode", return_value="oa_cashier"), \
+                patch.object(service, "_maps", return_value={}), \
+                patch.object(service, "_source_page", side_effect=[OAInvalidCursor(), ValueError("OA down")]):
+            with self.assertRaisesRegex(ValueError, "OA down"):
+                service._sync_page()
+        self.assertEqual(self.settings.cursor, "completed-page")
+        self.assertEqual(self.settings.until, "2026-10-06T00:00:00Z")
+
     def test_all_successful_pages_are_committed_before_next_page(self):
         events = []
         pages = iter([{"end": False, "count": 500}, {"end": False, "count": 500}, {"end": True, "count": 1}])
@@ -234,6 +272,49 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
                 service.scheduled_sync()
         save.assert_not_called()
         self.db.set_single_value.assert_called_once_with(service.SETTINGS, "last_error", "同步失败，请管理员重试")
+
+
+class OperatingOAWithoutCashierTests(unittest.TestCase):
+    def test_oa_approvals_remain_readable_without_cashier_token(self):
+        from deeplinkerp_branding.services import operating_oa_http as http
+        row = {
+            "corp_id": "corp-a", "process_instance_id": "instance-a", "business_id": "1001",
+            "process_code": oa.PROCESS_CODES[0], "status": "COMPLETED", "result": "agree",
+            "create_time": "2026-03-01T00:00:00Z", "updated_at": "2026-03-02T00:00:00Z",
+            "originator_user_id": "user-a", "originator_user_name": "Alice",
+            "form_component_values": [
+                {"name": "申请类型Tipo de trámite", "value": "付款申请Solicitud de pago"},
+                {"name": "执行地区Región de ejecución", "value": "中国"},
+                {"name": "金额importe", "value": "100.00"},
+                {"name": "币种Moneda", "value": "人民币"},
+                {"name": "事项说明Explicación de asuntos", "value": "Office"},
+                {"name": "收款人beneficiario", "value": "Vendor"},
+            ],
+        }
+        settings = SimpleNamespace(company_mappings=[], get_password=lambda *_args, **_kwargs: None)
+        db = Mock()
+        db.exists.return_value = False
+        with patch.object(frappe, "db", db), \
+                patch.object(service, "_source_mode", return_value="oa_cashier"), \
+                patch.object(service, "_settings", return_value=settings), \
+                patch.object(service, "_oa_cached_identities", return_value=([], {})), \
+                patch.object(http, "configuration", return_value=("http://oa:3000", ("corp-a",))), \
+                patch.object(http, "read_page", return_value=([row], None)), \
+                patch.object(http, "attachment_manifests", return_value=[]), \
+                patch.object(service, "_cashier_snapshot", side_effect=AssertionError("cashier read")), \
+                patch.object(service, "_request", side_effect=AssertionError("cashier call")), \
+                patch.object(service, "_base_url", side_effect=AssertionError("cashier DNS")):
+            result = service._source_page({"limit": 100})
+            fingerprint = service._sync_preview_fingerprint(settings, result)
+        self.assertEqual(len(result["items"]), 1)
+        item = result["items"][0]
+        self.assertEqual(item["approvals"]["eligibility"], "eligible")
+        self.assertEqual(item["payment_evidence_status"], "unknown")
+        self.assertIsNone(item["paid_amount"])
+        self.assertIsNone(item["pending_amount"])
+        self.assertEqual(item["company_resolution"]["status"], "unavailable")
+        self.assertFalse(item["payment_eligibility"]["can_register_payment"])
+        self.assertEqual(len(fingerprint), 64)
 
 
 class OperatingJournalCompatibilityTests(unittest.TestCase):

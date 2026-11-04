@@ -2193,3 +2193,38 @@ updated at,actualizado en
 财务操作资格核验失败，请重新选择或刷新后重试。,No se pudieron verificar las acciones financieras. Vuelva a seleccionar el pedido o actualice e inténtelo de nuevo.
 不可驳回：{0},No se puede rechazar: {0}
 驳回,Rechazar
+运营支出 OA 企业 ID 未配置或格式无效,Faltan los ID de empresa de OA para gastos operativos o no son válidos.
+运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查,La configuración de empresas de OA excluye un gasto operativo guardado. Consulte al administrador.
+运营支出 OA 分页未前进，请管理员核查,El cursor de páginas de OA para gastos operativos no avanzó. Consulte al administrador.
+运营支出 OA 分页来源身份不符，请管理员核查,La página de OA para gastos operativos tiene una identidad de origen distinta. Consulte al administrador.
+运营支出 OA 分页游标无效，请重新开始同步,El cursor de páginas de OA para gastos operativos no es válido. Reinicie la sincronización.
+运营支出 OA 精确查询身份不符，请管理员核查,La consulta de OA para gastos operativos devolvió otra identidad. Consulte al administrador.
+运营支出 OA 读取地址配置无效,La dirección de la API de OA para gastos operativos no es válida.
+运营支出 OA 读取暂不可用，请管理员检查服务与配置,La API de OA para gastos operativos no está disponible. Revise el servicio y la configuración.
+运营支出 OA 返回协议无效，请管理员核查,La respuesta de la API de OA para gastos operativos no es válida. Consulte al administrador.
+运营支出 OA 返回身份或时间无效，请管理员核查,La identidad o fecha de OA para gastos operativos no es válida. Consulte al administrador.
+运营支出 OA 附件分页未前进，请管理员核查,El cursor de adjuntos de OA no avanzó. Consulte al administrador.
+运营支出 OA 附件清单协议无效，请管理员核查,La respuesta de adjuntos de OA no es válida. Consulte al administrador.
+运营支出 OA 附件清单超过本次上限，请管理员核查,La lista de adjuntos de OA supera el límite de sincronización. Consulte al administrador.
+运营支出 OA 附件清单身份不符，请管理员核查,La lista de adjuntos de OA tiene una identidad distinta. Consulte al administrador.
+运营支出 OA 附件清单身份无效，请管理员核查,La identidad del adjunto de OA no es válida. Consulte al administrador.
+运营支出 OA 附件精确查询身份无效，请管理员核查,La identidad de búsqueda del adjunto de OA no es válida. Consulte al administrador.
+运营支出 OA 核对超过本次上限，请管理员核查,La conciliación de OA supera el límite de sincronización. Consulte al administrador.
+运营支出 OA 缺失来源过多，已停止撤回判定，请管理员核查,Faltan demasiados orígenes de OA. Se detuvo la comprobación de revocaciones; consulte al administrador.
+预览件,Archivo de vista previa
+文件质量待核对,Calidad del archivo pendiente de revisión
+运营支出 OA 审批编号核对身份不符，请管理员核查,La comprobación del número de aprobación de OA devolvió otra identidad. Consulte al administrador.
+运营支出 OA 审批编号核对身份重复，请管理员核查,La comprobación del número de aprobación de OA devolvió una identidad duplicada. Consulte al administrador.
+运营支出 OA 审批编号核对超过本次上限，请管理员核查,La comprobación del número de aprobación de OA supera el límite de sincronización. Consulte al administrador.
+运营支出 OA 读取触发限流，请稍后重试,Se alcanzó el límite de solicitudes de la API de OA para gastos operativos. Inténtelo más tarde.
+OA 接口限流，将在下次计划同步重试,Se alcanzó el límite de solicitudes de la API de OA. La próxima sincronización programada lo reintentará.
+当前来源模式,Modo de origen actual
+OA 新接口,Nueva API de OA
+旧出纳接口,API anterior de tesorería
+未返回，请核对部署版本,No se devolvió; verifique la versión desplegada
+OA 审批接口地址,Dirección de la API de aprobaciones de OA
+当前来源地址,Dirección del origen actual
+当前手动同步仍读取旧出纳接口；新 OA 接口需启用站点来源模式。,La sincronización manual aún lee la API anterior de tesorería. Active el modo de origen OA en la configuración del sitio para usar la nueva API.
+出纳接口密钥,Clave de la API de tesorería
+请先保存公司映射，再预览,Guarde la asignación de empresa antes de obtener la vista previa.
+出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。,Falta la clave de la API de tesorería. Las aprobaciones de OA se pueden sincronizar; los pagos y la asignación de empleados requieren revisión.

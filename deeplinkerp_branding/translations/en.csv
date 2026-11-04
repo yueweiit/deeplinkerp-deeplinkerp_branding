@@ -1920,3 +1920,38 @@ ai 助手,ai assistant
 财务操作资格核验失败，请重新选择或刷新后重试。,Could not verify financial actions. Reselect the order or refresh and try again.
 不可驳回：{0},Cannot reject: {0}
 驳回,Reject
+运营支出 OA 企业 ID 未配置或格式无效,Operating expense OA corporation IDs are missing or invalid.
+运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查,The OA corporation ID configuration excludes a cached operating expense source. Contact an administrator.
+运营支出 OA 分页未前进，请管理员核查,The operating expense OA page cursor did not advance. Contact an administrator.
+运营支出 OA 分页来源身份不符，请管理员核查,The operating expense OA page has a mismatched source identity. Contact an administrator.
+运营支出 OA 分页游标无效，请重新开始同步,The operating expense OA page cursor is invalid. Restart synchronization.
+运营支出 OA 精确查询身份不符，请管理员核查,The operating expense OA lookup returned a mismatched identity. Contact an administrator.
+运营支出 OA 读取地址配置无效,The operating expense OA API address is invalid.
+运营支出 OA 读取暂不可用，请管理员检查服务与配置,The operating expense OA API is unavailable. Ask an administrator to check the service and configuration.
+运营支出 OA 返回协议无效，请管理员核查,The operating expense OA API response is invalid. Contact an administrator.
+运营支出 OA 返回身份或时间无效，请管理员核查,The operating expense OA identity or timestamp is invalid. Contact an administrator.
+运营支出 OA 附件分页未前进，请管理员核查,The operating expense OA attachment cursor did not advance. Contact an administrator.
+运营支出 OA 附件清单协议无效，请管理员核查,The operating expense OA attachment response is invalid. Contact an administrator.
+运营支出 OA 附件清单超过本次上限，请管理员核查,The operating expense OA attachment list exceeds this synchronization limit. Contact an administrator.
+运营支出 OA 附件清单身份不符，请管理员核查,The operating expense OA attachment list has a mismatched identity. Contact an administrator.
+运营支出 OA 附件清单身份无效，请管理员核查,The operating expense OA attachment identity is invalid. Contact an administrator.
+运营支出 OA 附件精确查询身份无效，请管理员核查,The operating expense OA attachment lookup identity is invalid. Contact an administrator.
+运营支出 OA 核对超过本次上限，请管理员核查,The operating expense OA reconciliation exceeds this synchronization limit. Contact an administrator.
+运营支出 OA 缺失来源过多，已停止撤回判定，请管理员核查,Too many OA sources are missing. Withdrawal checks were stopped; contact an administrator.
+预览件,Preview file
+文件质量待核对,File quality needs review
+运营支出 OA 审批编号核对身份不符，请管理员核查,The OA approval number check returned a mismatched identity. Contact an administrator.
+运营支出 OA 审批编号核对身份重复，请管理员核查,The OA approval number check returned a duplicate identity. Contact an administrator.
+运营支出 OA 审批编号核对超过本次上限，请管理员核查,The OA approval number check exceeds this synchronization limit. Contact an administrator.
+运营支出 OA 读取触发限流，请稍后重试,The operating expense OA API rate limit was reached. Please retry later.
+OA 接口限流，将在下次计划同步重试,The OA API rate limit was reached. The next scheduled sync will retry.
+当前来源模式,Current source mode
+OA 新接口,New OA API
+旧出纳接口,Legacy cashier API
+未返回，请核对部署版本,Not returned; check the deployed version
+OA 审批接口地址,OA approval API address
+当前来源地址,Current source address
+当前手动同步仍读取旧出纳接口；新 OA 接口需启用站点来源模式。,Manual sync still reads the legacy cashier API. Enable the OA source mode in site settings to use the new API.
+出纳接口密钥,Cashier API token
+请先保存公司映射，再预览,Save the company mapping before previewing.
+出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。,Cashier API token is missing. OA approvals can sync, but payment and employee attribution need review.

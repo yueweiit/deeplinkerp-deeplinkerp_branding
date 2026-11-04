@@ -59,31 +59,29 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
             result.append((SimpleNamespace(source_version=raw["version"]), raw))
         return result
 
-    def reconcile(self, cached, originals):
-        class Connection(RecordingConnection):
-            def __init__(self, rows):
-                super().__init__(rows)
-                self.queries = []
-
-            def execute(self, sql, params):
-                super().execute(sql, params)
-                self.queries.append((sql, params))
-
-            def fetchall(self):
-                corps, instances = self.params
-                return [row for row in self.rows if row["corp_id"] in corps
-                        and row["process_instance_id"] in instances]
-
-        query = Connection(originals)
-        adapter = SimpleNamespace(_connection=Mock(return_value=query))
+    def reconcile(self, cached, originals, exact=None):
+        from deeplinkerp_branding.services import operating_oa_http as http
+        pages = [originals[offset:offset + 100] for offset in range(0, len(originals), 100)] or [[]]
+        reads = []
+        exact = exact or {}
+        def read_page(url, corps, limit, until, cursor=None, identity=None):
+            if identity:
+                reads.append((url, corps, limit, until, "exact", dict(identity)))
+                found = exact.get((identity["corp_id"], identity["process_instance_id"]))
+                return [found] if found else [], None
+            index = int(cursor or 0)
+            reads.append((url, corps, limit, until, cursor))
+            return pages[index], str(index + 1) if index + 1 < len(pages) else None
         maps = {"来源组织": "采购公司"}
         with patch.object(self.service, "_oa_cached_identities", return_value=(cached, {})), \
-                patch.object(self.service, "_oa_connection", return_value=adapter) as factory, \
+                patch.object(http, "configuration", return_value=("http://oa:3000", tuple({
+                    raw["oa_identity"]["corp_id"] for _, raw in cached}))), \
+                patch.object(http, "read_page", side_effect=read_page), \
+                patch.object(self.service, "_oa_connection") as legacy_reader, \
                 patch.object(self.service, "_upsert") as upsert:
             changed = self.service._reconcile_oa_cache("2026-10-06T00:00:00Z", maps)
-        factory.assert_called_once_with()
-        adapter._connection.assert_called_once_with()
-        return changed, query.queries, upsert, maps
+        legacy_reader.assert_not_called()
+        return changed, reads, upsert, maps
 
     def test_reconciliation_projects_scope_fields_and_preserves_cached_audit_evidence(self):
         rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(6)]
@@ -100,7 +98,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         originals[4]["form_component_values"].append(copy.deepcopy(originals[4]["form_component_values"][0]))
         originals[-1]["form_component_values"][1]["value"] = "墨西哥"
         originals.pop(2)  # Missing source remains visible as withdrawn, with its original evidence.
-        changed, queries, upsert, maps = self.reconcile(cached, originals)
+        changed, reads, upsert, maps = self.reconcile(cached, originals)
         self.assertEqual(changed, 4)
         self.assertEqual(cached, before)
         expected = [(cached[index][1], next((row for row in originals
@@ -109,24 +107,49 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
             for index in (1, 2, 4, 5)]
         self.assertEqual(upsert.call_args_list,
                          [call(self.source.withdrawn_source(raw, row), maps) for raw, row in expected])
-        for sql, params in queries:
-            self.assertIn(self.source._OPERATING_FORM_VALUES + "::text AS form_component_values", sql)
-            self.assertNotIn(",form_component_values::text AS form_component_values", sql)
-            self.assertIn("corp_id=ANY(%s) AND process_instance_id=ANY(%s)", sql)
-            self.assertNotIn("corp'one", sql)
-            self.assertNotIn("instance-'", sql)
-            self.assertEqual(set(params[0]), {"corp'one", "other-corp"})
+        self.assertEqual(len(reads), 2)
+        self.assertEqual(reads[1][-1],
+                         {"corp_id": rows[2]["corp_id"], "process_instance_id": rows[2]["process_instance_id"]})
+        self.assertEqual(set(reads[0][1]), {"corp'one", "other-corp"})
+        self.assertEqual(reads[0][2], 200)
 
-    def test_reconciliation_limits_201_identities_to_three_queries_on_one_connection(self):
+    def test_missing_page_row_is_kept_when_exact_query_finds_it(self):
+        row = approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC))
+        cached = self.cached([row])
+        key = (row["corp_id"], row["process_instance_id"])
+        changed, reads, upsert, _ = self.reconcile(cached, [], exact={key: row})
+        self.assertEqual(changed, 0)
+        upsert.assert_not_called()
+        self.assertEqual(reads[-1][-1], {"corp_id": key[0], "process_instance_id": key[1]})
+
+    def test_exact_deleted_source_is_blocked_after_identity_verification(self):
+        row = approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC))
+        cached = self.cached([row])
+        deleted = {**row, "deleted_at": datetime(2026, 10, 5, tzinfo=UTC)}
+        key = (row["corp_id"], row["process_instance_id"])
+        changed, _, upsert, maps = self.reconcile(cached, [], exact={key: deleted})
+        self.assertEqual(changed, 1)
+        upsert.assert_called_once_with(self.source.withdrawn_source(cached[0][1], deleted), maps)
+
+    def test_failed_exact_lookup_cannot_withdraw_a_cached_source(self):
+        from deeplinkerp_branding.services import operating_oa_http as http
+        cached = self.cached([approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC))])
+        with patch.object(self.service, "_oa_cached_identities", return_value=(cached, {})), \
+                patch.object(http, "configuration", return_value=("http://oa:3000", ("corp",))), \
+                patch.object(http, "read_page", side_effect=[([], None), ValueError("OA unavailable")]), \
+                patch.object(self.service, "_upsert") as upsert:
+            with self.assertRaisesRegex(ValueError, "OA unavailable"):
+                self.service._reconcile_oa_cache("2026-10-06T00:00:00Z", {})
+        upsert.assert_not_called()
+
+    def test_reconciliation_consumes_all_http_pages_before_withdrawal(self):
         rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(201)]
         for index, row in enumerate(rows):
             row["process_instance_id"] = "instance-" + str(index)
-        changed, queries, upsert, _ = self.reconcile(self.cached(rows), rows)
+        changed, reads, upsert, _ = self.reconcile(self.cached(rows), rows)
         self.assertEqual(changed, 0)
         upsert.assert_not_called()
-        self.assertEqual([len(params[1]) for _, params in queries], [100, 100, 1])
-        self.assertEqual([instance for _, params in queries for instance in params[1]],
-                         [row["process_instance_id"] for row in rows])
+        self.assertEqual([read[-1] for read in reads], [None, "1", "2"])
 
 
 class OriginalOperatingSourceTest(unittest.TestCase):
@@ -463,6 +486,12 @@ class OriginalOperatingSourceTest(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertTrue(items[0]["url"].startswith("/oa-archive/"))
         self.assertEqual(items[0]["archive_identity"]["file_id"], "f1")
+        old_value = {key: field for key, field in items[0].items() if key not in {"content_quality", "version"}}
+        self.assertEqual(items[0]["version"], self.source.digest({**old_value,
+            "sha256": archived["sha256"], "actual_size": archived["actual_size"]}))
+        quality = self.source.archive_attachments(row, [{**archived, "content_quality": "preview"}])[0]
+        self.assertEqual(quality["version"], items[0]["version"])
+        self.assertEqual(quality["content_quality"], "preview")
 
     def test_archive_integrity_requires_complete_exact_evidence(self):
         manifest = {"archive_status": "archived", "sha256": "a" * 64, "actual_size": 100}
