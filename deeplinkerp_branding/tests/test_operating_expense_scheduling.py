@@ -186,6 +186,44 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
             item.start()
             self.addCleanup(item.stop)
 
+    def test_unmapped_source_cannot_start_financial_processing(self):
+        source = SimpleNamespace(source_id="oa:pending", company="")
+        def reject(message):
+            raise ValueError(message)
+        with patch.object(service, "_i18n", side_effect=lambda message: message), \
+                patch.object(service.frappe, "throw", side_effect=reject) as rejection, \
+                patch.object(service, "_source_page") as reader:
+            with self.assertRaisesRegex(ValueError, "请先确认法律公司"):
+                service._fresh(source)
+        rejection.assert_called_once()
+        reader.assert_not_called()
+
+    def test_oa_sync_can_start_with_no_company_map_but_cashier_mode_cannot(self):
+        self.settings.company_mappings = []
+        self.settings.preview_fingerprint = "current-preview"
+        source_page = {"items": [], "end": True}
+        with patch.object(service, "_source_page", return_value=source_page), \
+                patch.object(service, "_sync_preview_fingerprint", return_value="current-preview"), \
+                patch.object(service, "_manager"), \
+                patch.object(service, "get_sync_settings", return_value={"enabled": 1}), \
+                patch.object(service, "_source_mode", return_value="oa_cashier"):
+            result = service.enable_sync("current-preview")
+        self.assertEqual(result, {"enabled": 1})
+        self.assertEqual(self.settings.enabled, 1)
+        self.assertIsNone(self.settings.cursor)
+        self.settings.enabled = 0
+        def reject(message):
+            raise ValueError(message)
+        with patch.object(service, "_source_page", return_value=source_page), \
+                patch.object(service, "_sync_preview_fingerprint", return_value="current-preview"), \
+                patch.object(service, "_manager"), \
+                patch.object(service, "_source_mode", return_value="cashier"), \
+                patch.object(service, "_i18n", side_effect=lambda message: message), \
+                patch.object(service.frappe, "throw", side_effect=reject):
+            with self.assertRaisesRegex(ValueError, "请先预览"):
+                service.enable_sync("current-preview")
+        self.assertEqual(self.settings.enabled, 0)
+
     def test_failure_is_durable_sanitized_and_propagates(self):
         with patch.object(service, "_sync_page", side_effect=ValueError("Bearer secret; source payload")):
             with self.assertRaisesRegex(RuntimeError, "同步失败"):

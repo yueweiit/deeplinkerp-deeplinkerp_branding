@@ -1264,7 +1264,8 @@ test("settlement terms stay unavailable until the mapping has a saved explicit p
 });
 test("settings drawer uses a native Password input and an explicit preview confirmation Check", async () => {
 	const defs = [],
-		html = [];
+		html = [],
+		buttons = new Map();
 	let sourceMode = "cashier",
 		sourceUrl = "https://payment.yueweiportal.com";
 	const surface = {
@@ -1323,14 +1324,31 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	d.panel = surface;
 	d.controls = [];
 	const a = create({
-		$: () => surface,
+		$: (markup) => {
+			if (!String(markup).startsWith("<button")) return surface;
+			const button = Object.create(surface);
+			button.on = (event, handler) => {
+				const label = String(markup).replace(/<[^>]*>/g, "");
+				buttons.set(label, handler);
+				return button;
+			};
+			return button;
+		},
+		DeepLinkERPOperatingExpenses: { typeLabel: () => "付款申请" },
 		DeepLinkERPPurchasePayments: {
 			createDrawer: () => d,
 			disposeControls: (controls) => controls.splice(0),
 		},
 		frappe: {
-			...host(async () => ({
-				message: {
+			...host(async (req) => ({
+				message: req.method.endsWith("preview_sync") ? {
+					preview_fingerprint: "preview-1",
+					sources: [
+						{ source_id: "mapped", application_type: "payment", company: "C" },
+						{ source_id: "pending", application_type: "payment", company: null },
+					],
+					has_more: true,
+				} : {
 					enabled: 0,
 					token_configured: true,
 					company_mappings: { Legal: "C" },
@@ -1358,6 +1376,7 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	await a.openSettings();
 	assert.equal(defs.find((df) => df.fieldname === "api_token").fieldtype, "Password");
 	assert.equal(defs.find((df) => df.fieldname === "confirm_sync_preview").fieldtype, "Check");
+	assert.match(defs.find((df) => df.fieldname === "confirm_sync_preview").label, /未映射来源仅以待核对状态导入/);
 	assert.match(html.join(""), /当前来源模式.*旧出纳接口/);
 	assert.match(html.join(""), /当前手动同步仍读取旧出纳接口/);
 	assert.doesNotMatch(html.join(""), /name="source_url"/);
@@ -1367,6 +1386,9 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	assert.match(html.at(-1), /当前来源模式.*OA 新接口/);
 	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.130:3005/);
 	assert.doesNotMatch(html.at(-1), /payment\.yueweiportal\.com/);
+	await buttons.get("预览来源与公司映射")();
+	assert.match(html.at(-1), /当前预览 2 条，法律公司待核对 1 条/);
+	assert.match(html.at(-1), /后续分页可能还有待核对记录/);
 });
 test("native recognition history separates immutable expense controls from available settlement controls", async () => {
 	const requests = [],

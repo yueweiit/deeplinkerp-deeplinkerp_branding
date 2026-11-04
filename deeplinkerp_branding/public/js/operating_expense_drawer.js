@@ -1478,7 +1478,7 @@
 				return Boolean((this.settings?.source_mode === "oa_cashier" || this.settings?.token_configured) && !this.dirty());
 			},
 			async preview() {
-				if (!this.canPreview()) throw new Error(t(this.settings?.source_mode === "oa_cashier" ? "请先保存公司映射，再预览" : "请先保存公司映射和同步密钥，再预览"));
+				if (!this.canPreview()) throw new Error(t(this.settings?.source_mode === "oa_cashier" ? "请先保存当前同步设置，再预览" : "请先保存公司映射和同步密钥，再预览"));
 				const start = revision;
 				this.invalidate();
 				return task(async (current) => {
@@ -1504,7 +1504,7 @@
 			},
 			async enable() {
 				if (!this.canEnable())
-					throw new Error(t("请先取得当前同步预览并明确确认法律公司映射"));
+					throw new Error(t("请先取得当前同步预览并确认待核对来源处理方式"));
 				const start = revision,
 					fingerprint = this.previewResult.preview_fingerprint;
 				return task(async (current) => {
@@ -1542,6 +1542,7 @@
 			confirmControl,
 			lastSync = "";
 		function paintPreview(result) {
+			const pendingCompanyCount = result.sources.filter((source) => !source.company).length;
 			const fields = [
 				"source_id",
 				"application_type",
@@ -1550,10 +1551,10 @@
 				"company",
 			];
 			drawer.panel.find(".dlp-operating-sync-preview").html(
-				`<p>${esc(t("请核对来源类型、来源法律标识与 ERP 法律公司。"))}</p>${
+				`<p>${esc(t("请核对来源类型、来源法律标识与 ERP 法律公司。"))}</p><p class="text-warning">${esc(t("当前预览 {0} 条，法律公司待核对 {1} 条。未映射来源仅导入待核对缓存，确认公司前不能办理财务业务。", [result.sources.length, pendingCompanyCount]))}</p>${
 					result.has_more
 						? `<p class="text-warning">${esc(
-								t("仅预览前 100 条，来源还有更多记录。")
+								t("当前仅预览首批来源，后续分页可能还有待核对记录。")
 						  )}</p>`
 						: ""
 				}<div class="dlp-operating-table-wrap"><table class="table table-bordered"><thead><tr>${[
@@ -1706,7 +1707,7 @@
 				{
 					fieldname: "confirm_sync_preview",
 					fieldtype: "Check",
-					label: t("我已核对来源类型和法律公司映射，确认启用同步"),
+					label: t("我已核对当前预览；未映射来源仅以待核对状态导入，确认启用同步"),
 				},
 				0,
 				(value) => w.confirm(value)

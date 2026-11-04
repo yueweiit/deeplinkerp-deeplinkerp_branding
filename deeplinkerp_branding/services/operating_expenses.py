@@ -553,8 +553,9 @@ def enable_sync(preview_fingerprint):
     result = _source_page({"limit": 100})
     settings = _settings(for_update=True)
     expected = _sync_preview_fingerprint(settings, result)
-    if not _maps(settings) or not settings.preview_fingerprint or preview_fingerprint != settings.preview_fingerprint or expected != preview_fingerprint:
-        frappe.throw(_i18n("请先预览并确认法律公司映射"))
+    if ((_source_mode() != "oa_cashier" and not _maps(settings)) or not settings.preview_fingerprint
+            or preview_fingerprint != settings.preview_fingerprint or expected != preview_fingerprint):
+        frappe.throw(_i18n("请先预览并确认当前同步内容"))
     settings.enabled = 1
     if _source_mode() == "oa_cashier":
         settings.cursor = None
@@ -738,6 +739,8 @@ def scheduled_sync():
 def _fresh(doc, include_payments=True):
     if not _settings().enabled:
         frappe.throw(_i18n("同步未启用，不能确认财务数据"))
+    if not doc.company:
+        frappe.throw(_i18n("请先确认法律公司，再办理财务处理"))
     result = _source_page({"source_id": doc.source_id, "limit": 1})
     if not result["end"] or len(result["items"]) != 1 or result["items"][0].get("source_id") != doc.source_id:
         frappe.throw(_i18n("来源已撤回或已移出允许范围，请重新同步"))

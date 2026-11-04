@@ -2228,3 +2228,10 @@ OA 审批接口地址,Dirección de la API de aprobaciones de OA
 出纳接口密钥,Clave de la API de tesorería
 请先保存公司映射，再预览,Guarde la asignación de empresa antes de obtener la vista previa.
 出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。,Falta la clave de la API de tesorería. Las aprobaciones de OA se pueden sincronizar; los pagos y la asignación de empleados requieren revisión.
+当前预览 {0} 条，法律公司待核对 {1} 条。未映射来源仅导入待核对缓存，确认公司前不能办理财务业务。,"Vista previa actual: {0} registros; {1} requieren verificar la entidad legal. Los orígenes sin asignar se importan solo a la caché pendiente de revisión y no se pueden procesar en Finanzas hasta confirmar la entidad."
+当前仅预览首批来源，后续分页可能还有待核对记录。,"Solo se muestra la primera página de orígenes; las páginas siguientes pueden contener más registros pendientes de revisión."
+我已核对当前预览；未映射来源仅以待核对状态导入，确认启用同步,"He revisado la vista previa actual y entiendo que los orígenes sin asignar se importarán solo como pendientes de revisión. Confirmo activar la sincronización."
+请先确认法律公司，再办理财务处理,"Confirme la entidad legal antes de procesar este origen en Finanzas."
+请先预览并确认当前同步内容,"Obtenga una vista previa y confirme el contenido actual de la sincronización."
+请先保存当前同步设置，再预览,"Guarde la configuración de sincronización actual antes de obtener una vista previa."
+请先取得当前同步预览并确认待核对来源处理方式,"Obtenga una vista previa actual y confirme cómo se tratarán los orígenes pendientes de revisión."

@@ -1955,3 +1955,10 @@ OA 审批接口地址,OA approval API address
 出纳接口密钥,Cashier API token
 请先保存公司映射，再预览,Save the company mapping before previewing.
 出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。,Cashier API token is missing. OA approvals can sync, but payment and employee attribution need review.
+当前预览 {0} 条，法律公司待核对 {1} 条。未映射来源仅导入待核对缓存，确认公司前不能办理财务业务。,"Current preview: {0} records; {1} need legal company review. Unmapped sources are imported into a pending-review cache only and cannot be processed by Finance until the company is confirmed."
+当前仅预览首批来源，后续分页可能还有待核对记录。,"Only the first source page is previewed; later pages may contain more records needing review."
+我已核对当前预览；未映射来源仅以待核对状态导入，确认启用同步,"I have reviewed the current preview and understand unmapped sources will be imported as pending review only. Enable synchronization."
+请先确认法律公司，再办理财务处理,"Confirm the legal company before processing this source in Finance."
+请先预览并确认当前同步内容,"Preview and confirm the current synchronization content first."
+请先保存当前同步设置，再预览,"Save the current synchronization settings before previewing."
+请先取得当前同步预览并确认待核对来源处理方式,"Get a current synchronization preview and confirm how pending-review sources will be handled."
