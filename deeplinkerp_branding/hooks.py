@@ -31,7 +31,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.27",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.6",
 	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.15",
-	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.7",
+	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.13",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
 ]
 app_include_js = [
@@ -48,7 +48,7 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.21",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_interface_mode.js?v=0.0.3",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.30",
-	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.13",
+	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.25",
 	"/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js",
 	"/assets/deeplinkerp_branding/js/form_grid_insert.js?v=0.0.1",
 ]

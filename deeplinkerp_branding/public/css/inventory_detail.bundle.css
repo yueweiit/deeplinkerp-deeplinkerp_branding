@@ -40,7 +40,19 @@
 }
 
 .inventory-detail table.id-categorized-table {
-  min-width: 2600px;
+  min-width: 1510px;
+}
+
+.inventory-detail table.id-categorized-table.has-color {
+  min-width: 1650px;
+}
+
+.inventory-detail table.id-categorized-table.across-companies {
+  min-width: 1690px;
+}
+
+.inventory-detail table.id-categorized-table.has-color.across-companies {
+  min-width: 1830px;
 }
 
 .inventory-detail th,
@@ -156,12 +168,13 @@
 .inventory-detail .id-col-select { width: 46px; }
 .inventory-detail .id-col-code { width: 170px; }
 .inventory-detail .id-col-name { width: 260px; }
+.inventory-detail .id-col-color { width: 140px; }
+.inventory-detail .id-col-company { width: 180px; }
 .inventory-detail .id-col-warehouse { width: 210px; }
+.inventory-detail .id-col-erp-location { width: 140px; }
 .inventory-detail .id-col-location { width: 150px; }
 .inventory-detail .id-col-quantity { width: 120px; }
-.inventory-detail .id-col-status { width: 180px; }
 .inventory-detail .id-col-bom-status { width: 170px; }
-.inventory-detail .id-col-date { width: 140px; }
 .inventory-detail .id-col-uom { width: 110px; }
 .inventory-detail .id-col-group { width: 230px; }
 .inventory-detail .id-col-code-extra { width: 150px; }

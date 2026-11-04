@@ -36,8 +36,10 @@ def test_inventory_catalogs_cover_the_shared_page_and_export(language):
 				keys.add(node.args[0].value)
 	keys.add("该类型需要在标准物料移动表单中补充工单、BOM、批次、序列号或物料角色等字段。")
 	keys.update(service.EXPORT_HEADERS + service.CATEGORY_EXPORT_HEADERS)
+	for category in service.CATEGORY_DEFINITIONS:
+		keys.update(service._category_export_headers(category))
 	keys.update(definition["title"] for definition in service.CATEGORY_DEFINITIONS.values())
-	keys.update(["物料库存明细", "库存差异", "库存一致", "库位待维护", "待库存重算", "重算中", "校验中", "冲销完成", "失败待处理"])
+	keys.update(["物料库存明细", "库存差异", "库存一致", "库位待维护", "无参考快照", "待库存重算", "重算中", "校验中", "冲销完成", "失败待处理"])
 	keys.update(service.BOM_USAGE_LABELS.values())
 	for key in keys:
 		assert key in translations, (language, key)
@@ -61,15 +63,18 @@ global.frappe = {
 };
 const inventory = require(SCRIPT);
 const group = {item_code:'I<1>',item_name:'库存差异',warehouse:'中文仓库',actual_qty:5,
-  stock_uom:'个',inventory_status:'库存差异',locations:[{reference_location:'库位待维护',snapshot_date:'2026-10-19'}]};
-const html = inventory.renderCategorizedRows([group]);
-assert.ok(html.includes(inventory.escapeHtml(translations['库存差异'])));
-assert.ok(html.includes(translations['库位待维护']));
-assert.ok(html.includes('is-difference'));
+  color:'Negro',stock_uom:'个',item_group:'PROCESS',display_item_group:'NFA 产品原名',bom_usage_status:'used',inventory_status:'库存差异',locations:[{reference_location:'库位待维护',snapshot_date:'2026-10-19'}]};
+const html = inventory.renderCategorizedRows([group], new Set(), 'finished_goods');
+assert.ok(html.includes(inventory.escapeHtml(translations['已用于 BOM'])));
+assert.ok(!html.includes(translations['库位待维护']));
+assert.ok(html.includes('is-balanced'));
 assert.ok(html.includes('中文仓库'));
+assert.ok(html.includes('NFA 产品原名'));
+assert.ok(html.includes('Negro'));
+assert.ok(!html.includes('>PROCESS</td>'));
 assert.ok(html.includes('>库存差异</td>'));
 assert.ok(html.includes('I&lt;1&gt;'));
-assert.ok(html.includes('localized:2026-10-19'));
+assert.ok(!html.includes('2026-10-19'));
 assert.equal(group.inventory_status, '库存差异');
 assert.ok(formats.every(format => format.options.only_value));
 assert.equal(formats[0].field.precision, 0);
@@ -100,19 +105,23 @@ def test_exports_translate_labels_and_keep_numbers_and_business_names(monkeypatc
 	group = {
 		"item_code": "I-1", "item_name": "库存差异", "warehouse": "中文仓库", "actual_qty": 5,
 		"difference_qty": 2, "stock_uom": "个", "item_group": "业务分类", "inventory_status": "库存差异",
+		"display_item_group": "NFA 产品原名",
+		"color": "Negro",
 		"locations": [{"reference_location": "库位待维护", "snapshot_location_qty": 3}],
 	}
-	sheet = load_workbook(BytesIO(service.build_categorized_inventory_xlsx({"title": "成品库存明细", "groups": [group]}))).active
+	sheet = load_workbook(BytesIO(service.build_categorized_inventory_xlsx({"category": "finished_goods", "title": "成品库存明细", "groups": [group]}))).active
 	assert sheet.title == translations["成品库存明细"][:31]
-	assert [cell.value for cell in sheet[1]] == [translations[key] for key in service.CATEGORY_EXPORT_HEADERS]
+	assert [cell.value for cell in sheet[1]] == [translations[key] for key in service._category_export_headers("finished_goods")]
 	assert sheet["B2"].value == "库存差异"
-	assert sheet["C2"].value == "中文仓库"
-	assert sheet["D2"].value == translations["库位待维护"]
-	assert sheet["F2"].value == 5
-	assert sheet["F2"].data_type == "n"
-	assert sheet["H2"].value == translations["库存差异"]
-	assert sheet["I2"].value == translations["未用于 BOM"]
-	assert sheet["L2"].value == "业务分类"
+	assert sheet["C2"].value == "Negro"
+	assert sheet["D2"].value == "NFA 产品原名"
+	assert sheet["E2"].value == "中文仓库"
+	assert sheet["G2"].value == 5
+	assert sheet["G2"].data_type == "n"
+	assert sheet["H2"].value == translations["未用于 BOM"]
+	assert group["item_group"] == "业务分类"
+	for label in ("参考库位", "快照库位数量", "库存差异", "库存状态", "快照日期", "DPCI", "外部编码", "原始标识/别名"):
+		assert translations[label] not in [cell.value for cell in sheet[1]]
 	material = load_workbook(BytesIO(service.build_inventory_location_xlsx({"groups": []}))).active
 	assert material.title == translations["物料库存明细"][:31]
 	assert [cell.value for cell in material[1]] == [translations[key] for key in service.EXPORT_HEADERS]

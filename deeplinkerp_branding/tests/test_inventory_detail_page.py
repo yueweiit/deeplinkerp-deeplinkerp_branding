@@ -21,7 +21,7 @@ def run_js(body: str) -> dict:
 	return json.loads(result.stdout)
 
 
-def test_all_inventory_pages_default_to_yuewei_mx_without_changing_global_default() -> None:
+def test_all_inventory_pages_prefer_user_default_without_changing_global_default() -> None:
 	result = run_js("""
 const allowed = new Set(['YUEWEI MX', 'Other Company']);
 const queries = [];
@@ -35,7 +35,7 @@ global.frappe = {
 };
 (async()=>{
 const results = [];
-for (const isMaterial of [true, false]) {
+for (const isMaterialCategory of [true, false]) {
   const fields = {};
   const page = {
     add_field(df) {
@@ -45,13 +45,14 @@ for (const isMaterial of [true, false]) {
     },
     set_primary_action(){}, add_inner_button(){},
   };
-  const view = {isMaterial, page, $root:{find:()=>({text(){}})}, refresh(){this.requested=this.fields.company.get_value()}};
+  const view = {isMaterial:false, isMaterialCategory, page, $root:{find:()=>({text(){}})}, refresh(){this.requested=this.fields.company.get_value()}};
   inventory.InventoryDetailPage.prototype.makeFilters.call(view);
   await inventory.InventoryDetailPage.prototype.initializeDefaultCompany.call(view);
   view.fields.keyword.set_value('test');
-  inventory.InventoryDetailPage.prototype.clearFilters.call(view);
+  await inventory.InventoryDetailPage.prototype.clearFilters.call(view);
   results.push({company:view.company, field:fields.company.get_value(),
     warehouseCompany:fields.warehouse.df.get_query().filters.company,
+    warehouseGroupRestriction:fields.warehouse.df.get_query().filters.is_group ?? null,
     keyword:fields.keyword.get_value(),requested:view.requested});
 }
 allowed.delete('YUEWEI MX');
@@ -63,14 +64,34 @@ console.log(JSON.stringify({results, fallback, empty, queries, globalDefault:fra
 """)
 	assert result == {
 		"results": [
-			{"company": "YUEWEI MX", "field": "YUEWEI MX", "warehouseCompany": "YUEWEI MX", "keyword": "", "requested": "YUEWEI MX"},
-			{"company": "YUEWEI MX", "field": "YUEWEI MX", "warehouseCompany": "YUEWEI MX", "keyword": "", "requested": "YUEWEI MX"},
+			{"company": "Other Company", "field": "Other Company", "warehouseCompany": "Other Company", "warehouseGroupRestriction": None, "keyword": "", "requested": "Other Company"},
+			{"company": "Other Company", "field": "Other Company", "warehouseCompany": "Other Company", "warehouseGroupRestriction": None, "keyword": "", "requested": "Other Company"},
 		],
 		"fallback": "Other Company",
 		"empty": "",
-		"queries": [{"method": "frappe.client.get_list", "doctype": "Company", "filters": {"name": ["in", ["YUEWEI MX", "Other Company"]]}}] * 4,
+		"queries": [{"method": "frappe.client.get_list", "doctype": "Company", "filters": {"name": ["in", ["Other Company", "YUEWEI MX"]]}}] * 4,
 		"globalDefault": "Other Company",
 	}
+
+
+def test_clear_filters_waits_for_field_callbacks_and_refreshes_once() -> None:
+	result = run_js("""
+const prototype=inventory.InventoryDetailPage.prototype;
+let calls=0, callbacks=0, active=0, last;
+const page=Object.assign(Object.create(prototype),{
+ companyChangePending:false,suppressFilterChanges:false,pageLength:1,
+ fields:Object.fromEntries(['company','keyword','warehouse','page_length','only_with_stock'].map(key=>[key,{
+   value:key==='company'?'C1':'old',async set_value(value){this.value=value;active++;
+     await Promise.resolve();if(!page.suppressFilterChanges)callbacks++;active--;
+   }
+ }])),
+ async refresh(reset){calls++;last={reset,active,keyword:this.fields.keyword.value,
+   pageLength:this.fields.page_length.value,onlyStock:this.fields.only_with_stock.value}}
+});
+(async()=>{await page.clearFilters();console.log(JSON.stringify({calls,callbacks,...last}));})();
+""")
+	assert result == {"calls": 1, "callbacks": 0, "reset": True, "active": 0,
+		"keyword": "", "pageLength": 200, "onlyStock": 1}
 
 
 def test_reversal_stage_blocks_existing_inventory_movement_without_losing_selection():
@@ -193,6 +214,27 @@ global.frappe={msgprint(){},call:async()=>({message:{bom_usage_scope:'all_compan
 """
 
 
+def test_material_page_reads_live_stock_without_snapshot_controls_or_summary() -> None:
+	result = run_js(LIFECYCLE_SETUP + """
+(async()=>{
+ const {page}=makePage();page.config.category='material';page.isMaterial=false;
+ let summary='';const originalFind=page.$root.find;
+ page.$root.find=function(selector){return selector==='.id-summary'?{text(value){summary=value}}:originalFind.call(this,selector)};
+ let request;
+ frappe.call=async value=>{request=value;return {message:{company:'C1',bom_usage_scope:'all_companies',
+  groups:[],total_count:0,page_count:0,snapshot_options:[{snapshot_key:'SNAPSHOT-1'}]}}};
+ await page.refresh();
+ console.log(JSON.stringify({method:request.method,category:request.args.category,
+  hasSnapshot:Object.hasOwn(request.args.filters,'snapshot_key'),summary}));
+})();
+""")
+	assert result == {
+		"method": "deeplinkerp_branding.services.inventory_detail_service.get_inventory_detail_page",
+		"category": "material", "hasSnapshot": False,
+		"summary": "ERP 实时库存 · 0 个物料仓库组 · 当前 0 条",
+	}
+
+
 def test_pending_inventory_auto_refresh_updates_selection_and_disposes_stale_page():
 	result = run_js(LIFECYCLE_SETUP + """
 (async()=>{
@@ -225,7 +267,7 @@ def test_actual_refresh_retains_selection_across_search_filter_paging_and_errors
 	result = run_js(LIFECYCLE_SETUP + f"const category={json.dumps(category)};\n" + """
 (async()=>{
  const {page,values}=makePage();
- page.config.category=category;page.isMaterial=category==='material';page.setSnapshotOptions=()=>{};
+ page.config.category=category;page.isMaterial=false;page.isMaterialCategory=category==='material';page.setSnapshotOptions=()=>{};
  await page.refresh();
  page.selected=inventory.updateCurrentPageSelection(page.currentGroups,page.selected,true);
  values.keyword='B'; frappe.call=async()=>({message:{bom_usage_scope:'all_companies',company:'C1',groups:[group('B')],can_create_stock_entry:true}});
@@ -306,7 +348,7 @@ def test_movement_context_permission_failure_preserves_selection_and_requires_fr
 def test_persistent_header_reenables_after_initial_and_repeated_refresh(category: str) -> None:
 	result = run_js(LIFECYCLE_SETUP + f"const category={json.dumps(category)};\n" + """
 (async()=>{
- const {page}=makePage();page.config.category=category;page.isMaterial=category==='material';
+ const {page}=makePage();page.config.category=category;page.isMaterial=false;page.isMaterialCategory=category==='material';
  page.setSnapshotOptions=()=>{};
  const header={length:1,state:{},prop(key,value){this.state[key]=value;return this}};
  let row={length:1,state:{},prop:header.prop};
@@ -467,7 +509,8 @@ def test_shared_assets_are_registered_once_in_branding_hooks() -> None:
 
 
 @pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
-def test_movement_action_is_in_page_content_not_responsive_toolbar(category: str) -> None:
+@pytest.mark.parametrize("all_companies", [False, True])
+def test_movement_action_is_in_page_content_not_responsive_toolbar(category: str, all_companies: bool) -> None:
 	result = run_js(
 		f"""
 let html='';
@@ -476,7 +519,7 @@ const root={{find(){{return button}}}};
 global.$=(value)=>typeof value==='string' ? (html=value,root) :
  {{children:()=>({{remove(){{}}}}),append(){{}}}};
 const page=Object.assign(Object.create(inventory.InventoryDetailPage.prototype),{{
- config:{{title:'库存明细',category:{json.dumps(category)}}},isMaterial:{json.dumps(category == 'material')},
+ config:{{title:'库存明细',category:{json.dumps(category)}}},isMaterial:false,allCompanies:{json.dumps(all_companies)},
  page:{{body:{{}}}},selected:new Map(),canCreateStockEntry:false
 }});
 page.renderShell();
@@ -486,6 +529,14 @@ console.log(JSON.stringify({{html}}));
 	assert 'data-inventory-action="movement"' in result["html"]
 	assert 'class="id-actions"' in result["html"]
 	assert "BOM 用料状态" in result["html"]
+	show_color = category in ("semi_finished", "finished_goods")
+	assert result["html"].count("</th>") == (10 if show_color else 9) + int(all_companies)
+	assert ("<th>公司</th>" in result["html"]) is all_companies
+	assert ("颜色" in result["html"]) is show_color
+	if show_color:
+		assert "<th>颜色</th><th>物料组</th>" in result["html"]
+	for label in ("参考库位", "快照库位数量", "库存差异", "库存状态", "快照日期", "DPCI", "外部编码", "原始标识/别名"):
+		assert label not in result["html"]
 	source = SHARED_JS.read_text(encoding="utf-8")
 	assert 'add_inner_button("物料移动' not in source
 	assert "'[data-inventory-action=\"movement\"]'" in source
@@ -493,9 +544,11 @@ console.log(JSON.stringify({{html}}));
 
 def test_bom_status_renders_on_material_and_categorized_pages() -> None:
 	result = run_js("""
-const group={item_code:'A',item_name:'成品A',warehouse:'W1',actual_qty:1,stock_uom:'个：pieza',
- inventory_status:'库位待维护',bom_usage_status:'used',total_qty:1,
- locations:[{reference_location:'库位待维护',original_location:'L1',location_qty:1}]};
+const group={item_code:'A',item_name:'成品A',warehouse:'W1',display_warehouse:'父仓库',warehouse_location:'P04R01S',actual_qty:1,stock_uom:'个：pieza',
+ dpci:'AUX-DPCI',external_code:'AUX-EXTERNAL',original_identifier_alias:'AUX-ALIAS',
+ inventory_status:'库存一致',difference_qty:87654,bom_usage_status:'used',total_qty:1,
+ locations:[{reference_location:'库位待维护',original_location:'L1',location_qty:1,
+ snapshot_location_qty:98765,snapshot_date:'2026-09-29'}]};
 const categorized=inventory.renderCategorizedRows([group]);
 const material=inventory.renderMaterialRows([group]);
 const unused=inventory.renderMaterialRows([{...group,bom_usage_status:'unused'}]);
@@ -504,13 +557,177 @@ console.log(JSON.stringify({categorized,material,unused,missing,categorizedEmpty
  materialEmpty:inventory.renderMaterialRows([])}));
 """)
 	assert "已用于 BOM" in result["categorized"] and "已用于 BOM" in result["material"]
-	assert "库位待维护" in result["categorized"]
-	assert result["categorized"].count("<td") == 16
+	assert "库位待维护" not in result["categorized"]
+	assert "父仓库" in result["categorized"] and "P04R01S" in result["categorized"]
+	assert ">W1</td>" not in result["categorized"]
+	assert result["categorized"].count("<td") == 9
+	for removed_value in ("库存一致", "87654", "98765", "2026-09-29", "AUX-DPCI", "AUX-EXTERNAL", "AUX-ALIAS"):
+		assert removed_value not in result["categorized"]
 	assert result["material"].count("<td") == 13
 	assert "未用于 BOM" in result["unused"] and "is-difference" in result["unused"]
 	assert "未用于 BOM" not in result["missing"] and ">—</td>" in result["missing"]
-	assert 'colspan="16"' in result["categorizedEmpty"]
+	assert 'colspan="9"' in result["categorizedEmpty"]
 	assert 'colspan="13"' in result["materialEmpty"]
+
+
+def test_multiple_snapshot_locations_render_one_live_inventory_row() -> None:
+	result = run_js("""
+const html=inventory.renderCategorizedRows([{
+ item_code:'I1',warehouse:'W1',actual_qty:12,stock_uom:'kg',bom_usage_status:'used',
+ locations:[{reference_location:'A-01',snapshot_location_qty:5,snapshot_date:'2026-09-29'},
+ {reference_location:'A-02',snapshot_location_qty:7,snapshot_date:'2026-09-29'}]
+}]);
+console.log(JSON.stringify({html}));
+""")
+	html = result["html"]
+	assert html.count("<tr>") == 1
+	assert html.count("<td") == 9
+	assert "rowspan=" not in html
+	assert html.count('class="id-quantity"') == 1
+	assert html.count('type="checkbox"') == 1
+	assert "A-01" not in html and "A-02" not in html
+	assert "2026-09-29" not in html
+
+
+def test_inventory_renders_escaped_product_group_with_actual_group_fallback() -> None:
+	result = run_js("""
+const group={item_code:'I1',warehouse:'W1',actual_qty:2,bom_usage_status:'used',
+ item_group:'PROCESS-LEAF',display_item_group:'NFA <Product>'};
+console.log(JSON.stringify({product:inventory.renderCategorizedRows([group]),
+ fallback:inventory.renderCategorizedRows([{...group,display_item_group:undefined}])}));
+""")
+	assert "NFA &lt;Product&gt;" in result["product"]
+	assert "PROCESS-LEAF" not in result["product"]
+	assert "PROCESS-LEAF" in result["fallback"]
+
+
+@pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
+def test_color_is_displayed_only_for_semi_finished_and_finished_goods(category: str) -> None:
+	result = run_js(f"""
+const category={json.dumps(category)};
+const group={{item_code:'I1',warehouse:'W1',item_name:'Item',color:'Negro <Black>',
+ display_item_group:'PRODUCT-GROUP',actual_qty:3,stock_uom:'kg',bom_usage_status:'used'}};
+console.log(JSON.stringify({{html:inventory.renderCategorizedRows([group],new Set(),category),
+ empty:inventory.renderCategorizedRows([],new Set(),category),
+ blank:inventory.renderCategorizedRows([{{...group,color:null}}],new Set(),category)}}));
+""")
+	show_color = category in ("semi_finished", "finished_goods")
+	assert ("Negro &lt;Black&gt;" in result["html"]) is show_color
+	assert "Negro <Black>" not in result["html"]
+	assert result["html"].count("<td") == (10 if show_color else 9)
+	assert f'colspan="{10 if show_color else 9}"' in result["empty"]
+	if show_color:
+		assert ">—</td>" in result["blank"]
+		assert result["html"].index("Negro &lt;Black&gt;") < result["html"].index(">PRODUCT-GROUP</td>") < result["html"].index(">W1 ")
+
+
+def test_cross_company_rows_are_visible_but_only_operating_company_rows_can_be_selected() -> None:
+	result = run_js("""
+const groups=[{item_code:'I1',warehouse:'WA',company:'C1',actual_qty:2,bom_usage_status:'used'},
+ {item_code:'I1',warehouse:'WB',company:'C2',actual_qty:3,bom_usage_status:'used'},
+ {item_code:'I2',warehouse:'',company:'',actual_qty:0,bom_usage_status:'unused'}];
+const selectedC1=inventory.updateCurrentPageSelection(groups,new Map(),true,'C1');
+const selectedC2=inventory.updateCurrentPageSelection(groups,new Map(),true,'C2');
+const html=inventory.renderCategorizedRows(groups,new Set(),'semi_finished',{allCompanies:true,operationCompany:'C1'});
+console.log(JSON.stringify({html,c1:[...selectedC1.values()].map(row=>row.source_warehouse),
+ c2:[...selectedC2.values()].map(row=>row.source_warehouse),
+ empty:inventory.renderCategorizedRows([],new Set(),'semi_finished',{allCompanies:true,operationCompany:'C1'})}));
+""")
+	assert result["c1"] == ["WA"] and result["c2"] == ["WB"]
+	assert result["html"].count("<tr>") == 3
+	assert result["html"].count(" disabled") == 2
+	assert ">C1</td>" in result["html"] and ">C2</td>" in result["html"]
+	assert "请切换操作公司" in result["html"]
+	assert 'colspan="11"' in result["empty"]
+
+
+def test_cross_company_filters_keep_operating_company_but_do_not_restrict_warehouse_search() -> None:
+	result = run_js("""
+const fields={};
+const page={add_field(df){fields[df.fieldname]={df,value:df.default||'',get_value(){return this.value}};
+ return fields[df.fieldname]},set_primary_action(){},add_inner_button(){}};
+const view={page,allCompanies:true,isMaterial:false,refresh(){}};
+inventory.InventoryDetailPage.prototype.makeFilters.call(view);
+fields.company.value='C1';
+console.log(JSON.stringify({label:fields.company.df.label,warehouseQuery:fields.warehouse.df.get_query(),
+ filters:inventory.InventoryDetailPage.prototype.filters.call(view)}));
+""")
+	assert result == {"label": "操作公司", "warehouseQuery": {"filters": {}},
+		"filters": {"company": "C1", "only_with_stock": 1, "all_companies": 1}}
+
+
+def test_cross_company_page_keeps_the_same_rows_when_operating_company_changes() -> None:
+	result = run_js(LIFECYCLE_SETUP + """
+(async()=>{
+const requests=[],outcomes=[];
+frappe.call=async request=>{requests.push(request.args.filters);return {message:{company:request.args.filters.company,
+ inventory_scope:'accessible_companies',bom_usage_scope:'all_companies',can_create_stock_entry:true,
+ groups:[{...group('A'),warehouse:'WA',company:'C1'},{...group('B'),warehouse:'WB',company:'C2'}]}}};
+for(const company of ['C1','C2']){
+ const {page,values}=makePage();page.allCompanies=true;page.company=company;values.company=company;
+ await page.refresh();outcomes.push({companies:page.currentGroups.map(row=>row.company),canMove:page.canCreateStockEntry});
+}
+console.log(JSON.stringify({requests,outcomes}));
+})();
+""")
+	assert [request["all_companies"] for request in result["requests"]] == [1, 1]
+	assert [request["company"] for request in result["requests"]] == ["C1", "C2"]
+	assert result["outcomes"] == [{"companies": ["C1", "C2"], "canMove": True}] * 2
+
+
+@pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
+@pytest.mark.parametrize("all_companies", [False, True])
+def test_switching_operating_company_preserves_cross_company_filters_and_clears_selection(category, all_companies):
+	result = run_js(LIFECYCLE_SETUP + f"""
+(async()=>{{
+ const {{page,values}}=makePage();page.config.category={json.dumps(category)};
+ page.allCompanies={json.dumps(all_companies)};
+ values.item_group='PRODUCT-A';values.keyword='ITEM';values.only_with_stock=1;
+ page.fields.item_group={{get_value:()=>values.item_group,set_value:async value=>{{values.item_group=value}}}};
+ page.fields.only_with_stock={{get_value:()=>values.only_with_stock}};
+ page.selected=inventory.updateCurrentPageSelection([group('A')],new Map(),true);
+ frappe.confirm=(_message,yes)=>yes();
+ let request;
+ page.refresh=async function(reset){{request={{reset,filters:this.filters()}}}};
+ values.company='C2';await page.changeCompany();
+ console.log(JSON.stringify({{request,company:page.company,selected:page.selected.size,effective:page.effectiveCompany}}));
+}})();
+""")
+	filters = {"company": "C2", "keyword": "ITEM", "warehouse": "W1" if all_companies else "",
+		"item_group": "PRODUCT-A" if all_companies else "", "only_with_stock": 1}
+	# Empty values are omitted from the request.
+	filters = {key: value for key, value in filters.items() if value != ""}
+	if all_companies:
+		filters["all_companies"] = 1
+	assert result == {"request": {"reset": True, "filters": filters}, "company": "C2", "selected": 0, "effective": ""}
+
+
+@pytest.mark.parametrize("scope,owner", [("company", "C1"), ("accessible_companies", "")])
+def test_cross_company_page_rejects_missing_scope_or_missing_warehouse_owner(scope, owner) -> None:
+	result = run_js(LIFECYCLE_SETUP + f"""
+(async()=>{{
+ const {{page}}=makePage();page.allCompanies=true;let summary='';
+ const originalFind=page.$root.find;
+ page.$root.find=function(selector){{return selector==='.id-summary'?{{text(value){{summary=value}}}}:originalFind.call(this,selector)}};
+ frappe.call=async()=>({{message:{{company:'C1',inventory_scope:{json.dumps(scope)},bom_usage_scope:'all_companies',
+ groups:[{{...group('A'),company:{json.dumps(owner)}}}]}}}});
+ await page.refresh();console.log(JSON.stringify({{summary,groups:page.currentGroups.length,canMove:page.canCreateStockEntry}}));
+}})();
+""")
+	assert result == {"summary": "跨公司库存范围读取失败，请刷新页面后重试。", "groups": 0, "canMove": False}
+
+
+def test_cross_company_select_all_state_counts_only_the_operating_company() -> None:
+	result = run_js("""
+const groups=[{item_code:'I1',warehouse:'WA',company:'C1'},{item_code:'I1',warehouse:'WB',company:'C2'}];
+const state={};const header={length:1,prop(key,value){state[key]=value;return this}};
+const page={allCompanies:true,currentGroups:groups,selected:inventory.updateCurrentPageSelection(groups,new Map(),true,'C1'),
+ company:'C1',effectiveCompany:'C1',selectionCompany:'C1',fields:{company:{get_value:()=> 'C1'}},
+ $root:{find:()=>header},updateMovementButton(){}};
+inventory.InventoryDetailPage.prototype.updateSelectionUi.call(page);
+console.log(JSON.stringify(state));
+""")
+	assert result == {"disabled": False, "checked": True, "indeterminate": False}
 
 
 def test_inventory_page_rejects_missing_or_older_bom_usage_contract() -> None:
@@ -530,6 +747,7 @@ def test_inventory_page_rejects_missing_or_older_bom_usage_contract() -> None:
   outcomes.push({summary,groups:page.currentGroups.length,canMove:page.canCreateStockEntry});
  }
  let exportWarning='';frappe.msgprint=value=>exportWarning=value;
+ page.canExportInventory=true;
  frappe.call=async()=>({message:{file_name:'old.xlsx',content_base64:'AA=='}});
  await page.exportExcel();
  console.log(JSON.stringify({outcomes,exportWarning}));
@@ -552,16 +770,21 @@ const page={{
   fields[df.fieldname]=field;return field;
  }},set_primary_action(){{}},add_inner_button(){{}}
 }};
-const view={{page,config:{{category:{json.dumps(category)}}},isMaterial:{json.dumps(category == 'material')},refresh(){{}}}};
+const view={{page,config:{{category:{json.dumps(category)}}},isMaterial:false,
+ isMaterialCategory:{json.dumps(category == 'material')},refresh(){{}}}};
 inventory.InventoryDetailPage.prototype.makeFilters.call(view);
 fields.bom_usage_status.set_value('used');
 console.log(JSON.stringify({{options:fields.bom_usage_status.df.options,filters:
- inventory.InventoryDetailPage.prototype.filters.call(view)}}));
+ inventory.InventoryDetailPage.prototype.filters.call(view),defaultStock:fields.only_with_stock.get_value(),
+ hasSnapshot:Boolean(fields.snapshot_key),hasReference:Boolean(fields.reference_location)}}));
 """)
 	assert [option["value"] for option in result["options"][1:]] == [
 		"used", "unused"
 	]
-	assert result["filters"] == {"bom_usage_status": "used"}
+	assert result["filters"] == {"bom_usage_status": "used", "only_with_stock": 1}
+	assert result["defaultStock"] == 1
+	assert result["hasSnapshot"] is False
+	assert result["hasReference"] is False
 
 
 @pytest.mark.parametrize("count,can_create", [(0, True), (1, True), (200, True), (2, False)])

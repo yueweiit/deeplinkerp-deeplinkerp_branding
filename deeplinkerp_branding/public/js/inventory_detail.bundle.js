@@ -9,6 +9,7 @@
 		unused: "未用于 BOM",
 	};
 	const BOM_USAGE_SCOPE = "all_companies";
+	const COLOR_CATEGORIES = new Set(["semi_finished", "finished_goods"]);
 	const COUNT_UOM_TOKENS = [
 		"个",
 		"件",
@@ -38,14 +39,10 @@
 		return message.replace(/\{(\d+)\}/g, (match, index) => replacements?.[index] ?? match);
 	}
 
-	function formatDate(value) {
-		return value ? globalThis.frappe?.datetime?.str_to_user?.(value) || value : "";
-	}
-
 	async function resolveDefaultCompany(framework) {
 		const preferred = "YUEWEI MX";
 		const userDefault = String(framework?.defaults?.get_default?.("company") || "").trim();
-		const candidates = [...new Set([preferred, userDefault].filter(Boolean))];
+		const candidates = [...new Set([userDefault, preferred].filter(Boolean))];
 		const response = await framework.call({
 			method: "frappe.client.get_list",
 			args: {
@@ -121,12 +118,20 @@
 		return `<span class="text-warning" role="status">${escapeHtml(__(labels[value.stage] || "冲销进度待核对"))}</span>`;
 	}
 
-	function selectionCell(group, size, selectedKeys) {
+	function selectableInventoryGroup(group, operationCompany = "") {
+		return Boolean(String(group.warehouse || "").trim()) &&
+			(!operationCompany || group.company === operationCompany);
+	}
+
+	function selectionCell(group, size, selectedKeys, operationCompany = "") {
 		const rowspan = rowspanAttribute(size);
 		const key = selectionKey(group);
-		const selectable = Boolean(String(group.warehouse || "").trim());
+		const selectable = selectableInventoryGroup(group, operationCompany);
 		const checked = selectable && selectedKeys?.has(key) ? " checked" : "";
-		const disabled = selectable ? "" : ` disabled title="${escapeHtml(__("无仓库占位行不可移动"))}"`;
+		const reason = group.warehouse
+			? __("该仓库不属于操作公司，请切换操作公司后办理物料移动。")
+			: __("无仓库占位行不可移动");
+		const disabled = selectable ? "" : ` disabled title="${escapeHtml(reason)}"`;
 		return (
 			`<td class="id-select"${rowspan}><input type="checkbox" data-selection-key="${escapeHtml(
 				key
@@ -134,10 +139,10 @@
 		);
 	}
 
-	function updateCurrentPageSelection(groups, selected, checked) {
+	function updateCurrentPageSelection(groups, selected, checked, operationCompany = "") {
 		const next = new Map(selected || []);
 		(groups || [])
-			.filter((group) => group.warehouse)
+			.filter((group) => selectableInventoryGroup(group, operationCompany))
 			.forEach((group) => {
 				const key = selectionKey(group);
 				if (checked) {
@@ -208,77 +213,33 @@
 			.join("");
 	}
 
-	function renderCategorizedRows(groups, selectedKeys = new Set()) {
+	function renderCategorizedRows(groups, selectedKeys = new Set(), category = "material", scope = {}) {
+		const showColor = COLOR_CATEGORIES.has(category);
 		if (!Array.isArray(groups) || !groups.length) {
-			return `<tr class="id-empty"><td colspan="16">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
+			return `<tr class="id-empty"><td colspan="${(showColor ? 10 : 9) + (scope.allCompanies ? 1 : 0)}">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
 		}
 		return groups
 			.map((group) => {
-				const locations =
-					Array.isArray(group.locations) && group.locations.length
-						? group.locations
-						: [
-								{
-									reference_location: "库位待维护",
-									snapshot_location_qty: null,
-									snapshot_date: "",
-								},
-						  ];
-				const rowspan = rowspanAttribute(locations.length);
 				const itemCode = escapeHtml(group.item_code);
-				const status = escapeHtml(__(group.inventory_status || "库位待维护"));
 				const quantityClass = Number(group.actual_qty || 0) < 0 ? " id-negative" : "";
-				const statusClass =
-					group.inventory_status === "库存差异"
-						? " is-difference"
-						: group.inventory_status === "库存一致"
-						? " is-balanced"
-						: " is-pending";
-				const sharedBefore = [
-					selectionCell(group, locations.length, selectedKeys),
-					`<td class="id-code"${rowspan}><a href="#" data-item-code="${itemCode}">${itemCode}</a></td>`,
-					`<td class="id-name"${rowspan}>${escapeHtml(group.item_name)}</td>`,
-					`<td${rowspan}>${escapeHtml(group.warehouse || "—")} ${reversalHTML(group.reversal)}</td>`,
-				].join("");
-				const sharedMiddle = [
-					`<td class="id-quantity${quantityClass}"${rowspan}>${formatQuantity(
+				const itemGroupCell = `<td>${escapeHtml(group.display_item_group || group.item_group)}</td>`;
+				const cells = [
+					selectionCell(group, 1, selectedKeys, scope.allCompanies ? scope.operationCompany : ""),
+					`<td class="id-code"><a href="#" data-item-code="${itemCode}">${itemCode}</a></td>`,
+					`<td class="id-name">${escapeHtml(group.item_name)}</td>`,
+					...(showColor ? [`<td>${escapeHtml(group.color || "—")}</td>`, itemGroupCell] : []),
+					...(scope.allCompanies ? [`<td>${escapeHtml(group.company || "—")}</td>`] : []),
+					`<td>${escapeHtml(group.display_warehouse || group.warehouse || "—")} ${reversalHTML(group.reversal)}</td>`,
+					`<td>${escapeHtml(group.warehouse_location || "—")}</td>`,
+					`<td class="id-quantity${quantityClass}">${formatQuantity(
 						group.actual_qty,
 						group.stock_uom
 					)}</td>`,
-					`<td class="id-quantity"${rowspan}>${formatQuantity(
-						group.difference_qty,
-						group.stock_uom
-					)}</td>`,
-					`<td${rowspan}><span class="id-status${statusClass}">${status}</span></td>`,
-					bomUsageCell(group, rowspan),
+					bomUsageCell(group, ""),
+					`<td>${escapeHtml(group.stock_uom)}</td>`,
+					...(!showColor ? [itemGroupCell] : []),
 				].join("");
-				const sharedAfter = [
-					`<td${rowspan}>${escapeHtml(group.stock_uom)}</td>`,
-					`<td${rowspan}>${escapeHtml(group.item_group)}</td>`,
-					`<td${rowspan}>${escapeHtml(group.dpci)}</td>`,
-					`<td${rowspan}>${escapeHtml(group.external_code)}</td>`,
-					`<td${rowspan}>${escapeHtml(group.original_identifier_alias)}</td>`,
-				].join("");
-				return locations
-					.map((location, index) => {
-						const before = index === 0 ? sharedBefore : "";
-						const middle = index === 0 ? sharedMiddle : "";
-						const after = index === 0 ? sharedAfter : "";
-						return (
-							`<tr>${before}<td>${escapeHtml(
-								location.reference_location && location.reference_location !== "库位待维护"
-									? location.reference_location : __("库位待维护")
-							)}</td>` +
-							`<td class="id-quantity">${formatQuantity(
-								location.snapshot_location_qty,
-								group.stock_uom
-							)}</td>` +
-							`${middle}<td>${escapeHtml(
-								formatDate(location.snapshot_date) || "—"
-							)}</td>${after}</tr>`
-						);
-					})
-					.join("");
+				return `<tr>${cells}</tr>`;
 			})
 			.join("");
 	}
@@ -315,21 +276,20 @@
     </table>`;
 	}
 
-	function categorizedTable(title) {
-		return `<table class="id-categorized-table" aria-label="${escapeHtml(__("{0}表", [title]))}">
+	function categorizedTable(title, category, allCompanies = false) {
+		const showColor = COLOR_CATEGORIES.has(category);
+		return `<table class="id-categorized-table${showColor ? " has-color" : ""}${allCompanies ? " across-companies" : ""}" aria-label="${escapeHtml(__("{0}表", [title]))}">
       <colgroup>
-        <col class="id-col-select"><col class="id-col-code"><col class="id-col-name"><col class="id-col-warehouse">
-        <col class="id-col-location"><col class="id-col-quantity"><col class="id-col-quantity">
-        <col class="id-col-quantity"><col class="id-col-status"><col class="id-col-bom-status"><col class="id-col-date">
-        <col class="id-col-uom"><col class="id-col-group"><col class="id-col-code-extra">
-        <col class="id-col-code-extra"><col class="id-col-alias">
+        <col class="id-col-select"><col class="id-col-code"><col class="id-col-name">${showColor ? '<col class="id-col-color"><col class="id-col-group">' : ""}${allCompanies ? '<col class="id-col-company">' : ""}<col class="id-col-warehouse">
+        <col class="id-col-erp-location">
+        <col class="id-col-quantity"><col class="id-col-bom-status">
+        <col class="id-col-uom">${!showColor ? '<col class="id-col-group">' : ""}
       </colgroup>
       <thead><tr>
         <th class="id-select"><input type="checkbox" data-select-current-page aria-label="${escapeHtml(__("全选当前页"))}"></th>
-        <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th><th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("参考库位"))}</th>
-        <th>${escapeHtml(__("快照库位数量"))}</th><th>${escapeHtml(__("实时库存"))}</th><th>${escapeHtml(__("库存差异"))}</th><th>${escapeHtml(__("库存状态"))}</th><th>${escapeHtml(__("BOM 用料状态"))}</th>
-        <th>${escapeHtml(__("快照日期"))}</th><th>${escapeHtml(__("库存单位"))}</th><th>${escapeHtml(__("物料组"))}</th><th>DPCI</th>
-        <th>${escapeHtml(__("外部编码"))}</th><th>${escapeHtml(__("原始标识/别名"))}</th>
+        <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th>${showColor ? `<th>${escapeHtml(__("颜色"))}</th><th>${escapeHtml(__("物料组"))}</th>` : ""}${allCompanies ? `<th>${escapeHtml(__("公司"))}</th>` : ""}<th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("库位"))}</th>
+        <th>${escapeHtml(__("实时库存"))}</th><th>${escapeHtml(__("BOM 用料状态"))}</th>
+        <th>${escapeHtml(__("库存单位"))}</th>${!showColor ? `<th>${escapeHtml(__("物料组"))}</th>` : ""}
       </tr></thead><tbody></tbody>
     </table>`;
 	}
@@ -338,13 +298,15 @@
 		constructor(wrapper, config) {
 			this.wrapper = wrapper;
 			this.config = { ...config, title: __(config.title) };
-			this.isMaterial = config.category === "material";
+			this.isMaterial = false; // All four Desk pages display live Bin stock.
+			this.allCompanies = true;
 			this.start = 0;
 			this.pageLength = DEFAULT_PAGE_LENGTH;
 			this.requestId = 0;
 			this.selected = new Map();
 			this.currentGroups = [];
 			this.canCreateStockEntry = false;
+			this.canExportInventory = false;
 			this.page = frappe.ui.make_app_page({
 				parent: wrapper,
 				title: this.config.title,
@@ -382,30 +344,21 @@
 			this.fields = {};
 			this.fields.company = this.page.add_field({
 				fieldname: "company",
-				label: __("公司"),
+				label: this.allCompanies ? __("操作公司") : __("公司"),
+				description: this.allCompanies ? __("库存显示所有可访问公司，物料移动按操作公司办理。") : "",
 				fieldtype: "Link",
 				options: "Company",
 				default: "",
 				change: () => this.changeCompany(),
 			});
-			if (this.isMaterial) {
-				this.fields.snapshot_key = this.page.add_field({
-					fieldname: "snapshot_key",
-					label: __("盘点快照"),
-					fieldtype: "Select",
-					options: [""],
-					change: resetAndRefresh,
-				});
-			}
 			this.fields.warehouse = this.page.add_field({
 				fieldname: "warehouse",
 				label: __("仓库"),
 				fieldtype: "Link",
 				options: "Warehouse",
 				get_query: () => ({
-					filters: {
+					filters: this.allCompanies ? {} : {
 						company: this.fields.company.get_value() || this.company,
-						is_group: 0,
 					},
 				}),
 				change: resetAndRefresh,
@@ -439,16 +392,11 @@
 					change: resetAndRefresh,
 				});
 			} else {
-				this.fields.reference_location = this.page.add_field({
-					fieldname: "reference_location",
-					label: __("参考库位"),
-					fieldtype: "Data",
-				});
 				this.fields.only_with_stock = this.page.add_field({
 					fieldname: "only_with_stock",
 					label: __("只看有库存"),
 					fieldtype: "Check",
-					default: 0,
+					default: 1,
 					change: resetAndRefresh,
 				});
 			}
@@ -480,7 +428,8 @@
 			});
 			this.page.set_primary_action(__("筛选"), () => this.refresh(true), "filter");
 			this.page.add_inner_button(__("清除筛选"), () => this.clearFilters());
-			this.page.add_inner_button(__("导出 Excel"), () => this.exportExcel());
+			this.$exportButton = this.page.add_inner_button(__("导出 Excel"), () => this.exportExcel());
+			this.$exportButton?.prop?.("disabled", true);
 		}
 
 		async changeCompany() {
@@ -521,9 +470,13 @@
 					this.selectionCompany = nextCompany;
 					this.effectiveCompany = "";
 					this.canCreateStockEntry = false;
+					this.canExportInventory = false;
+					this.$exportButton?.prop?.("disabled", true);
 					await this.fields.company.set_value(nextCompany);
-					for (const key of ["snapshot_key", "warehouse", ...(!this.isMaterial ? ["item_group"] : [])]) {
-						if (this.fields[key]) await this.fields[key].set_value("");
+					if (!this.allCompanies) {
+						for (const key of ["warehouse", ...(!this.isMaterial ? ["item_group"] : [])]) {
+							if (this.fields[key]) await this.fields[key].set_value("");
+						}
 					}
 				}
 			} finally {
@@ -547,7 +500,7 @@
           </div>
           <div class="id-summary" role="status">${escapeHtml(__("正在读取库存…"))}</div>
           <div class="id-table-wrap">${
-				this.isMaterial ? materialTable() : categorizedTable(this.config.title)
+				this.isMaterial ? materialTable() : categorizedTable(this.config.title, this.config.category, this.allCompanies)
 			}</div>
           <div class="id-pager">
             <button type="button" class="btn btn-default btn-sm" data-page-action="previous">${escapeHtml(__("上一页"))}</button>
@@ -576,7 +529,7 @@
 				if (this.loading || this.companyChangePending || !this.effectiveCompany) return;
 				const key = $(event.currentTarget).attr("data-selection-key");
 				const group = this.currentGroups.find((row) => selectionKey(row) === key);
-				if (!group?.warehouse) return;
+				if (!group || !selectableInventoryGroup(group, this.allCompanies ? this.effectiveCompany : "")) return;
 				if (event.currentTarget.checked) {
 					this.selected.set(key, {
 						item_code: group.item_code,
@@ -594,7 +547,8 @@
 				this.selected = updateCurrentPageSelection(
 					this.currentGroups,
 					this.selected,
-					event.currentTarget.checked
+					event.currentTarget.checked,
+					this.allCompanies ? this.effectiveCompany : ""
 				);
 				this.renderRows();
 			});
@@ -609,7 +563,7 @@
 					this.refresh();
 				}
 			});
-			["keyword", "original_location", "reference_location"].forEach((fieldname) => {
+			["keyword", "original_location"].forEach((fieldname) => {
 				this.fields[fieldname]?.$input?.on("keydown", (event) => {
 					if (event.key === "Enter") this.refresh(true);
 				});
@@ -617,7 +571,7 @@
 		}
 
 		filters() {
-			return Object.fromEntries(
+			const filters = Object.fromEntries(
 				Object.entries(this.fields)
 					.filter(([key]) => key !== "page_length")
 					.map(([key, field]) => [key, field.get_value()])
@@ -626,6 +580,8 @@
 							value !== null && value !== undefined && String(value).trim() !== ""
 					)
 			);
+			if (this.allCompanies) filters.all_companies = 1;
+			return filters;
 		}
 
 		resetSelection() {
@@ -643,7 +599,7 @@
 		updateSelectionUi() {
 			this.$selectedButton?.text(__("已选物料 ({0})", [this.selected.size]));
 			const selectableKeys = this.currentGroups
-				.filter((group) => group.warehouse)
+				.filter((group) => selectableInventoryGroup(group, this.allCompanies ? this.effectiveCompany : ""))
 				.map(selectionKey);
 			const selectedCount = selectableKeys.filter((key) => this.selected.has(key)).length;
 			const header = this.$root?.find("[data-select-current-page]");
@@ -687,7 +643,9 @@
 			const keys = new Set(this.selected.keys());
 			const html = this.isMaterial
 				? renderMaterialRows(this.currentGroups, keys)
-				: renderCategorizedRows(this.currentGroups, keys);
+				: renderCategorizedRows(this.currentGroups, keys, this.config.category, {
+					allCompanies: this.allCompanies, operationCompany: this.effectiveCompany,
+				});
 			this.$root.find("tbody").html(html);
 			this.updateSelectionUi();
 			this.updateTableViewport?.();
@@ -753,20 +711,20 @@
 			const requestedCompany = this.company;
 			this.loading = true;
 			this.canCreateStockEntry = false;
+			this.canExportInventory = false;
+			this.$exportButton?.prop?.("disabled", true);
 			this.updateMovementButton();
 			this.$root.addClass("is-loading");
 			this.$root.find("[data-selection-key], [data-select-current-page]").prop("disabled", true);
 			this.$root.find(".id-summary").text(__("正在读取库存…"));
 			try {
-				const method = this.isMaterial
-					? "deeplinkerp_branding.services.inventory_detail_service.get_inventory_location_detail"
-					: "deeplinkerp_branding.services.inventory_detail_service.get_categorized_inventory_detail";
+				const method = "deeplinkerp_branding.services.inventory_detail_service.get_inventory_detail_page";
 				const args = {
+					category: this.config.category,
 					filters: this.filters(),
 					start: this.start,
 					page_length: this.pageLength,
 				};
-				if (!this.isMaterial) args.category = this.config.category;
 				const pending = [...this.selected.values()].filter(row => reversalBlocked(row.reversal));
 				if (pending.length) args.progress_selections = JSON.stringify(pending.map(row => ({
 					item_code: row.item_code, source_warehouse: row.source_warehouse,
@@ -776,6 +734,10 @@
 				const payload = response.message || {};
 				if (payload.company && payload.company !== requestedCompany) {
 					throw new Error(__("公司信息已变化，请重新选择公司后读取库存。"));
+				}
+				if (this.allCompanies && (payload.inventory_scope !== "accessible_companies" ||
+					(payload.groups || []).some(group => group.warehouse && !group.company))) {
+					throw new Error(__("跨公司库存范围读取失败，请刷新页面后重试。"));
 				}
 				if (payload.bom_usage_scope !== BOM_USAGE_SCOPE ||
 					(payload.groups || []).some((group) => !Object.hasOwn(BOM_USAGE_LABELS, group.bom_usage_status))) {
@@ -795,21 +757,24 @@
 				this.selectionCompany = this.effectiveCompany;
 				this.canCreateStockEntry = Boolean(payload.can_create_stock_entry) &&
 					Boolean(this.effectiveCompany) && this.effectiveCompany === requestedCompany;
+				this.canExportInventory = Boolean(payload.can_export_inventory) &&
+					this.effectiveCompany === requestedCompany;
+				this.$exportButton?.prop?.("disabled", !this.canExportInventory);
 				this.movementDisabledReason = payload.movement_disabled_reason || "";
-				if (this.isMaterial) this.setSnapshotOptions(payload.snapshot_options || []);
-				else this.setItemGroupOptions(payload.item_group_options || []);
+				this.setItemGroupOptions(payload.item_group_options || []);
 				this.renderRows();
-				const snapshot = formatDate(payload.snapshot_date) || payload.snapshot_key || __("暂无库位快照");
 				const summary =
 					payload.warning ||
-					(this.isMaterial
-						? __("盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条", [snapshot, Number(payload.total_count || 0), Number(payload.page_count || 0)])
-						: __("ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2}", [Number(payload.total_count || 0), Number(payload.page_count || 0), snapshot]));
+					(this.allCompanies
+						? __("ERP 实时库存（所有可访问公司） · {0} 个物料仓库组 · 当前 {1} 条", [Number(payload.total_count || 0), Number(payload.page_count || 0)])
+						: __("ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条", [Number(payload.total_count || 0), Number(payload.page_count || 0)]));
 				this.$root.find(".id-summary").text(summary);
 				this.renderPager(payload);
 			} catch (error) {
 				if (requestId !== this.requestId) return;
 				this.canCreateStockEntry = false;
+				this.canExportInventory = false;
+				this.$exportButton?.prop?.("disabled", true);
 				if (![...this.currentGroups, ...this.selected.values()].some(row => reversalBlocked(row.reversal))) this.currentGroups = [];
 				this.renderRows();
 				this.$root.find(".id-summary").text(error.message || __("库存明细读取失败。"));
@@ -836,17 +801,6 @@
 			this.$root.find('[data-page-action="next"]').prop("disabled", !payload.has_next);
 		}
 
-		setSnapshotOptions(options) {
-			const current = this.fields.snapshot_key.get_value() || "";
-			const values = [
-				"",
-				...options.map((option) => String(option.snapshot_key || "")).filter(Boolean),
-			];
-			this.fields.snapshot_key.df.options = [...new Set(values)];
-			this.fields.snapshot_key.refresh();
-			if (current && !values.includes(current)) this.fields.snapshot_key.set_value("");
-		}
-
 		setItemGroupOptions(options) {
 			const current = this.fields.item_group.get_value() || "";
 			const values = ["", ...options.map(String).filter(Boolean)];
@@ -855,14 +809,19 @@
 			if (current && !values.includes(current)) this.fields.item_group.set_value("");
 		}
 
-		clearFilters() {
-			Object.entries(this.fields).forEach(([key, field]) => {
-				if (key === "company") return;
-				if (key === "page_length") field.set_value(DEFAULT_PAGE_LENGTH);
-				else field.set_value(key === "only_with_stock" ? 0 : "");
-			});
-			this.pageLength = DEFAULT_PAGE_LENGTH;
-			this.refresh(true);
+		async clearFilters() {
+			if (this.companyChangePending) return;
+			this.suppressFilterChanges = true;
+			try {
+				for (const [key, field] of Object.entries(this.fields)) {
+					if (key === "company") continue;
+					await field.set_value(key === "page_length" ? DEFAULT_PAGE_LENGTH : key === "only_with_stock" ? 1 : "");
+				}
+				this.pageLength = DEFAULT_PAGE_LENGTH;
+			} finally {
+				this.suppressFilterChanges = false;
+			}
+			await this.refresh(true);
 		}
 
 		async exportExcel() {
@@ -870,11 +829,13 @@
 				frappe.msgprint(__("请先选择公司或设置默认公司。"));
 				return;
 			}
-			const method = this.isMaterial
-				? "deeplinkerp_branding.services.inventory_detail_service.export_inventory_location_detail"
-				: "deeplinkerp_branding.services.inventory_detail_service.export_categorized_inventory_detail";
-			const args = { filters: this.filters() };
-			if (!this.isMaterial) args.category = this.config.category;
+			if (this.loading || this.companyChangePending) return;
+			if (!this.canExportInventory) {
+				frappe.msgprint(__("没有导出库存明细的权限。"));
+				return;
+			}
+			const method = "deeplinkerp_branding.services.inventory_detail_service.export_categorized_inventory_detail";
+			const args = { category: this.config.category, filters: this.filters() };
 			const response = await frappe.call({
 				method,
 				args,
@@ -882,6 +843,10 @@
 				freeze_message: __("正在生成 Excel…"),
 			});
 			const file = response.message || {};
+			if (this.allCompanies && file.inventory_scope !== "accessible_companies") {
+				frappe.msgprint(__("跨公司库存范围读取失败，请刷新页面后重试。"));
+				return;
+			}
 			if (file.bom_usage_scope !== BOM_USAGE_SCOPE) {
 				frappe.msgprint(__("BOM 用料状态读取失败，请刷新页面后重试。"));
 				return;
