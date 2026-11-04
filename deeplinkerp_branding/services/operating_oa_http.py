@@ -15,7 +15,7 @@ from frappe import _
 
 from . import operating_oa_source as oa
 
-DEFAULT_URL = "http://8.135.70.135:3005"
+DEFAULT_URL = "http://8.135.70.130:3005"
 DEFAULT_CORP_ID = "ding144583309b2fb01c35c2f4657eb6378f"
 MAX_PAGE_BYTES = 20 * 1024 * 1024
 MAX_DOWNLOAD_BYTES = 20 * 1024 * 1024

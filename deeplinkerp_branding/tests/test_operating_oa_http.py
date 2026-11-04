@@ -35,9 +35,9 @@ class OAHttpTests(unittest.TestCase):
 
     def test_default_corp_and_explicit_site_override(self):
         with patch.object(client.frappe, "conf", {"overseas_costing_dingtalk_corp_id": "other-corp"}):
-            self.assertEqual(client.configuration(), ("http://8.135.70.135:3005", (client.DEFAULT_CORP_ID,)))
+            self.assertEqual(client.configuration(), ("http://8.135.70.130:3005", (client.DEFAULT_CORP_ID,)))
         with patch.object(client.frappe, "conf", {"operating_expense_oa_corp_ids": ["corp-a"]}):
-            self.assertEqual(client.configuration(), ("http://8.135.70.135:3005", ("corp-a",)))
+            self.assertEqual(client.configuration(), ("http://8.135.70.130:3005", ("corp-a",)))
         with patch.object(client.frappe, "conf", {"operating_expense_oa_api_url": "http://oa:3000/path",
                                                   "operating_expense_oa_corp_ids": ["corp-a"]}), \
                 patch.object(client.frappe, "throw", side_effect=fail):

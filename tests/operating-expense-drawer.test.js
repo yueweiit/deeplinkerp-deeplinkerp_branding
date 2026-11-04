@@ -1362,10 +1362,10 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	assert.match(html.join(""), /当前手动同步仍读取旧出纳接口/);
 	assert.doesNotMatch(html.join(""), /name="source_url"/);
 	sourceMode = "oa_cashier";
-	sourceUrl = "http://8.135.70.135:3005";
+	sourceUrl = "http://8.135.70.130:3005";
 	await a.openSettings();
 	assert.match(html.at(-1), /当前来源模式.*OA 新接口/);
-	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.135:3005/);
+	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.130:3005/);
 	assert.doesNotMatch(html.at(-1), /payment\.yueweiportal\.com/);
 });
 test("native recognition history separates immutable expense controls from available settlement controls", async () => {
