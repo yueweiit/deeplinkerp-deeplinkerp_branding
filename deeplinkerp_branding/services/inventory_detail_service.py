@@ -5,12 +5,16 @@ from __future__ import annotations
 import base64
 import json
 import math
+import re
 from collections import OrderedDict
 from collections.abc import Iterable
 from io import BytesIO
+from itertools import chain
+from tempfile import SpooledTemporaryFile
 from typing import Any
 
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 
 try:
@@ -20,6 +24,9 @@ except Exception:  # pragma: no cover - 本地单测环境不安装 Frappe
 
 
 SNAPSHOT_DOCTYPE = "Inventory Original Location Snapshot"
+# The four reports share this app-owned export grant. Source read permissions
+# and the permission-filtered company/item/warehouse scope are checked separately.
+INVENTORY_EXPORT_PERMISSION_DOCTYPES = (SNAPSHOT_DOCTYPE,)
 COUNT_UOM_TOKENS = (
 	"个",
 	"件",
@@ -56,6 +63,12 @@ EXPORT_HEADERS = (
 	"原始标识/别名",
 )
 CATEGORY_DEFINITIONS = {
+	"material": {
+		"title": "物料库存明细",
+		"root_item_group": "",
+		"route": "inventory-location-detail",
+		"file_prefix": "material-inventory-detail",
+	},
 	"semi_finished": {
 		"title": "半成品库存明细",
 		"root_item_group": "半成品Semiterminado",
@@ -79,20 +92,13 @@ CATEGORY_EXPORT_HEADERS = (
 	"正式物料编码",
 	"物料名称（双语）",
 	"仓库",
-	"参考库位",
-	"快照库位数量",
+	"库位",
 	"实时库存",
-	"库存差异",
-	"库存状态",
 	"BOM 用料状态",
-	"快照日期",
 	"库存单位",
 	"物料组",
-	"DPCI",
-	"外部编码",
-	"原始标识/别名",
 )
-CATEGORY_EXPORT_MERGE_COLUMNS = (1, 2, 3, 6, 7, 8, 9, 11, 12, 13, 14, 15)
+COLOR_INVENTORY_CATEGORIES = frozenset({"semi_finished", "finished_goods"})
 BOM_USAGE_LABELS = {
 	"used": "已用于 BOM",
 	"unused": "未用于 BOM",
@@ -102,6 +108,10 @@ BOM_USAGE_BATCH_SIZE = 500
 DEFAULT_PAGE_LENGTH = 200
 MIN_PAGE_LENGTH = 1
 MAX_PAGE_LENGTH = 2500
+EXPORT_PAGE_LENGTH = 1000
+EXPORT_STREAM_THRESHOLD = 5000
+MAX_EXPORT_GROUPS = 100000
+MAX_EXPORT_FILE_BYTES = 20 * 1024 * 1024
 SIMPLE_STOCK_ENTRY_PURPOSES = {
 	"Material Receipt",
 	"Material Issue",
@@ -401,12 +411,30 @@ def build_inventory_location_xlsx(payload: dict[str, Any]) -> bytes:
 	return output.getvalue()
 
 
+def _warehouse_display_fields(row: dict[str, Any]) -> dict[str, str]:
+	"""Only split leaf warehouse names that end with their actual parent warehouse label."""
+	warehouse = _text(row.get("warehouse"))
+	label = _text(row.get("warehouse_name"))
+	parent = _text(row.get("parent_warehouse"))
+	parent_label = _text(row.get("parent_warehouse_name"))
+	suffix = f" {parent_label}" if parent_label else ""
+	if parent and suffix and label.endswith(suffix):
+		location = label[: -len(suffix)].strip()
+		if re.fullmatch(r"[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*", location) and any(
+			character.isdigit() for character in location
+		):
+			return {"display_warehouse": parent, "warehouse_location": location}
+	return {"display_warehouse": warehouse, "warehouse_location": ""}
+
+
 def _category_group_metadata(row: dict[str, Any]) -> dict[str, Any]:
 	return {
 		fieldname: row.get(fieldname) or ""
 		for fieldname in (
 			"item_code",
 			"item_name",
+			"color",
+			"company",
 			"warehouse",
 			"stock_uom",
 			"item_group",
@@ -414,7 +442,9 @@ def _category_group_metadata(row: dict[str, Any]) -> dict[str, Any]:
 			"external_code",
 			"original_identifier_alias",
 		)
-	} | {"actual_qty": float(row.get("actual_qty") or 0), "_snapshot_locations": []}
+	} | _warehouse_display_fields(row) | {
+		"actual_qty": float(row.get("actual_qty") or 0), "_snapshot_locations": []
+	}
 
 
 def _truthy(value: Any) -> bool:
@@ -428,9 +458,23 @@ def _parse_start(value: Any) -> int:
 		return 0
 
 
-def _matches_category_filters(group: dict[str, Any], filters: dict[str, Any]) -> bool:
+def _matches_category_warehouse(group: dict[str, Any], filters: dict[str, Any]) -> bool:
+	scope = filters.get("_warehouse_scope")
+	if scope is not None:
+		return _text(group.get("warehouse")) in scope
 	warehouse = _text(filters.get("warehouse"))
-	if warehouse and _text(group.get("warehouse")) != warehouse:
+	return not warehouse or _text(group.get("warehouse")) == warehouse
+
+
+def _category_payload_filters(filters: dict[str, Any], context: dict[str, Any]) -> dict[str, Any]:
+	return {
+		**filters,
+		"_warehouse_scope": frozenset(context["warehouses"]) if context.get("warehouse_is_group") else None,
+	}
+
+
+def _matches_category_filters(group: dict[str, Any], filters: dict[str, Any]) -> bool:
+	if not _matches_category_warehouse(group, filters):
 		return False
 	if _truthy(filters.get("only_with_stock")) and abs(float(group.get("actual_qty") or 0)) <= 1e-9:
 		return False
@@ -475,11 +519,10 @@ def _category_bom_candidate_codes(
 				codes.add(item_code)
 	location = _text(filters.get("reference_location") or filters.get("original_location"))
 	if location:
-		selected_warehouse = _text(filters.get("warehouse"))
 		codes.intersection_update(
 			_text(row.get("item_code"))
 			for row in snapshot_rows
-			if (not selected_warehouse or _text(row.get("warehouse")) == selected_warehouse)
+			if _matches_category_warehouse(row, filters)
 			and _contains(row.get("original_location") or "库位待维护", location)
 		)
 	return codes
@@ -531,6 +574,8 @@ def build_categorized_inventory_payload(
 		if key not in groups:
 			metadata = dict(item_metadata[item_code])
 			metadata["warehouse"] = warehouse
+			metadata["display_warehouse"] = warehouse
+			metadata["warehouse_location"] = ""
 			metadata["actual_qty"] = 0.0
 			metadata["_snapshot_locations"] = []
 			groups[key] = metadata
@@ -577,11 +622,13 @@ def build_categorized_inventory_payload(
 			locations = all_locations
 
 		actual_qty = float(group.get("actual_qty") or 0)
-		has_reference_location = any(
+		all_reference_locations_valid = all(
 			_text(location.get("reference_location")) not in {"", "库位待维护"} for location in all_locations
 		)
 		difference_qty = actual_qty - snapshot_qty if snapshot_qty is not None else None
-		if not has_reference_location:
+		if not all_locations:
+			inventory_status = "无参考快照"
+		elif not all_reference_locations_valid:
 			inventory_status = "库位待维护"
 		elif abs(float(difference_qty or 0)) <= 1e-9:
 			inventory_status = "库存一致"
@@ -595,7 +642,7 @@ def build_categorized_inventory_payload(
 				"locations": locations
 				or [
 					{
-						"reference_location": "库位待维护",
+						"reference_location": "无参考快照",
 						"snapshot_location_qty": None,
 						"snapshot_date": "",
 					}
@@ -631,12 +678,77 @@ def build_categorized_inventory_payload(
 	}
 
 
+def _attach_display_item_groups(payload: dict[str, Any], category: str) -> None:
+	"""Display the product branch directly below the category root, retaining the actual group."""
+	groups = payload.get("groups") or []
+	for group in groups:
+		group["display_item_group"] = _text(group.get("item_group"))
+	root = get_category_definition(category)["root_item_group"]
+	names = tuple(sorted({_text(group.get("item_group")) for group in groups} - {""}))
+	if not root or not names or frappe is None:
+		return
+	source_groups = frappe.get_list(
+		"Item Group", filters={"name": ["in", names]},
+		fields=["name", "lft", "rgt"], limit_page_length=0,
+	)
+	if not source_groups:
+		return
+	products = frappe.get_list(
+		"Item Group", filters={"parent_item_group": root},
+		fields=["name", "lft", "rgt"], order_by="lft", limit_page_length=0,
+	)
+	display_names = {}
+	for source in source_groups:
+		for product in products:
+			if product["lft"] <= source["lft"] and product["rgt"] >= source["rgt"]:
+				display_names[source["name"]] = product["name"]
+				break
+	for group in groups:
+		group["display_item_group"] = display_names.get(group.get("item_group"), group["display_item_group"])
+
+
+def _category_export_headers(category: str = "", *, all_companies: bool = False) -> tuple[str, ...]:
+	if category in COLOR_INVENTORY_CATEGORIES:
+		headers = (*CATEGORY_EXPORT_HEADERS[:2], "颜色", CATEGORY_EXPORT_HEADERS[-1], *CATEGORY_EXPORT_HEADERS[2:-1])
+	else:
+		headers = CATEGORY_EXPORT_HEADERS
+	if all_companies:
+		position = 4 if category in COLOR_INVENTORY_CATEGORIES else 2
+		headers = (*headers[:position], "公司", *headers[position:])
+	return headers
+
+
+def _category_export_values(
+	group: dict[str, Any], *, include_color: bool = False, all_companies: bool = False
+) -> list[Any]:
+	values = [
+		group.get("item_code") or "",
+		group.get("item_name") or "",
+		group.get("display_warehouse") or group.get("warehouse") or "",
+		group.get("warehouse_location") or "",
+		float(group.get("actual_qty") or 0),
+		_(BOM_USAGE_LABELS[group.get("bom_usage_status", "unused")]),
+		group.get("stock_uom") or "",
+		group.get("display_item_group") or group.get("item_group") or "",
+	]
+	if include_color:
+		item_group = values.pop()
+		values[2:2] = [group.get("color") or "", item_group]
+	if all_companies:
+		values.insert(4 if include_color else 2, group.get("company") or "")
+	return values
+
+
 def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
+	category = payload.get("category") or ""
+	include_color = category in COLOR_INVENTORY_CATEGORIES
+	all_companies = bool(payload.get("all_companies"))
+	headers = _category_export_headers(category, all_companies=all_companies)
 	workbook = Workbook()
 	sheet = workbook.active
 	sheet.title = _(_text(payload.get("title")) or "分类库存明细")[:31]
 	sheet.freeze_panes = "A2"
-	sheet.append([_(header) for header in CATEGORY_EXPORT_HEADERS])
+	sheet.append([_(header) for header in headers])
 
 	header_fill = PatternFill("solid", fgColor="075985")
 	for cell in sheet[1]:
@@ -644,77 +756,63 @@ def build_categorized_inventory_xlsx(payload: dict[str, Any]) -> bytes:
 		cell.font = Font(color="FFFFFF", bold=True)
 		cell.alignment = Alignment(horizontal="center", vertical="center")
 
-	current_row = 2
-	for group in payload.get("groups") or []:
-		locations = list(group.get("locations") or []) or [
-			{
-				"reference_location": "库位待维护",
-				"snapshot_location_qty": None,
-				"snapshot_date": "",
-			}
-		]
-		start_row = current_row
-		for index, location in enumerate(locations):
-			shared = index == 0
-			values = [
-				group.get("item_code") or "" if shared else "",
-				group.get("item_name") or "" if shared else "",
-				group.get("warehouse") or "" if shared else "",
-				(
-					location.get("reference_location")
-					if location.get("reference_location") not in (None, "", "库位待维护")
-					else _("库位待维护")
-				),
-				location.get("snapshot_location_qty"),
-				float(group.get("actual_qty") or 0) if shared else "",
-				group.get("difference_qty") if shared else "",
-				_(group.get("inventory_status") or "") if shared else "",
-				location.get("snapshot_date") or "",
-				group.get("stock_uom") or "" if shared else "",
-				group.get("item_group") or "" if shared else "",
-				group.get("dpci") or "" if shared else "",
-				group.get("external_code") or "" if shared else "",
-				group.get("original_identifier_alias") or "" if shared else "",
-			]
-			values.insert(
-				8,
-				_(BOM_USAGE_LABELS[group.get("bom_usage_status", "unused")]) if shared else "",
-			)
-			sheet.append(values)
-			if location.get("snapshot_location_qty") is not None:
-				sheet.cell(current_row, 5).number_format = _number_format(
-					group.get("stock_uom"), location.get("snapshot_location_qty")
-				)
-			if shared:
-				sheet.cell(current_row, 6).number_format = _number_format(
-					group.get("stock_uom"), group.get("actual_qty")
-				)
-				if group.get("difference_qty") is not None:
-					sheet.cell(current_row, 7).number_format = _number_format(
-						group.get("stock_uom"), group.get("difference_qty")
-					)
-			current_row += 1
+	for row_number, group in enumerate(payload.get("groups") or [], start=2):
+		sheet.append(_category_export_values(group, include_color=include_color, all_companies=all_companies))
+		sheet.cell(row_number, (7 if include_color else 5) + int(all_companies)).number_format = _number_format(group.get("stock_uom"), group.get("actual_qty"))
+		for column in range(1, len(headers) + 1):
+			sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
 
-		end_row = current_row - 1
-		if end_row > start_row:
-			for column in CATEGORY_EXPORT_MERGE_COLUMNS:
-				sheet.merge_cells(
-					start_row=start_row,
-					start_column=column,
-					end_row=end_row,
-					end_column=column,
-				)
-		for row_number in range(start_row, end_row + 1):
-			for column in range(1, len(CATEGORY_EXPORT_HEADERS) + 1):
-				sheet.cell(row_number, column).alignment = Alignment(vertical="center", wrap_text=True)
-
-	widths = (18, 32, 24, 18, 15, 15, 15, 14, 17, 14, 15, 28, 18, 20, 28)
+	widths = (18, 32, 24, 16, 15, 17, 15, 28)
+	if include_color:
+		widths = (*widths[:2], 16, widths[-1], *widths[2:-1])
+	if all_companies:
+		position = 4 if include_color else 2
+		widths = (*widths[:position], 24, *widths[position:])
 	for index, width in enumerate(widths, start=1):
 		sheet.column_dimensions[chr(64 + index)].width = width
 
 	output = BytesIO()
 	workbook.save(output)
 	return output.getvalue()
+
+
+def build_categorized_inventory_xlsx_streaming(
+	title: str, groups: Iterable[dict[str, Any]], *, category: str = "", all_companies: bool = False
+) -> bytes:
+	"""Write large exports without retaining every worksheet cell in memory."""
+	include_color = category in COLOR_INVENTORY_CATEGORIES
+	workbook = Workbook(write_only=True)
+	sheet = workbook.create_sheet(title=_(_text(title) or "分类库存明细")[:31])
+	sheet.freeze_panes = "A2"
+	widths = (18, 32, 24, 16, 15, 17, 15, 28)
+	if include_color:
+		widths = (*widths[:2], 16, widths[-1], *widths[2:-1])
+	if all_companies:
+		position = 4 if include_color else 2
+		widths = (*widths[:position], 24, *widths[position:])
+	for index, width in enumerate(widths, start=1):
+		sheet.column_dimensions[chr(64 + index)].width = width
+	header_fill = PatternFill("solid", fgColor="075985")
+	header = []
+	for label in _category_export_headers(category, all_companies=all_companies):
+		cell = WriteOnlyCell(sheet, value=_(label))
+		cell.fill = header_fill
+		cell.font = Font(color="FFFFFF", bold=True)
+		cell.alignment = Alignment(horizontal="center", vertical="center")
+		header.append(cell)
+	sheet.append(header)
+	for group in groups:
+		cells = [WriteOnlyCell(sheet, value=value) for value in _category_export_values(group, include_color=include_color, all_companies=all_companies)]
+		for cell in cells:
+			cell.alignment = Alignment(vertical="center", wrap_text=True)
+		cells[(6 if include_color else 4) + int(all_companies)].number_format = _number_format(group.get("stock_uom"), group.get("actual_qty"))
+		sheet.append(cells)
+	with SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as output:
+		workbook.save(output)
+		if output.tell() > MAX_EXPORT_FILE_BYTES:
+			raise ValueError(_("导出文件超过 {0} MB，请增加筛选条件。").format(MAX_EXPORT_FILE_BYTES // (1024 * 1024)))
+		output.seek(0)
+		return output.read()
 
 
 def _parse_filters(filters: Any = None, **kwargs: Any) -> dict[str, Any]:
@@ -739,6 +837,18 @@ def _require_categorized_inventory_read_permission() -> None:
 	for doctype in ("Item", "Bin", "Warehouse"):
 		if not frappe.has_permission(doctype, "read"):
 			frappe.throw(_("没有权限查看{0}。").format(doctype), frappe.PermissionError)
+
+
+def _can_export_inventory(doctypes: tuple[str, ...]) -> bool:
+	if frappe is None:
+		return True
+	can_export = getattr(getattr(frappe, "permissions", None), "can_export", None)
+	return callable(can_export) and all(can_export(doctype) for doctype in doctypes)
+
+
+def _require_inventory_export_permission(doctypes: tuple[str, ...]) -> None:
+	if not _can_export_inventory(doctypes):
+		frappe.throw(_("没有导出库存明细的权限。"), frappe.PermissionError)
 
 
 def _require_company_permission(company: str) -> None:
@@ -774,6 +884,19 @@ def _accessible_items() -> tuple[str, ...]:
 		for row in rows
 		if _text(row.get("name") if isinstance(row, dict) else getattr(row, "name", row))
 	)
+
+
+def _accessible_category_items(item_groups: list[str]) -> tuple[str, ...]:
+	"""Ask Frappe to apply Item permissions within the selected category only."""
+	if not item_groups:
+		return ()
+	rows = frappe.get_list(
+		"Item",
+		filters={"disabled": 0, "is_stock_item": 1, "item_group": ["in", item_groups]},
+		fields=["name"],
+		limit_page_length=0,
+	)
+	return tuple(_text(row.get("name")) for row in rows if _text(row.get("name")))
 
 
 def _load_bom_usage_statuses(item_codes: Iterable[str]) -> dict[str, str]:
@@ -902,6 +1025,16 @@ def _list_snapshot_options(company: str) -> list[dict[str, Any]]:
 def _category_group_bounds(category: str, selected_group: str = "") -> tuple[int, int] | None:
 	definition = get_category_definition(category)
 	root_name = definition["root_item_group"]
+	if category == "material":
+		if not frappe.has_permission("Item Group", "read"):
+			frappe.throw(_("没有权限查看{0}。").format("Item Group"), frappe.PermissionError)
+		if not selected_group:
+			return 0, 2**31 - 1
+		selected = frappe.db.get_value("Item Group", selected_group, ["lft", "rgt"], as_dict=True)
+		if not selected:
+			raise ValueError(_("物料组不存在：{0}").format(selected_group))
+		frappe.get_doc("Item Group", selected_group).check_permission("read")
+		return int(selected["lft"]), int(selected["rgt"])
 	root = frappe.db.get_value("Item Group", root_name, ["lft", "rgt"], as_dict=True)
 	if not root:
 		return None
@@ -933,8 +1066,52 @@ def _accessible_warehouses(company: str) -> tuple[str, ...]:
 	)
 
 
+def _accessible_inventory_companies_and_warehouses() -> tuple[tuple[str, ...], dict[str, str]]:
+	companies = tuple(row["name"] for row in frappe.get_list("Company", fields=["name"], limit_page_length=0))
+	if not companies:
+		return (), {}
+	rows = frappe.get_list(
+		"Warehouse", filters={"company": ["in", companies], "is_group": 0},
+		fields=["name", "company"], limit_page_length=0,
+	)
+	return companies, {row["name"]: row["company"] for row in rows if row["company"] in companies}
+
+
+def _category_warehouse_scope(
+	company: str, warehouses: tuple[str, ...], selected: str, *, allowed_companies: tuple[str, ...] | None = None
+) -> tuple[tuple[str, ...], bool]:
+	if not selected or selected in warehouses:
+		return warehouses, False
+	warehouse = frappe.get_doc("Warehouse", selected)
+	warehouse.check_permission("read")
+	company_allowed = warehouse.company in allowed_companies if allowed_companies is not None else warehouse.company == company
+	if not company_allowed or not int(warehouse.is_group or 0):
+		frappe.throw(_("没有权限查看所选仓库。"), frappe.PermissionError)
+	descendants = frappe.get_list(
+		"Warehouse",
+		filters={
+			"company": warehouse.company, "is_group": 0,
+			"lft": [">", warehouse.lft], "rgt": ["<", warehouse.rgt],
+		},
+		fields=["name"], limit_page_length=0,
+	)
+	allowed = set(warehouses)
+	return tuple(row["name"] for row in descendants if row["name"] in allowed), True
+
+
+def _inventory_color_field(category: str) -> str:
+	if category not in COLOR_INVENTORY_CATEGORIES or frappe is None:
+		return ""
+	meta = frappe.get_meta("Item")
+	fieldname = "custom_specifications"
+	if meta.has_field(fieldname) and fieldname in meta.get_permitted_fieldnames(permission_type="read"):
+		return fieldname
+	return ""
+
+
 def _category_query_context(category: str, filters: dict[str, Any]) -> dict[str, Any]:
 	company = _resolve_company(filters.get("company"))
+	all_companies = _truthy(filters.get("all_companies"))
 	bounds = _category_group_bounds(category, _text(filters.get("item_group")))
 	if bounds is None:
 		return {
@@ -942,37 +1119,80 @@ def _category_query_context(category: str, filters: dict[str, Any]) -> dict[str,
 			"missing_item_group": get_category_definition(category)["root_item_group"],
 			"warehouses": (),
 			"snapshot_key": "",
+			"all_companies": all_companies,
 		}
 	group_lft, group_rgt = bounds
-	warehouses = _accessible_warehouses(company)
-	items = _accessible_items()
+	excluded_groups: tuple[str, ...] = ()
+	if category == "material":
+		roots = [
+			frappe.db.get_value("Item Group", definition["root_item_group"], ["lft", "rgt"], as_dict=True)
+			for key, definition in CATEGORY_DEFINITIONS.items() if key != "material"
+		]
+		if any(root and group_lft >= int(root["lft"]) and group_rgt <= int(root["rgt"]) for root in roots):
+			raise ValueError(_("所选物料组不属于物料库存明细。"))
+		active_roots = [(int(root["lft"]), int(root["rgt"])) for root in roots if root]
+		if active_roots:
+			clauses = [f"(child.lft >= %(ex_lft_{index})s AND child.rgt <= %(ex_rgt_{index})s)" for index in range(len(active_roots))]
+			values = {
+				field: bound
+				for index, (lft, rgt) in enumerate(active_roots)
+				for field, bound in ((f"ex_lft_{index}", lft), (f"ex_rgt_{index}", rgt))
+			}
+			excluded_groups = tuple(
+				row["name"] for row in frappe.db.sql(
+					"SELECT child.name FROM `tabItem Group` child WHERE " + " OR ".join(clauses),
+					values, as_dict=True,
+				)
+			)
+	companies = (company,)
+	if all_companies:
+		companies, warehouse_companies = _accessible_inventory_companies_and_warehouses()
+		warehouses = tuple(warehouse_companies)
+	else:
+		warehouses = _accessible_warehouses(company)
+	group_options = _list_category_item_groups({
+		"group_lft": group_lft, "group_rgt": group_rgt, "excluded_groups": excluded_groups,
+	})
+	items = _accessible_category_items(group_options)
 	selected_warehouse = _text(filters.get("warehouse"))
-	if selected_warehouse and selected_warehouse not in warehouses:
-		if frappe is not None:
-			frappe.throw(_("没有权限查看所选仓库。"), frappe.PermissionError)
-		raise PermissionError(_("没有权限查看所选仓库。"))
+	if all_companies:
+		warehouses, warehouse_is_group = _category_warehouse_scope(
+			company, warehouses, selected_warehouse, allowed_companies=companies
+		)
+	else:
+		warehouses, warehouse_is_group = _category_warehouse_scope(company, warehouses, selected_warehouse)
 	return {
 		"company": company,
+		"companies": companies,
+		"all_companies": all_companies,
 		"group_lft": group_lft,
 		"group_rgt": group_rgt,
 		"warehouses": warehouses,
+		"warehouse_is_group": warehouse_is_group,
 		"items": items,
-		"snapshot_key": _latest_snapshot_key(company),
+		"snapshot_key": "" if all_companies else _text(filters.get("snapshot_key")) or _latest_snapshot_key(company),
+		"category": category,
+		"color_field": _inventory_color_field(category),
+		"excluded_groups": excluded_groups,
+		"item_group_options": group_options,
 	}
 
 
 def _load_category_stock_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
 	warehouses = context["warehouses"]
 	items = context["items"]
-	if not items:
+	excluded_clause = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
+	color_value = "COALESCE(item.custom_specifications, '')" if context.get("color_field") == "custom_specifications" else "''"
+	warehouse_company_clause = "warehouse.company IN %(companies)s" if context.get("all_companies") else "warehouse.company = %(company)s"
+	if not items or (context.get("all_companies") and not warehouses):
 		return []
 	if warehouses:
-		stock_join = """
+		stock_join = f"""
         LEFT JOIN (
-            SELECT bin.item_code, bin.warehouse, bin.actual_qty
+            SELECT bin.item_code, bin.warehouse, bin.actual_qty, warehouse.company
             FROM `tabBin` bin
             INNER JOIN `tabWarehouse` warehouse ON warehouse.name = bin.warehouse
-            WHERE warehouse.company = %(company)s
+            WHERE {warehouse_company_clause}
               AND warehouse.is_group = 0
               AND warehouse.name IN %(warehouses)s
         ) stock ON stock.item_code = item.name
@@ -980,7 +1200,7 @@ def _load_category_stock_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
 	else:
 		stock_join = """
         LEFT JOIN (
-            SELECT NULL AS item_code, NULL AS warehouse, 0 AS actual_qty
+            SELECT NULL AS item_code, NULL AS warehouse, 0 AS actual_qty, NULL AS company
             WHERE 1 = 0
         ) stock ON stock.item_code = item.name
         """
@@ -989,6 +1209,8 @@ def _load_category_stock_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
         SELECT
             item.name AS item_code,
             item.item_name,
+            {color_value} AS color,
+            COALESCE(stock.company, '') AS company,
             COALESCE(stock.warehouse, '') AS warehouse,
             COALESCE(stock.actual_qty, 0) AS actual_qty,
             item.stock_uom,
@@ -1004,14 +1226,17 @@ def _load_category_stock_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
 		  AND item.name IN %(items)s
           AND item_group.lft >= %(group_lft)s
           AND item_group.rgt <= %(group_rgt)s
+		  {excluded_clause}
         ORDER BY item.name, stock.warehouse
         """,
 		{
 			"company": context["company"],
+			"companies": context.get("companies") or (context["company"],),
 			"warehouses": warehouses or ("",),
 			"items": items,
 			"group_lft": context["group_lft"],
 			"group_rgt": context["group_rgt"],
+			"excluded_groups": context.get("excluded_groups") or ("",),
 		},
 		as_dict=True,
 	)
@@ -1020,6 +1245,7 @@ def _load_category_stock_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
 def _load_category_snapshot_rows(context: dict[str, Any]) -> list[dict[str, Any]]:
 	if not context["snapshot_key"] or not context["warehouses"] or not context["items"]:
 		return []
+	excluded_clause = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
 	return frappe.db.sql(
 		f"""
         SELECT
@@ -1044,6 +1270,7 @@ def _load_category_snapshot_rows(context: dict[str, Any]) -> list[dict[str, Any]
 		  AND snapshot.item_code IN %(items)s
           AND item_group.lft >= %(group_lft)s
           AND item_group.rgt <= %(group_rgt)s
+		  {excluded_clause}
         ORDER BY snapshot.item_code, snapshot.warehouse, snapshot.original_location
         """,
 		{
@@ -1053,27 +1280,287 @@ def _load_category_snapshot_rows(context: dict[str, Any]) -> list[dict[str, Any]
 			"items": context["items"],
 			"group_lft": context["group_lft"],
 			"group_rgt": context["group_rgt"],
+			"excluded_groups": context.get("excluded_groups") or ("",),
 		},
 		as_dict=True,
 	)
 
 
 def _list_category_item_groups(context: dict[str, Any]) -> list[str]:
-	rows = frappe.db.sql(
-		"""
-        SELECT name
-        FROM `tabItem Group`
-        WHERE lft >= %(group_lft)s
-          AND rgt <= %(group_rgt)s
-        ORDER BY lft
-        """,
-		{
-			"group_lft": context["group_lft"],
-			"group_rgt": context["group_rgt"],
-		},
-		as_dict=True,
+	filters = {
+		"lft": [">=", context["group_lft"]],
+		"rgt": ["<=", context["group_rgt"]],
+	}
+	if context.get("excluded_groups"):
+		filters["name"] = ["not in", context["excluded_groups"]]
+	rows = frappe.get_list(
+		"Item Group", filters=filters, fields=["name"], order_by="lft", limit_page_length=0,
 	)
 	return [_text(row.get("name")) for row in rows if _text(row.get("name"))]
+
+
+def _paged_category_candidates(
+	context: dict[str, Any], filters: dict[str, Any], known_total: int | None = None
+) -> tuple[list[dict[str, Any]], int]:
+	"""Count and page authorized item/warehouse groups in SQL before loading their locations."""
+	items = context.get("items") or ()
+	if not items or _bom_usage_filter(filters) == "unknown":
+		return [], 0
+	if (context.get("warehouse_is_group") or context.get("all_companies")) and not context["warehouses"]:
+		return [], 0
+	if _text(filters.get("reference_location") or filters.get("original_location")) and not context["snapshot_key"]:
+		return [], 0
+
+	params = {
+		"company": context["company"],
+		"companies": context.get("companies") or (context["company"],),
+		"snapshot_key": context["snapshot_key"],
+		"items": items,
+		"warehouses": context["warehouses"] or ("",),
+		"group_lft": context["group_lft"],
+		"group_rgt": context["group_rgt"],
+		"excluded_groups": context.get("excluded_groups") or ("",),
+		"warehouse": _text(filters.get("warehouse")),
+		"keyword": _text(filters.get("keyword") or filters.get("item_code")),
+		"reference_location": _text(filters.get("reference_location") or filters.get("original_location")),
+	}
+	excluded = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
+	group_conditions = f"""
+		item.disabled = 0 AND item.is_stock_item = 1 AND item.name IN %(items)s
+		AND item_group.lft >= %(group_lft)s AND item_group.rgt <= %(group_rgt)s
+		{excluded}
+	"""
+	bin_company_scope = """
+		AND EXISTS (SELECT 1 FROM `tabWarehouse` stock_owner
+			WHERE stock_owner.name = bin.warehouse AND stock_owner.is_group = 0
+			AND stock_owner.company IN %(companies)s)
+	""" if context.get("all_companies") else ""
+	only_stock = _truthy(filters.get("only_with_stock"))
+	if only_stock:
+		base = f"""
+			SELECT item.name AS item_code, bin.warehouse, bin.actual_qty
+			FROM `tabItem` item
+			INNER JOIN `tabItem Group` item_group ON item_group.name = item.item_group
+			INNER JOIN `tabBin` bin ON bin.item_code = item.name AND bin.warehouse IN %(warehouses)s {bin_company_scope}
+			WHERE {group_conditions} AND ABS(bin.actual_qty) > 0.000000001
+		"""
+	else:
+		no_snapshot_pair = ""
+		if context["snapshot_key"] and context["warehouses"]:
+			no_snapshot_pair = """
+				AND (bin.warehouse IS NOT NULL OR NOT EXISTS (
+					SELECT 1 FROM `tabInventory Original Location Snapshot` existing
+					WHERE existing.company = %(company)s AND existing.snapshot_key = %(snapshot_key)s
+					AND existing.item_code = item.name AND existing.warehouse IN %(warehouses)s
+				))
+			"""
+		base = f"""
+			SELECT item.name AS item_code, COALESCE(bin.warehouse, '') AS warehouse,
+				COALESCE(bin.actual_qty, 0) AS actual_qty
+			FROM `tabItem` item
+			INNER JOIN `tabItem Group` item_group ON item_group.name = item.item_group
+			LEFT JOIN `tabBin` bin ON bin.item_code = item.name AND bin.warehouse IN %(warehouses)s {bin_company_scope}
+			WHERE {group_conditions} {no_snapshot_pair}
+		"""
+		if context["snapshot_key"] and context["warehouses"]:
+			base += f"""
+				UNION ALL
+				SELECT DISTINCT snapshot.item_code, snapshot.warehouse, 0 AS actual_qty
+				FROM `tabInventory Original Location Snapshot` snapshot
+				INNER JOIN `tabItem` item ON item.name = snapshot.item_code
+				INNER JOIN `tabItem Group` item_group ON item_group.name = item.item_group
+				WHERE {group_conditions}
+				AND snapshot.company = %(company)s AND snapshot.snapshot_key = %(snapshot_key)s
+				AND snapshot.warehouse IN %(warehouses)s
+				AND NOT EXISTS (SELECT 1 FROM `tabBin` bin
+					WHERE bin.item_code = snapshot.item_code AND bin.warehouse = snapshot.warehouse)
+			"""
+
+	conditions = []
+	if context.get("warehouse_is_group"):
+		conditions.append("candidate.warehouse IN %(warehouses)s")
+	elif params["warehouse"]:
+		conditions.append("candidate.warehouse = %(warehouse)s")
+	if params["keyword"]:
+		conditions.append("(" + " OR ".join(
+			f"INSTR(LOWER(COALESCE(item.{field}, '')), LOWER(%(keyword)s)) > 0"
+			for field in ("name", "item_name", "custom_dpci", "custom_external_code", "custom_original_identifier_alias")
+		) + ")")
+	if params["reference_location"]:
+		conditions.append("""
+			EXISTS (SELECT 1 FROM `tabInventory Original Location Snapshot` location
+				WHERE location.company = %(company)s AND location.snapshot_key = %(snapshot_key)s
+				AND location.item_code = candidate.item_code AND location.warehouse = candidate.warehouse
+				AND INSTR(LOWER(COALESCE(NULLIF(location.original_location, ''), '库位待维护')),
+					LOWER(%(reference_location)s)) > 0)
+		""")
+	bom_filter = _bom_usage_filter(filters)
+	if bom_filter:
+		bom_exists = """
+			EXISTS (SELECT 1 FROM `tabBOM Item` component
+			INNER JOIN `tabBOM` bom ON bom.name = component.parent
+			WHERE component.parenttype = 'BOM' AND component.parentfield = 'items'
+			AND bom.docstatus = 1 AND bom.is_active = 1
+			AND component.item_code = candidate.item_code)
+		"""
+		conditions.append(bom_exists if bom_filter == "used" else f"NOT {bom_exists}")
+	where = "WHERE " + " AND ".join(conditions) if conditions else ""
+	from_query = f"FROM ({base}) candidate INNER JOIN `tabItem` item ON item.name = candidate.item_code"
+	total = (
+		int(frappe.db.sql(f"SELECT COUNT(*) AS total {from_query} {where}", params, as_dict=True)[0]["total"])
+		if known_total is None else known_total
+	)
+	if not total:
+		return [], 0
+	params["start"] = _parse_start(filters.get("_start"))
+	params["page_length"] = _request_page_length(filters.get("_page_length"))
+	color_value = "COALESCE(item.custom_specifications, '')" if context.get("color_field") == "custom_specifications" else "''"
+	warehouse_company_clause = "warehouse.company IN %(companies)s" if context.get("all_companies") else "warehouse.company = %(company)s"
+	rows = frappe.db.sql(
+		f"""SELECT candidate.item_code, item.item_name, candidate.warehouse, candidate.actual_qty,
+			{color_value} AS color,
+			COALESCE(warehouse.company, '') AS company,
+			warehouse.warehouse_name, parent.name AS parent_warehouse,
+			parent.warehouse_name AS parent_warehouse_name,
+			item.stock_uom, item.item_group, COALESCE(item.custom_dpci, '') AS dpci,
+			COALESCE(item.custom_external_code, '') AS external_code,
+			COALESCE(item.custom_original_identifier_alias, '') AS original_identifier_alias
+			{from_query}
+			LEFT JOIN `tabWarehouse` warehouse ON warehouse.name = candidate.warehouse
+				AND {warehouse_company_clause} AND warehouse.is_group = 0
+			LEFT JOIN `tabWarehouse` parent ON parent.name = warehouse.parent_warehouse
+				AND parent.company = warehouse.company AND parent.is_group = 1
+			{where}
+			ORDER BY (ABS(candidate.actual_qty) <= 0.000000001), candidate.item_code, candidate.warehouse
+			LIMIT %(page_length)s OFFSET %(start)s""",
+		params, as_dict=True,
+	)
+	return rows, total
+
+
+def _paged_category_snapshots(context: dict[str, Any], pairs: set[tuple[str, str]]) -> list[dict[str, Any]]:
+	if not pairs or not context["snapshot_key"]:
+		return []
+	rows = frappe.db.sql(
+		f"""SELECT snapshot.snapshot_key, snapshot.snapshot_date, snapshot.item_code,
+			snapshot.warehouse, snapshot.original_location, snapshot.location_qty
+			FROM `tab{SNAPSHOT_DOCTYPE}` snapshot
+			WHERE snapshot.company = %(company)s AND snapshot.snapshot_key = %(snapshot_key)s
+			AND (snapshot.item_code, snapshot.warehouse) IN %(pairs)s
+			ORDER BY snapshot.item_code, snapshot.warehouse, snapshot.original_location""",
+		{
+			"company": context["company"], "snapshot_key": context["snapshot_key"],
+			"pairs": tuple(sorted(pairs)),
+		}, as_dict=True,
+	)
+	return rows
+
+
+def _category_snapshot_summary(context: dict[str, Any]) -> dict[str, Any]:
+	if not context["snapshot_key"] or not context.get("items") or not context["warehouses"]:
+		return {}
+	excluded = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
+	rows = frappe.db.sql(
+		f"""SELECT snapshot.snapshot_key, MAX(snapshot.snapshot_date) AS snapshot_date
+			FROM `tab{SNAPSHOT_DOCTYPE}` snapshot
+			INNER JOIN `tabItem` item ON item.name = snapshot.item_code
+			INNER JOIN `tabItem Group` item_group ON item_group.name = item.item_group
+			WHERE snapshot.company = %(company)s AND snapshot.snapshot_key = %(snapshot_key)s
+			AND snapshot.warehouse IN %(warehouses)s AND snapshot.item_code IN %(items)s
+			AND item_group.lft >= %(group_lft)s AND item_group.rgt <= %(group_rgt)s
+			{excluded} GROUP BY snapshot.snapshot_key""",
+		{
+			"company": context["company"], "snapshot_key": context["snapshot_key"],
+			"warehouses": context["warehouses"], "items": context["items"],
+			"group_lft": context["group_lft"], "group_rgt": context["group_rgt"],
+			"excluded_groups": context.get("excluded_groups") or ("",),
+		}, as_dict=True,
+	)
+	return rows[0] if rows else {}
+
+
+def _build_paged_category_payload(category: str, filters: dict[str, Any], start: Any, page_length: Any) -> dict[str, Any]:
+	context = _category_query_context(category, filters)
+	missing_group = _text(context.get("missing_item_group"))
+	parsed_start = _parse_start(start)
+	parsed_length = _request_page_length(page_length)
+	page_filters = {**filters, "_start": parsed_start, "_page_length": parsed_length}
+	rows, total = ([], 0) if missing_group else _paged_category_candidates(context, page_filters)
+	pairs = {(_text(row.get("item_code")), _text(row.get("warehouse"))) for row in rows}
+	snapshots = _paged_category_snapshots(context, pairs) if pairs else []
+	statuses = _load_bom_usage_statuses(row["item_code"] for row in rows)
+	payload = build_categorized_inventory_payload(
+		rows, snapshots, category=category, filters=_category_payload_filters(filters, context),
+		bom_usage_statuses=statuses, start=0, page_length=None,
+	)
+	_attach_display_item_groups(payload, category)
+	summary = _category_snapshot_summary(context) if not missing_group else {}
+	payload.update({
+		"snapshot_key": summary.get("snapshot_key") or "",
+		"snapshot_date": summary.get("snapshot_date") or "",
+		"total_count": total,
+		"page_count": len(payload["groups"]),
+		"start": parsed_start,
+		"page_length": parsed_length,
+		"has_previous": parsed_start > 0,
+		"has_next": parsed_start + len(rows) < total,
+		"company": context["company"],
+		"inventory_scope": "accessible_companies" if context.get("all_companies") else "company",
+		"item_group_options": [] if missing_group else context["item_group_options"],
+		"bom_usage_scope": BOM_USAGE_SCOPE,
+	})
+	if category == "material" and not context.get("all_companies"):
+		payload["snapshot_options"] = _list_snapshot_options(context["company"])
+	if missing_group:
+		payload["warning"] = _("ERP 未维护分类物料组：{0}").format(missing_group)
+	payload.update(_movement_permission_payload())
+	return payload
+
+
+def _iter_categorized_export_groups(
+	category: str, filters: dict[str, Any], context: dict[str, Any]
+) -> Iterable[dict[str, Any]]:
+	if context.get("missing_item_group"):
+		return
+	start = 0
+	total: int | None = None
+	while True:
+		rows, total = _paged_category_candidates(
+			context, {**filters, "_start": start, "_page_length": EXPORT_PAGE_LENGTH}, known_total=total
+		)
+		if total > MAX_EXPORT_GROUPS:
+			raise ValueError(_("导出结果超过 {0} 个物料仓库组，请增加筛选条件。").format(MAX_EXPORT_GROUPS))
+		if not rows:
+			return
+		pairs = {(_text(row.get("item_code")), _text(row.get("warehouse"))) for row in rows}
+		snapshots = _paged_category_snapshots(context, pairs)
+		statuses = _load_bom_usage_statuses(row["item_code"] for row in rows)
+		payload = build_categorized_inventory_payload(
+			rows, snapshots, category=category, filters=_category_payload_filters(filters, context),
+			bom_usage_statuses=statuses, start=0, page_length=None,
+		)
+		_attach_display_item_groups(payload, category)
+		yield from payload["groups"]
+		start += len(rows)
+		if start >= total:
+			return
+
+
+def _build_categorized_export_content(
+	category: str, filters: dict[str, Any], context: dict[str, Any]
+) -> bytes:
+	title = get_category_definition(category)["title"]
+	all_companies = bool(context.get("all_companies"))
+	groups = _iter_categorized_export_groups(category, filters, context)
+	buffered: list[dict[str, Any]] = []
+	for group in groups:
+		buffered.append(group)
+		if len(buffered) > EXPORT_STREAM_THRESHOLD:
+			return build_categorized_inventory_xlsx_streaming(title, chain(buffered, groups), category=category, all_companies=all_companies)
+	content = build_categorized_inventory_xlsx({"category": category, "title": title, "all_companies": all_companies, "groups": buffered})
+	if len(content) > MAX_EXPORT_FILE_BYTES:
+		raise ValueError(_("导出文件超过 {0} MB，请增加筛选条件。").format(MAX_EXPORT_FILE_BYTES // (1024 * 1024)))
+	return content
 
 
 def _movement_permission_payload() -> dict[str, Any]:
@@ -1180,7 +1667,7 @@ def _attach_reversal_progress(payload, selections=None):
 		if operation_id:
 			from . import purchase_reversal_progress as progress
 
-			_, context, output = progress._load(operation_id, lock=False)
+			_operation, context, output = progress._load(operation_id, lock=False)
 			try:
 				row["reversal"] = progress.public(context, output)
 			except frappe.PermissionError:
@@ -1428,6 +1915,7 @@ def get_inventory_location_detail(
 @_whitelist
 def export_inventory_location_detail(filters: Any = None, **kwargs: Any) -> dict[str, Any]:
 	_require_read_permission()
+	_require_inventory_export_permission(INVENTORY_EXPORT_PERMISSION_DOCTYPES)
 	parsed = _parse_filters(filters, **kwargs)
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
@@ -1452,6 +1940,28 @@ def export_inventory_location_detail(filters: Any = None, **kwargs: Any) -> dict
 
 
 @_whitelist
+def get_inventory_detail_page(
+	category: str,
+	filters: Any = None,
+	start: Any = 0,
+	page_length: Any = DEFAULT_PAGE_LENGTH,
+	progress_selections: Any = None,
+	**kwargs: Any,
+) -> dict[str, Any]:
+	"""Live inventory page for all four mutually exclusive item categories."""
+	_require_categorized_inventory_read_permission()
+	get_category_definition(category)
+	parsed = _parse_filters(filters, **kwargs)
+	company = _resolve_company(parsed.get("company"))
+	parsed["company"] = company
+	_require_company_permission(company)
+	_bom_usage_filter(parsed)
+	payload = _build_paged_category_payload(category, parsed, start, page_length)
+	payload["can_export_inventory"] = _can_export_inventory(INVENTORY_EXPORT_PERMISSION_DOCTYPES)
+	return _attach_reversal_progress(payload, progress_selections)
+
+
+@_whitelist
 def get_categorized_inventory_detail(
 	category: str,
 	filters: Any = None,
@@ -1468,6 +1978,7 @@ def get_categorized_inventory_detail(
 	bom_filter = _bom_usage_filter(parsed)
 	get_category_definition(category)
 	context = _category_query_context(category, parsed)
+	parsed = _category_payload_filters(parsed, context)
 	missing_item_group = _text(context.get("missing_item_group"))
 	stock_rows = [] if missing_item_group else _load_category_stock_rows(context)
 	snapshot_rows = [] if missing_item_group else _load_category_snapshot_rows(context)
@@ -1488,6 +1999,8 @@ def get_categorized_inventory_detail(
 		_attach_page_bom_usage(payload)
 	payload["bom_usage_scope"] = BOM_USAGE_SCOPE
 	payload["company"] = company
+	payload["inventory_scope"] = "accessible_companies" if context.get("all_companies") else "company"
+	_attach_display_item_groups(payload, category)
 	payload["item_group_options"] = [] if missing_item_group else _list_category_item_groups(context)
 	if missing_item_group:
 		payload["warning"] = _("ERP 未维护分类物料组：{0}").format(missing_item_group)
@@ -1498,6 +2011,7 @@ def get_categorized_inventory_detail(
 @_whitelist
 def export_categorized_inventory_detail(category: str, filters: Any = None, **kwargs: Any) -> dict[str, Any]:
 	_require_categorized_inventory_read_permission()
+	_require_inventory_export_permission(INVENTORY_EXPORT_PERMISSION_DOCTYPES)
 	parsed = _parse_filters(filters, **kwargs)
 	company = _resolve_company(parsed.get("company"))
 	parsed["company"] = company
@@ -1505,22 +2019,11 @@ def export_categorized_inventory_detail(category: str, filters: Any = None, **kw
 	_bom_usage_filter(parsed)
 	definition = get_category_definition(category)
 	context = _category_query_context(category, parsed)
-	missing_item_group = _text(context.get("missing_item_group"))
-	stock_rows = [] if missing_item_group else _load_category_stock_rows(context)
-	snapshot_rows = [] if missing_item_group else _load_category_snapshot_rows(context)
-	payload = build_categorized_inventory_payload(
-		stock_rows,
-		snapshot_rows,
-		category=category,
-		filters=parsed,
-		bom_usage_statuses=_load_bom_usage_statuses(_category_bom_candidate_codes(stock_rows, snapshot_rows, parsed)),
-		start=0,
-		page_length=None,
-	)
-	content = build_categorized_inventory_xlsx(payload)
+	content = _build_categorized_export_content(category, parsed, context)
 	return {
 		"file_name": f"{definition['file_prefix']}.xlsx",
 		"mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"content_base64": base64.b64encode(content).decode("ascii"),
 		"bom_usage_scope": BOM_USAGE_SCOPE,
+		"inventory_scope": "accessible_companies" if context.get("all_companies") else "company",
 	}

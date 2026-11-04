@@ -9,6 +9,7 @@
 正式物料编码,Item Code
 物料名称（双语）,Item Name (Bilingual)
 仓库,Warehouse
+库位,Location
 原始库位,Original Location
 库位数量,Location Quantity
 总库存,Total Stock
@@ -29,6 +30,7 @@ BOM 用料状态,BOM Component Status
 BOM 用料状态读取失败，请刷新页面后重试。,BOM component status could not be loaded. Refresh the page and try again.
 快照日期,Snapshot Date
 库位待维护,Location Not Maintained
+无参考快照,No Reference Snapshot
 库存一致,Stock Matches
 待库存重算,Awaiting Stock Recalculation
 重算中,Recalculating
@@ -42,6 +44,11 @@ BOM 用料状态读取失败，请刷新页面后重试。,BOM component status 
 没有符合条件的库存库位记录。,No inventory location records match the filters.
 没有符合条件的库存记录。,No inventory records match the filters.
 公司,Company
+操作公司,Operating Company
+库存显示所有可访问公司，物料移动按操作公司办理。,Inventory covers all accessible companies. Stock movements use the operating company.
+该仓库不属于操作公司，请切换操作公司后办理物料移动。,This warehouse belongs to another company. Switch the operating company before creating a stock movement.
+跨公司库存范围读取失败，请刷新页面后重试。,Unable to load the inventory scope across companies. Refresh the page and try again.
+ERP 实时库存（所有可访问公司） · {0} 个物料仓库组 · 当前 {1} 条,Live ERP stock (all accessible companies) · {0} item/warehouse groups · {1} rows shown
 盘点快照,Inventory Snapshot
 下级物料组,Child Item Group
 物料编码/名称,Item Code / Name
@@ -65,6 +72,7 @@ BOM 用料状态读取失败，请刷新页面后重试。,BOM component status 
 暂无库位快照,No location snapshot
 盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条,Inventory snapshot {0} · {1} item/warehouse groups · {2} rows shown
 ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2},Live ERP stock · {0} item/warehouse groups · {1} rows shown · Reference snapshot {2}
+ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条,Live ERP stock · {0} item/warehouse groups · {1} rows shown
 库存明细读取失败。,Unable to load inventory details.
 正在生成 Excel…,Generating Excel…
 已选物料,Selected Items
@@ -95,10 +103,14 @@ ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2}
 空,Empty
 没有权限查看库存库位快照。,You do not have permission to view inventory location snapshots.
 没有权限查看{0}。,You do not have permission to view {0}.
+没有导出库存明细的权限。,You do not have permission to export inventory details.
+导出结果超过 {0} 个物料仓库组，请增加筛选条件。,The export exceeds {0} item and warehouse groups. Narrow the filters.
+导出文件超过 {0} MB，请增加筛选条件。,The export file exceeds {0} MB. Narrow the filters.
 请先选择公司或设置默认公司。,Select a company or set a default company first.
 没有权限查看所选仓库。,You do not have permission to view the selected warehouse.
 物料组不存在：{0},Item group does not exist: {0}
 物料组不属于{0}：{1},Item group does not belong to {0}: {1}
+所选物料组不属于物料库存明细。,The selected item group is outside Material Inventory Detail.
 没有创建物料移动单的权限。,You do not have permission to create a Stock Entry.
 {0}格式不正确。,Invalid format for {0}.
 {0}不能为空。,{0} cannot be empty.
@@ -1838,7 +1850,7 @@ ai 助手,ai assistant
 预览预付款凭证,Preview advance payment Voucher
 预计交付日期,Estimated delivery date
 预计交付日期沿用 ERP 交期；CRM 未同步的源字段不作推断。,The expected delivery date follows the ERP delivery date; CRM unsynchronized source fields will not be inferred.
-颜色,color
+颜色,Color
 高级关联筛选,Advanced relevance filtering
 高级处理 / 原生单据,Advanced processing/native documents
 默认逐单入库，可选择合并。,"The default is to store orders one by one, and you can choose to merge."

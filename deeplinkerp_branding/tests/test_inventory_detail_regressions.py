@@ -316,7 +316,8 @@ CATEGORY_SNAPSHOT_ROWS = [
 
 
 def test_category_definitions_are_server_whitelisted_and_use_erp_item_group_roots() -> None:
-	assert set(CATEGORY_DEFINITIONS) == {"semi_finished", "finished_goods", "mold"}
+	assert set(CATEGORY_DEFINITIONS) == {"material", "semi_finished", "finished_goods", "mold"}
+	assert get_category_definition("material")["root_item_group"] == ""
 	assert get_category_definition("semi_finished")["root_item_group"] == "半成品Semiterminado"
 	assert get_category_definition("finished_goods")["root_item_group"] == "成品Producto terminado"
 	assert get_category_definition("mold")["root_item_group"] == "模具Moldes"
@@ -401,8 +402,8 @@ def test_categorized_payload_keeps_real_time_qty_and_marks_snapshot_difference_a
 	assert missing["actual_qty"] == 0
 	assert missing["snapshot_qty"] is None
 	assert missing["difference_qty"] is None
-	assert missing["inventory_status"] == "库位待维护"
-	assert missing["locations"][0]["reference_location"] == "库位待维护"
+	assert missing["inventory_status"] == "无参考快照"
+	assert missing["locations"][0]["reference_location"] == "无参考快照"
 
 
 def test_categorized_payload_filters_locations_stock_and_paginates_groups() -> None:
@@ -532,7 +533,7 @@ def test_snapshot_only_warehouse_replaces_synthetic_zero_warehouse() -> None:
 	assert payload["groups"][0]["inventory_status"] == "库存一致"
 
 
-def test_categorized_xlsx_exports_all_reference_locations_and_real_time_status() -> None:
+def test_categorized_xlsx_exports_live_inventory_once_per_group_without_snapshot_columns() -> None:
 	payload = build_categorized_inventory_payload(
 		CATEGORY_STOCK_ROWS,
 		CATEGORY_SNAPSHOT_ROWS,
@@ -545,29 +546,88 @@ def test_categorized_xlsx_exports_all_reference_locations_and_real_time_status()
 	sheet = workbook.active
 
 	assert sheet.title == "半成品库存明细"
-	assert [sheet.cell(1, column).value for column in range(1, 16)] == [
+	assert [sheet.cell(1, column).value for column in range(1, 10)] == [
 		"正式物料编码",
 		"物料名称（双语）",
-		"仓库",
-		"参考库位",
-		"快照库位数量",
-		"实时库存",
-		"库存差异",
-		"库存状态",
-		"BOM 用料状态",
-		"快照日期",
-		"库存单位",
+		"颜色",
 		"物料组",
-		"DPCI",
-		"外部编码",
-		"原始标识/别名",
+		"仓库",
+		"库位",
+		"实时库存",
+		"BOM 用料状态",
+		"库存单位",
 	]
-	assert sheet["D2"].value == "A-01"
-	assert sheet["D3"].value == "A-02"
-	assert sheet["F2"].value == 12
-	assert sheet["G2"].value == 2
-	assert sheet["H2"].value == "库存差异"
-	assert sheet["I2"].value == "未用于 BOM"
+	assert sheet.max_row == len(payload["groups"]) + 1
+	assert sheet["G2"].value == 12
+	assert sheet["H2"].value == "未用于 BOM"
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_DEFINITIONS))
+@pytest.mark.parametrize("field", ["dpci", "external_code", "original_identifier_alias"])
+def test_hidden_auxiliary_identifiers_still_find_inventory_without_being_exported(category, field) -> None:
+	stock = [
+		{"item_code": "ITEM-1", "item_name": "Item 1", "warehouse": "W1", "actual_qty": 3, field: "AUX-CODE-123"},
+		{"item_code": "ITEM-2", "item_name": "Item 2", "warehouse": "W1", "actual_qty": 5, field: "OTHER"},
+	]
+	payload = build_categorized_inventory_payload(stock, [], category=category, filters={"keyword": "aux-code-123"})
+	assert payload["total_count"] == 1
+	assert payload["groups"][0]["item_code"] == "ITEM-1"
+	assert payload["groups"][0][field] == "AUX-CODE-123"
+	sheet = load_workbook(BytesIO(build_categorized_inventory_xlsx(payload))).active
+	show_color = category in service.COLOR_INVENTORY_CATEGORIES
+	assert sheet.max_column == (9 if show_color else 8)
+	assert sheet["A2"].value == "ITEM-1" and sheet.cell(2, 7 if show_color else 5).value == 3
+	assert "AUX-CODE-123" not in [cell.value for cell in sheet[2]]
+
+
+@pytest.mark.parametrize("category", list(CATEGORY_DEFINITIONS))
+def test_live_warehouse_location_is_separate_from_snapshot_reference(category: str) -> None:
+	leaf = "P04R01S INVENTARIO SEMITERMINADO - YWFM"
+	stock = [{
+		"item_code": "ITEM-1", "warehouse": leaf, "warehouse_name": "P04R01S INVENTARIO SEMITERMINADO",
+		"parent_warehouse": "INVENTARIO SEMITERMINADO - YWFM",
+		"parent_warehouse_name": "INVENTARIO SEMITERMINADO", "actual_qty": 4,
+	}]
+	snapshots = [{"item_code": "ITEM-1", "warehouse": leaf, "original_location": "OLD-01", "location_qty": 3}]
+	group = build_categorized_inventory_payload(stock, snapshots, category=category)["groups"][0]
+	assert group["warehouse"] == leaf  # Keep the leaf identity for stock entry and existing API consumers.
+	assert group["display_warehouse"] == "INVENTARIO SEMITERMINADO - YWFM"
+	assert group["warehouse_location"] == "P04R01S"
+	assert group["locations"][0]["reference_location"] == "OLD-01"
+	sheet = load_workbook(BytesIO(build_categorized_inventory_xlsx({"category": category, "title": "库存", "groups": [group]}))).active
+	offset = 2 if category in service.COLOR_INVENTORY_CATEGORIES else 0
+	assert [sheet.cell(2, column + offset).value for column in (3, 4, 5)] == [
+		"INVENTARIO SEMITERMINADO - YWFM", "P04R01S", 4
+	]
+	assert "OLD-01" not in [cell.value for cell in sheet[2]]
+
+
+def test_plain_leaf_warehouse_does_not_invent_a_location() -> None:
+	group = build_categorized_inventory_payload([{
+		"item_code": "ITEM-1", "warehouse": "半成品 - YWFM", "warehouse_name": "半成品",
+		"parent_warehouse": "墨西哥仓库 - YWFM", "parent_warehouse_name": "墨西哥仓库",
+		"actual_qty": 4,
+	}], [], category="semi_finished")["groups"][0]
+	assert group["display_warehouse"] == "半成品 - YWFM"
+	assert group["warehouse_location"] == ""
+	assert group["inventory_status"] == "无参考快照"
+
+
+@pytest.mark.parametrize("prefix", ["A-01", "P04R01S", "AG-B-E02", "AI-21-A01", "123"])
+def test_location_codes_accept_existing_alphanumeric_and_hyphen_formats(prefix: str) -> None:
+	assert service._warehouse_display_fields({
+		"warehouse": f"{prefix} General - CO", "warehouse_name": f"{prefix} General",
+		"parent_warehouse": "General - CO", "parent_warehouse_name": "General",
+	}) == {"display_warehouse": "General - CO", "warehouse_location": prefix}
+
+
+@pytest.mark.parametrize("prefix", ["Acrigel-aceros", "Overflow", "Area 2", "=1+1", "P_01", ""])
+def test_descriptive_or_unrecognized_prefixes_keep_the_original_warehouse(prefix: str) -> None:
+	leaf = f"{prefix} General - CO".strip()
+	assert service._warehouse_display_fields({
+		"warehouse": leaf, "warehouse_name": f"{prefix} General",
+		"parent_warehouse": "General - CO", "parent_warehouse_name": "General",
+	}) == {"display_warehouse": leaf, "warehouse_location": ""}
 
 
 def test_bom_usage_query_batches_direct_components_across_companies(monkeypatch) -> None:
@@ -655,7 +715,7 @@ def test_category_bom_candidates_keep_snapshot_only_groups_and_apply_location_fi
 	assert lookup(stock, snapshots, {"bom_usage_status": "unknown"}) == set()
 
 
-@pytest.mark.parametrize("category", ["semi_finished", "finished_goods", "mold"])
+@pytest.mark.parametrize("category", list(CATEGORY_DEFINITIONS))
 def test_categorized_xlsx_exports_bom_usage_for_every_category(category: str) -> None:
 	payload = build_categorized_inventory_payload(
 		[CATEGORY_STOCK_ROWS[0]], CATEGORY_SNAPSHOT_ROWS,
@@ -663,9 +723,11 @@ def test_categorized_xlsx_exports_bom_usage_for_every_category(category: str) ->
 		bom_usage_statuses={"NSEMI-001": "used"}, page_length=None,
 	)
 	sheet = load_workbook(BytesIO(build_categorized_inventory_xlsx(payload))).active
-	assert sheet.max_column == 15
-	assert sheet["H1"].value == "库存状态"
-	assert sheet["I1"].value == "BOM 用料状态"
-	assert sheet["I2"].value == "已用于 BOM"
-	assert "I2:I3" in {str(merged) for merged in sheet.merged_cells.ranges}
-	assert sheet["J2"].value == "2026-09-29"
+	offset = int(category in service.COLOR_INVENTORY_CATEGORIES)
+	assert sheet.max_column == 8 + offset
+	assert sheet.cell(1, 5 + 2 * offset).value == "实时库存"
+	assert sheet.cell(1, 6 + 2 * offset).value == "BOM 用料状态"
+	assert sheet.cell(2, 6 + 2 * offset).value == "已用于 BOM"
+	assert sheet.max_row == 2
+	assert not sheet.merged_cells.ranges
+	assert "2026-09-29" not in [cell.value for cell in sheet[2]]

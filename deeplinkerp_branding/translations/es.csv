@@ -104,9 +104,15 @@ ERP 预付款汇总,Anticipos registrados en ERP
 多明细,Varias partidas
 交付日期,Fecha de entrega
 仓库,Almacén
+库位,Ubicación
 未找到可见的关联收款记录,No aparecen cobros registrados para este pedido.
 导出 Excel,Exportar a Excel
 公司,Empresa
+操作公司,Empresa operativa
+库存显示所有可访问公司，物料移动按操作公司办理。,El inventario abarca todas las empresas accesibles. Los movimientos usan la empresa operativa.
+该仓库不属于操作公司，请切换操作公司后办理物料移动。,Este almacén pertenece a otra empresa. Cambie la empresa operativa antes de crear un movimiento de inventario.
+跨公司库存范围读取失败，请刷新页面后重试。,No se pudo cargar el alcance del inventario entre empresas. Actualice la página e inténtelo de nuevo.
+ERP 实时库存（所有可访问公司） · {0} 个物料仓库组 · 当前 {1} 条,Existencias actuales de ERP (todas las empresas accesibles) · {0} grupos de artículo/almacén · {1} filas visibles
 上一页,Anterior
 正在核验订单…,Revisando pedidos…
 关联收款记录,Cobros registrados
@@ -577,6 +583,7 @@ BOM 用料状态,Estado de uso en BOM
 BOM 用料状态读取失败，请刷新页面后重试。,No se pudo cargar el estado de uso en BOM. Actualice la página e inténtelo de nuevo.
 快照日期,Fecha de referencia
 库位待维护,Ubicación pendiente
+无参考快照,Sin instantánea de referencia
 库存一致,Existencias coincidentes
 待库存重算,Pendiente de recálculo de existencias
 重算中,Recalculando
@@ -609,6 +616,7 @@ BOM 用料状态读取失败，请刷新页面后重试。,No se pudo cargar el 
 暂无库位快照,Sin referencia de ubicaciones
 盘点快照 {0} · {1} 个物料仓库组 · 当前 {2} 条,Referencia {0} · {1} grupos de artículo/almacén · {2} filas visibles
 ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2},Existencias actuales de ERP · {0} grupos de artículo/almacén · {1} filas visibles · Referencia {2}
+ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条,Existencias actuales de ERP · {0} grupos de artículo/almacén · {1} filas visibles
 库存明细读取失败。,No se pudo cargar el detalle de existencias.
 正在生成 Excel…,Generando Excel…
 已选物料,Artículos seleccionados
@@ -634,10 +642,14 @@ ERP 实时库存 · {0} 个物料仓库组 · 当前 {1} 条 · 参考快照 {2}
 空,Vacío
 没有权限查看库存库位快照。,No tienes permiso para consultar las referencias de ubicaciones.
 没有权限查看{0}。,No tienes permiso para consultar {0}.
+没有导出库存明细的权限。,No tienes permiso para exportar el detalle de existencias.
+导出结果超过 {0} 个物料仓库组，请增加筛选条件。,La exportación supera {0} grupos de artículo y almacén. Acota los filtros.
+导出文件超过 {0} MB，请增加筛选条件。,El archivo exportado supera {0} MB. Acota los filtros.
 请先选择公司或设置默认公司。,Selecciona una empresa o configura una empresa predeterminada primero.
 没有权限查看所选仓库。,No tienes permiso para consultar el almacén seleccionado.
 物料组不存在：{0},El grupo de artículos no existe: {0}
 物料组不属于{0}：{1},El grupo de artículos no pertenece a {0}: {1}
+所选物料组不属于物料库存明细。,El grupo de artículos seleccionado no pertenece al detalle de existencias de materiales.
 没有创建物料移动单的权限。,No tienes permiso para crear un movimiento de inventario.
 {0}格式不正确。,El formato de {0} no es válido.
 {0}不能为空。,{0} no puede estar vacío.
