@@ -13,8 +13,9 @@
 	const getBrandName = () => translate(DeeplinkERPBrandName);
 	const getSettingsName = () => translate(DeeplinkERPSettingsName);
 	const getFrameworkName = () => translate(DLPFrameworkName);
-	const FaviconURL = "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6";
-	const BrandLogoURL = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6";
+	const FaviconURL = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9";
+	const BrandLogoURL = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9";
+	const AppleTouchIconURL = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_180.png?v=0.0.9";
 	const isNarrowNavigationViewport = () =>
 		typeof window.matchMedia === "function"
 			? window.matchMedia("(max-width: 767.98px)").matches
@@ -33,15 +34,20 @@
 
 		const favicon = document.createElement("link");
 		favicon.rel = "icon";
-		favicon.type = "image/svg+xml";
+		favicon.type = "image/png";
 		favicon.href = FaviconURL;
 		document.head.appendChild(favicon);
 
 		const shortcut = document.createElement("link");
 		shortcut.rel = "shortcut icon";
-		shortcut.type = "image/svg+xml";
+		shortcut.type = "image/png";
 		shortcut.href = FaviconURL;
 		document.head.appendChild(shortcut);
+
+		const appleTouchIcon = document.createElement("link");
+		appleTouchIcon.rel = "apple-touch-icon";
+		appleTouchIcon.href = AppleTouchIconURL;
+		document.head.appendChild(appleTouchIcon);
 	}
 
 	function replaceERPNextAppTitle() {

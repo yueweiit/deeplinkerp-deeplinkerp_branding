@@ -8,7 +8,7 @@ from deeplinkerp_branding.deeplinkerp_branding.interface_mode import apply_inter
 
 
 BRAND_NAME = "Deeplinkerp"
-BRAND_LOGO_URL = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6"
+BRAND_LOGO_URL = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9"
 ERP_NEXT_NAME = "ERPNext"
 DEEPLINKERP_ICON_NAME = "Deeplinkerp"
 FRAPPE_FRAMEWORK_NAME = "Frappe Framework"

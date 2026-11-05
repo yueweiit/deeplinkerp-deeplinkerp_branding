@@ -5,9 +5,9 @@ app_description = "DeeplinkERP 品牌与全局业务定制"
 app_email = "308642281@qq.com"
 app_license = "mit"
 required_apps = ["erpnext"]
-app_logo_url = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6"
-favicon = "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6"
-splash_image = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6"
+app_logo_url = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9"
+favicon = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9"
+splash_image = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9"
 
 # Apps
 # ------------------
@@ -15,7 +15,7 @@ splash_image = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=
 add_to_apps_screen = [
 	{
 		"name": app_name,
-		"logo": "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6",
+		"logo": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9",
 		"title": app_title,
 		"route": "/app/deeplinkerp-settings",
 	}
@@ -26,7 +26,7 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 app_include_css = [
-	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.10",
+	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.13",
 	"/assets/deeplinkerp_branding/css/purchase_payments.css?v=0.0.10",
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.27",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.6",
@@ -47,7 +47,7 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/unified_purchase_list.js?v=0.0.13",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.21",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_interface_mode.js?v=0.0.3",
-	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.30",
+	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.33",
 	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.25",
 	"/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js",
 	"/assets/deeplinkerp_branding/js/form_grid_insert.js?v=0.0.1",
@@ -216,34 +216,34 @@ override_whitelisted_methods.update({"frappe.desk.form.save.savedocs": "deeplink
     "erpnext.controllers.accounts_controller.update_child_qty_rate": "deeplinkerp_branding.services.purchase_repost_boundary.update_child_qty_rate"})
 scheduler_events = {"cron": {"*/15 * * * *": ["deeplinkerp_branding.services.operating_expenses.scheduled_sync", "deeplinkerp_branding.services.purchase_source_service.scheduled_sync", "deeplinkerp_branding.services.purchase_reversal_progress.recover"]}}
 website_context = {
-	"favicon": "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6",
-	"splash_image": "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6",
+	"favicon": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9",
+	"splash_image": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9",
 }
 
 website_redirects = [
 	{
 		"source": "/favicon.ico",
-		"target": "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6",
+		"target": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9",
 		"redirect_http_status": 302,
 	},
 	{
 		"source": "/apple-touch-icon.png",
-		"target": "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6",
+		"target": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_180.png?v=0.0.9",
 		"redirect_http_status": 302,
 	},
 	{
 		"source": "/apple-touch-icon-precomposed.png",
-		"target": "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6",
+		"target": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_180.png?v=0.0.9",
 		"redirect_http_status": 302,
 	},
 	{
 		"source": "/site.webmanifest",
-		"target": "/assets/deeplinkerp_branding/manifest.webmanifest",
+		"target": "/assets/deeplinkerp_branding/manifest.webmanifest?v=0.0.9",
 		"redirect_http_status": 302,
 	},
 	{
 		"source": "/manifest.json",
-		"target": "/assets/deeplinkerp_branding/manifest.webmanifest",
+		"target": "/assets/deeplinkerp_branding/manifest.webmanifest?v=0.0.9",
 		"redirect_http_status": 302,
 	},
 ]

@@ -8,14 +8,14 @@
 	"theme_color": "#ffffff",
 	"icons": [
 		{
-			"src": "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6",
-			"sizes": "any",
-			"type": "image/svg+xml",
+			"src": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9",
+			"sizes": "192x192",
+			"type": "image/png",
 			"purpose": "any maskable"
 		},
 		{
-			"src": "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6",
-			"sizes": "any",
+			"src": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_512.png?v=0.0.9",
+			"sizes": "512x512",
 			"type": "image/png",
 			"purpose": "any maskable"
 		}

@@ -1,6 +1,6 @@
 BRAND_BASE_TEMPLATE = "deeplinkerp_branding/templates/deeplinkerp_branding_base.html"
-BRAND_FAVICON = "/assets/deeplinkerp_branding/logo/tab_logo.svg?v=0.0.6"
-BRAND_SPLASH_IMAGE = "/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6"
+BRAND_FAVICON = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9"
+BRAND_SPLASH_IMAGE = "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9"
 
 
 def update_context(context):

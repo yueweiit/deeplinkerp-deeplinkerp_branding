@@ -22,7 +22,7 @@ html.dlp-interface-mode-dl-pending body::after {
 	align-items: center;
 	height: 28px;
 	padding-left: 38px;
-	background: url("/assets/deeplinkerp_branding/logo/deeplinkerp_logo_radius.png?v=0.0.6") left center / 28px 28px no-repeat;
+	background: url("/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9") left center / 28px 28px no-repeat;
 	color: #fff;
 	content: "DeepLinkERP";
 	font-size: 15px;
