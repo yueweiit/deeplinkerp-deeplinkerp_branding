@@ -47,14 +47,6 @@
   min-width: 1650px;
 }
 
-.inventory-detail table.id-categorized-table.across-companies {
-  min-width: 1690px;
-}
-
-.inventory-detail table.id-categorized-table.has-color.across-companies {
-  min-width: 1830px;
-}
-
 .inventory-detail th,
 .inventory-detail td {
   background: var(--card-bg, #fff);
@@ -169,7 +161,6 @@
 .inventory-detail .id-col-code { width: 170px; }
 .inventory-detail .id-col-name { width: 260px; }
 .inventory-detail .id-col-color { width: 140px; }
-.inventory-detail .id-col-company { width: 180px; }
 .inventory-detail .id-col-warehouse { width: 210px; }
 .inventory-detail .id-col-erp-location { width: 140px; }
 .inventory-detail .id-col-location { width: 150px; }

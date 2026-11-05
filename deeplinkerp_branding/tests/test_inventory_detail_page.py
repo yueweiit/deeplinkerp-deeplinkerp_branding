@@ -530,8 +530,9 @@ console.log(JSON.stringify({{html}}));
 	assert 'class="id-actions"' in result["html"]
 	assert "BOM 用料状态" in result["html"]
 	show_color = category in ("semi_finished", "finished_goods")
-	assert result["html"].count("</th>") == (10 if show_color else 9) + int(all_companies)
-	assert ("<th>公司</th>" in result["html"]) is all_companies
+	assert result["html"].count("</th>") == (10 if show_color else 9)
+	assert result["html"].count("<col ") == (10 if show_color else 9)
+	assert "<th>公司</th>" not in result["html"]
 	assert ("颜色" in result["html"]) is show_color
 	if show_color:
 		assert "<th>颜色</th><th>物料组</th>" in result["html"]
@@ -621,24 +622,27 @@ console.log(JSON.stringify({{html:inventory.renderCategorizedRows([group],new Se
 		assert result["html"].index("Negro &lt;Black&gt;") < result["html"].index(">PRODUCT-GROUP</td>") < result["html"].index(">W1 ")
 
 
-def test_cross_company_rows_are_visible_but_only_operating_company_rows_can_be_selected() -> None:
-	result = run_js("""
+@pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
+def test_cross_company_rows_are_visible_but_only_operating_company_rows_can_be_selected(category) -> None:
+	result = run_js("const category=" + json.dumps(category) + ";\n" + """
 const groups=[{item_code:'I1',warehouse:'WA',company:'C1',actual_qty:2,bom_usage_status:'used'},
  {item_code:'I1',warehouse:'WB',company:'C2',actual_qty:3,bom_usage_status:'used'},
  {item_code:'I2',warehouse:'',company:'',actual_qty:0,bom_usage_status:'unused'}];
 const selectedC1=inventory.updateCurrentPageSelection(groups,new Map(),true,'C1');
 const selectedC2=inventory.updateCurrentPageSelection(groups,new Map(),true,'C2');
-const html=inventory.renderCategorizedRows(groups,new Set(),'semi_finished',{allCompanies:true,operationCompany:'C1'});
+const html=inventory.renderCategorizedRows(groups,new Set(),category,{allCompanies:true,operationCompany:'C1'});
 console.log(JSON.stringify({html,c1:[...selectedC1.values()].map(row=>row.source_warehouse),
  c2:[...selectedC2.values()].map(row=>row.source_warehouse),
- empty:inventory.renderCategorizedRows([],new Set(),'semi_finished',{allCompanies:true,operationCompany:'C1'})}));
+ empty:inventory.renderCategorizedRows([],new Set(),category,{allCompanies:true,operationCompany:'C1'})}));
 """)
 	assert result["c1"] == ["WA"] and result["c2"] == ["WB"]
 	assert result["html"].count("<tr>") == 3
 	assert result["html"].count(" disabled") == 2
-	assert ">C1</td>" in result["html"] and ">C2</td>" in result["html"]
+	assert ">C1</td>" not in result["html"] and ">C2</td>" not in result["html"]
+	column_count = 10 if category in ("semi_finished", "finished_goods") else 9
+	assert result["html"].count("<td") == 3 * column_count
 	assert "请切换操作公司" in result["html"]
-	assert 'colspan="11"' in result["empty"]
+	assert f'colspan="{column_count}"' in result["empty"]
 
 
 def test_cross_company_filters_keep_operating_company_but_do_not_restrict_warehouse_search() -> None:

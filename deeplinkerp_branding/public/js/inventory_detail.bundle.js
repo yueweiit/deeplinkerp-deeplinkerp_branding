@@ -216,7 +216,7 @@
 	function renderCategorizedRows(groups, selectedKeys = new Set(), category = "material", scope = {}) {
 		const showColor = COLOR_CATEGORIES.has(category);
 		if (!Array.isArray(groups) || !groups.length) {
-			return `<tr class="id-empty"><td colspan="${(showColor ? 10 : 9) + (scope.allCompanies ? 1 : 0)}">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
+			return `<tr class="id-empty"><td colspan="${showColor ? 10 : 9}">${escapeHtml(__("没有符合条件的库存记录。"))}</td></tr>`;
 		}
 		return groups
 			.map((group) => {
@@ -228,7 +228,6 @@
 					`<td class="id-code"><a href="#" data-item-code="${itemCode}">${itemCode}</a></td>`,
 					`<td class="id-name">${escapeHtml(group.item_name)}</td>`,
 					...(showColor ? [`<td>${escapeHtml(group.color || "—")}</td>`, itemGroupCell] : []),
-					...(scope.allCompanies ? [`<td>${escapeHtml(group.company || "—")}</td>`] : []),
 					`<td>${escapeHtml(group.display_warehouse || group.warehouse || "—")} ${reversalHTML(group.reversal)}</td>`,
 					`<td>${escapeHtml(group.warehouse_location || "—")}</td>`,
 					`<td class="id-quantity${quantityClass}">${formatQuantity(
@@ -276,18 +275,18 @@
     </table>`;
 	}
 
-	function categorizedTable(title, category, allCompanies = false) {
+	function categorizedTable(title, category) {
 		const showColor = COLOR_CATEGORIES.has(category);
-		return `<table class="id-categorized-table${showColor ? " has-color" : ""}${allCompanies ? " across-companies" : ""}" aria-label="${escapeHtml(__("{0}表", [title]))}">
+		return `<table class="id-categorized-table${showColor ? " has-color" : ""}" aria-label="${escapeHtml(__("{0}表", [title]))}">
       <colgroup>
-        <col class="id-col-select"><col class="id-col-code"><col class="id-col-name">${showColor ? '<col class="id-col-color"><col class="id-col-group">' : ""}${allCompanies ? '<col class="id-col-company">' : ""}<col class="id-col-warehouse">
+        <col class="id-col-select"><col class="id-col-code"><col class="id-col-name">${showColor ? '<col class="id-col-color"><col class="id-col-group">' : ""}<col class="id-col-warehouse">
         <col class="id-col-erp-location">
         <col class="id-col-quantity"><col class="id-col-bom-status">
         <col class="id-col-uom">${!showColor ? '<col class="id-col-group">' : ""}
       </colgroup>
       <thead><tr>
         <th class="id-select"><input type="checkbox" data-select-current-page aria-label="${escapeHtml(__("全选当前页"))}"></th>
-        <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th>${showColor ? `<th>${escapeHtml(__("颜色"))}</th><th>${escapeHtml(__("物料组"))}</th>` : ""}${allCompanies ? `<th>${escapeHtml(__("公司"))}</th>` : ""}<th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("库位"))}</th>
+        <th>${escapeHtml(__("正式物料编码"))}</th><th>${escapeHtml(__("物料名称（双语）"))}</th>${showColor ? `<th>${escapeHtml(__("颜色"))}</th><th>${escapeHtml(__("物料组"))}</th>` : ""}<th>${escapeHtml(__("仓库"))}</th><th>${escapeHtml(__("库位"))}</th>
         <th>${escapeHtml(__("实时库存"))}</th><th>${escapeHtml(__("BOM 用料状态"))}</th>
         <th>${escapeHtml(__("库存单位"))}</th>${!showColor ? `<th>${escapeHtml(__("物料组"))}</th>` : ""}
       </tr></thead><tbody></tbody>
@@ -500,7 +499,7 @@
           </div>
           <div class="id-summary" role="status">${escapeHtml(__("正在读取库存…"))}</div>
           <div class="id-table-wrap">${
-				this.isMaterial ? materialTable() : categorizedTable(this.config.title, this.config.category, this.allCompanies)
+				this.isMaterial ? materialTable() : categorizedTable(this.config.title, this.config.category)
 			}</div>
           <div class="id-pager">
             <button type="button" class="btn btn-default btn-sm" data-page-action="previous">${escapeHtml(__("上一页"))}</button>
