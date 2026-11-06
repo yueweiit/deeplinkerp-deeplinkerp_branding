@@ -59,7 +59,7 @@
   }
  }
  // One page index and a bounded version cache shared by procurement list adapters.
- function mountRowDetails(owner, {rows, load, active=()=>true, canExpand=()=>true}) {
+ function mountRowDetails(owner, {rows, load, active=()=>true, canExpand=()=>true, showExpandAll=true}) {
   owner.expandedDetails=new Set(); owner.detailCache=new Map(); owner.detailPending=new Map(); owner.detailRows=new Map(); owner.detailVersions=new Map();
   const queue=[],dirty=new Set();let live=0,frame,detailElements=new Map(),previousScope,pumping=false,needsRender=false;
   const version=doc=>String(doc?.modified || doc?.order_progress?.modified || '');
@@ -152,7 +152,7 @@
   if(setPage)owner.setPage=function(...args){const expanded=owner.expandedDetails.size;owner.cancelPendingRowDetails();const value=setPage.apply(this,args);if(expanded && active())render();return value;};
   owner.mountRowDetailControls=()=>{
    if(!owner.$rowDetailControls && owner.$toolbar){
-    owner.$rowDetailControls=owner.root.$(`<span class="dlp-purchase-detail-actions"><button type="button" class="btn btn-default btn-sm" data-row-details="expand">${translateText("展开")}</button><button type="button" class="btn btn-default btn-sm" data-row-details="collapse">${translateText("收起")}</button></span>`).appendTo(owner.$toolbar);
+    owner.$rowDetailControls=owner.root.$(`<span class="dlp-purchase-detail-actions">${showExpandAll ? `<button type="button" class="btn btn-default btn-sm" data-row-details="expand">${translateText("展开")}</button>` : ""}<button type="button" class="btn btn-default btn-sm" data-row-details="collapse">${translateText("收起")}</button></span>`).appendTo(owner.$toolbar);
     owner.$rowDetailControls.on('click.dlpRowDetails','[data-row-details="expand"]',()=>owner.expandAllRowDetails()).on('click.dlpRowDetails','[data-row-details="collapse"]',()=>owner.collapseAllRowDetails());
    }updateControls();
   };
@@ -833,7 +833,7 @@
 		const checkbox = readonly ? readonlyCheckbox(t) : `<input class="list-header-checkbox list-check-all" type="checkbox" title="${escapeHTML(t("Select All"))}">`;
 		const columns = layout(controller).map((col) => {
 			const label = t(col.label);
-			return cellHTML(col, escapeHTML(label), label, provider ? (config.provider.sortFields || []).includes(col.fieldname) : controller.allowed.has(col.fieldname), provider);
+			return cellHTML(col, escapeHTML(label) + (config.headerCellExtra?.(controller, col) || ""), label, provider ? (config.provider.sortFields || []).includes(col.fieldname) : controller.allowed.has(col.fieldname), provider);
 		}).join("");
 		return `<div class="list-row-container"><header class="list-row-head dlp-po-grid-header" style="--dlp-po-columns:${template(controller)}"><div class="list-header-subject dlp-po-grid-header-columns">${selectionCell(checkbox, "#")}${columns}</div><div class="checkbox-actions" style="display:none"><span class="select-like">${checkbox}</span><span class="list-header-meta"></span></div></header></div>`;
 	}
@@ -1121,6 +1121,7 @@
 			controller.total = Number(response.message || 0);
 			list.total_count = controller.total;
 			paintSummary(controller);
+			config.onCount?.(controller);
 		});
 		const summary = requests.summary ? root.frappe.call({ method: "frappe.desk.reportview.get_list", args: requests.summary }).then((response) => {
 			if (!current()) return;

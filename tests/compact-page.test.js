@@ -90,6 +90,17 @@ test('shared row details cache one version and discard late page, collapsed or c
  const newer=owner.toggleRowDetails('PR');owner.requestId++;reads[2].resolve({header:{modified:'v2'},items:[{item_code:'late'}]});await newer;assert.equal(owner.detailCache.size,0);
  assert.ok(renders>0);
 });
+test('row details can omit the bulk expand action without removing manual expansion',async()=>{
+ let markup;
+ const control={appendTo(){return this;},on(){return this;},toggle(){return this;},find(){return {prop(){}}}};
+ const owner={providerRows:[{name:'MR-1'}],requestId:1,$toolbar:{},root:{$:value=>{markup=value;return control;}},list:{render_list(){}}};
+ engine.mountRowDetails(owner,{rows:()=>owner.providerRows,load:()=>({items:[]}),showExpandAll:false});
+ owner.mountRowDetailControls();
+ assert.doesNotMatch(markup,/data-row-details="expand"/);
+ assert.match(markup,/data-row-details="collapse"/);
+ await owner.toggleRowDetails('MR-1');
+ assert.equal(owner.expandedDetails.has('MR-1'),true);
+});
 test('failed details can retry and newer server versions show an explicit refresh notice',async()=>{
  let attempts=0;const owner={providerRows:[{name:'PR',modified:'v1'}],requestId:1,list:{render_list(){}},root:{}};
  engine.mountRowDetails(owner,{rows:()=>owner.providerRows,load:async()=>{if(++attempts===1)throw new Error('读取失败');return {header:{modified:'v2'},items:[{item_code:'stale'}]};}});
