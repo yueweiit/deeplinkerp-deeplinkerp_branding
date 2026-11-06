@@ -28,14 +28,14 @@ add_to_apps_screen = [
 app_include_css = [
 	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.13",
 	"/assets/deeplinkerp_branding/css/purchase_payments.css?v=0.0.10",
-	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.27",
+	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.29",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.6",
 	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.14",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
 ]
 app_include_js = [
-	"/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.31",
+	"/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.33",
 	"/assets/deeplinkerp_branding/js/purchase_payments.js?v=0.0.31",
 	"/assets/deeplinkerp_branding/js/sales_receipt_form.js?v=0.0.4",
 	"/assets/deeplinkerp_branding/js/crossborder_procurement.js?v=0.0.5",

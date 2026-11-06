@@ -2247,3 +2247,28 @@ OA 审批接口地址,Dirección de la API de aprobaciones de OA
 请先预览并确认当前同步内容,"Obtenga una vista previa y confirme el contenido actual de la sincronización."
 请先保存当前同步设置，再预览,"Guarde la configuración de sincronización actual antes de obtener una vista previa."
 请先取得当前同步预览并确认待核对来源处理方式,"Obtenga una vista previa actual y confirme cómo se tratarán los orígenes pendientes de revisión."
+物料需求视图,Vistas de solicitudes de materiales
+MES 待发料,Solicitudes MES pendientes de salida
+全部需求,Todas las solicitudes de materiales
+申请日期起,Fecha de solicitud desde
+申请日期止,Fecha de solicitud hasta
+需求日期起,Fecha requerida desde
+需求日期止,Fecha requerida hasta
+物料需求明细,Partidas de la solicitud de materiales
+展开 / 收起物料需求明细,Expandir/contraer partidas de la solicitud de materiales
+物料需求明细读取失败，请重试。,No se pudieron cargar las partidas de la solicitud de materiales. Inténtelo de nuevo.
+需求数量,Cantidad solicitada
+已处理数量,Cantidad procesada
+已发料数量,Cantidad entregada
+剩余数量,Cantidad pendiente
+型号,Modelo
+成品货号,Código del producto terminado
+生产批次号,Número de lote de producción
+订单数量,Cantidad del pedido
+需求量,Cantidad requerida
+物料具体明细,Detalles específicos de materiales
+物料需求明细行号,N.º de partida de solicitud
+待发料,Pendiente de salida
+已发料,Salida completa
+全部,Todas
+拖动或按方向键调整列宽,Arrastra o usa las flechas para ajustar el ancho de la columna

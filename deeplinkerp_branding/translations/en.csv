@@ -1974,3 +1974,28 @@ OA 审批接口地址,OA approval API address
 请先预览并确认当前同步内容,"Preview and confirm the current synchronization content first."
 请先保存当前同步设置，再预览,"Save the current synchronization settings before previewing."
 请先取得当前同步预览并确认待核对来源处理方式,"Get a current synchronization preview and confirm how pending-review sources will be handled."
+物料需求视图,Material Request views
+MES 待发料,MES requests awaiting issue
+全部需求,All material requests
+申请日期起,Application date from
+申请日期止,Application date to
+需求日期起,Required date from
+需求日期止,Required date to
+物料需求明细,Material request items
+展开 / 收起物料需求明细,Expand/collapse material request items
+物料需求明细读取失败，请重试。,Could not load material request items. Try again.
+需求数量,Requested quantity
+已处理数量,Processed quantity
+已发料数量,Issued quantity
+剩余数量,Remaining quantity
+型号,Model
+成品货号,Finished item code
+生产批次号,Production batch number
+订单数量,Order quantity
+需求量,Required quantity
+物料具体明细,Material specification details
+物料需求明细行号,Request item row
+待发料,Pending issue
+已发料,Fully issued
+全部,All
+拖动或按方向键调整列宽,Drag or use arrow keys to resize the column
