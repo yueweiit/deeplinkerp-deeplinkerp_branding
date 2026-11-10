@@ -1993,10 +1993,15 @@ test("server validation messages remain readable through silent RPC rejection an
 	assert.equal(saved, 0);
 	assert.equal(w.canCreate("pay:1"), false);
 });
-async function typeSwitchingDrawer(mapped = false) {
+async function typeSwitchingDrawer(mapped = false, reviewCompany = false, companyReviewLocked = false) {
 	const controls = [],
-		disposed = [], requests = [], buttons = new Map();
+		disposed = [], requests = [], buttons = new Map(), htmlWrites = [];
 	const item = detail();
+	if (reviewCompany) {
+		item.issues = "原法律公司映射已移除，需要复核";
+		item.company_review_state = "stale";
+		item.company_review_locked = companyReviewLocked;
+	}
 	if (!mapped) item.mapping = null;
 	else item.mapping.application_type = "payment";
 	item.source.application_type = "unclassified";
@@ -2014,7 +2019,8 @@ async function typeSwitchingDrawer(mapped = false) {
 		find() {
 			return new Surface();
 		}
-		html() {
+		html(value) {
+			if (typeof value === "string") htmlWrites.push(value);
 			return this;
 		}
 		on(name, handler) {
@@ -2069,6 +2075,7 @@ async function typeSwitchingDrawer(mapped = false) {
 		},
 		frappe: {
 			...host(async req => {requests.push(req); return { message: req.method.endsWith("save_mapping") ? {mapping: JSON.parse(req.args.mapping)} : item };}).frappe,
+			...(reviewCompany ? {session:{user:"Administrator"}} : {}),
 			ui: {
 				form: {
 					make_control: ({ df }) => {
@@ -2095,8 +2102,20 @@ async function typeSwitchingDrawer(mapped = false) {
 	const a = create(root);
 	const current = (field) => controls.filter((control) => control.df.fieldname === field).at(-1);
 	await a.open("source:1");
-	return {a, d, root, current, controls, disposed, requests, buttons, item};
+	return {a, d, root, current, controls, disposed, requests, buttons, htmlWrites, item};
 }
+test("historical company review offers an audited reconfirmation control", async () => {
+	const {current, buttons} = await typeSwitchingDrawer(false, true);
+	assert.equal(current("legal_company").get_value(), "C");
+	assert.equal(current("legal_company").df.label, "重新确认法律公司");
+	assert.ok(buttons.has("重新确认法律公司"));
+});
+test("historical company with financial confirmation offers no company save control", async () => {
+	const {current, buttons, htmlWrites} = await typeSwitchingDrawer(true, true, true);
+	assert.equal(current("legal_company"), undefined);
+	assert.equal(buttons.has("重新确认法律公司"), false);
+	assert.ok(htmlWrites.some(html => html.includes("已有财务确认，无法在此修改法律公司")));
+});
 test("unclassified type switching rebuilds searchable native party Links and isolates old control callbacks", async () => {
 	const {current, disposed, item} = await typeSwitchingDrawer();
 	assert.equal(current("party").$input, undefined);

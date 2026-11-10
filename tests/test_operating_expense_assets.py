@@ -34,7 +34,7 @@ class OperatingExpenseAssetsTest(unittest.TestCase):
 		self.assertIn(provider, files)
 		self.assertLess(files.index(shell), files.index(drawer))
 		self.assertLess(files.index(drawer), files.index(provider))
-		self.assertIn(drawer + "?v=0.0.17", hooks.app_include_js)
+		self.assertIn(drawer + "?v=0.0.22", hooks.app_include_js)
 		panel = "/assets/deeplinkerp_branding/js/operating_payment_panel.js"
 		self.assertEqual(files.count(panel), 1)
 		self.assertLess(files.index(panel), files.index(drawer))
@@ -61,9 +61,9 @@ class OperatingExpenseAssetsTest(unittest.TestCase):
 		for label in (
 			"待办理",
 			"钉钉申请单号",
-			"应付款公司",
+			"来源组织",
 			"账户性质",
-			"应付金额",
+			"申请金额",
 			"已支付金额",
 			"待付款金额",
 			"货币类型",
@@ -98,6 +98,13 @@ class OperatingExpenseAssetsTest(unittest.TestCase):
 			"费用确认凭证已记账，只能查看；后续实际付款仍可办理结算。",
 			"来源版本已变化，请刷新抽屉后重新预览。",
 			"本笔结算已记账、已取消或存在问题，只能查看。",
+			"按法律公司查看申请与付款",
+			"历史公司待复核",
+			"已核实付款额",
+			"重新确认法律公司",
+			"复核公司",
+			"公司归属状态",
+			"已有财务确认，无法在此修改法律公司；请由财务核查历史归属与映射。",
 		):
 			self.assertIn(label + ",", translations)
 

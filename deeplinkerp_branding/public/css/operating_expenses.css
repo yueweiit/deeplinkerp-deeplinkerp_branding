@@ -52,6 +52,13 @@ body.dlp-operating-expense-grid-active .body-sidebar .body-sidebar-top:not(#page
 .dlp-operating-list-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 10px; border-bottom: 1px solid #dce7f4; }
 .dlp-operating-list-tabs .btn { background: transparent; border: 0; border-radius: 0; padding: 8px 14px; }
 .dlp-operating-list-tabs .active { color: #1675cc; border-bottom: 2px solid #1675cc; font-weight: 600; }
+body.dlp-operating-expense-grid-active .dlp-po-summary .dlp-operating-company-overview { flex: 1 0 100%; min-width: 0; margin-top: 8px; border-top: 1px solid #dce7f4; padding-top: 8px; }
+.dlp-operating-company-overview > summary { cursor: pointer; font-weight: 600; }
+.dlp-operating-company-overview p { margin: 5px 0; }
+.dlp-operating-company-overview-table { max-height: 240px; overflow: auto; }
+.dlp-operating-company-overview table { border-collapse: collapse; min-width: 620px; width: 100%; }
+.dlp-operating-company-overview th, .dlp-operating-company-overview td { padding: 5px 8px; border-bottom: 1px solid #dce7f4; text-align: left; }
+.dlp-operating-company-overview th:nth-child(n+3), .dlp-operating-company-overview td:nth-child(n+3) { text-align: right; }
 body.dlp-operating-expense-grid-active .dlp-po-grid-row { min-height: 42px; }
 body.dlp-operating-expense-grid-active .dlp-po-grid-header { min-height: 36px; color: #294f76; }
 .dlp-operating-row-actions { display: flex; flex-wrap: nowrap; gap: 3px; }

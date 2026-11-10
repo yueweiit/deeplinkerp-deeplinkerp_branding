@@ -1974,6 +1974,27 @@ OA 审批接口地址,OA approval API address
 请先预览并确认当前同步内容,"Preview and confirm the current synchronization content first."
 请先保存当前同步设置，再预览,"Save the current synchronization settings before previewing."
 请先取得当前同步预览并确认待核对来源处理方式,"Get a current synchronization preview and confirm how pending-review sources will be handled."
+范围：法律公司 {0},Scope: legal entity {0}
+范围：全部可访问公司（页头当前公司不限制此页）,Scope: all accessible companies (the header company does not filter this page)
+历史公司待复核,Historical company needs review
+付款证据待核对,Payment evidence needs review
+审批证据待同步,Approval evidence pending synchronization
+当前 OA 范围：中国区域 {0} 至 {1} 的 {2} 类指定审批模板。申请额可能包含审批中或未通过记录。,"Current OA coverage: {2} designated approval templates in China from {0} to {1}. Application totals may include pending or rejected requests."
+按法律公司查看申请与付款,Applications and payments by legal entity
+法律公司 / 归属,Legal entity / attribution
+申请单数,Applications
+已核实付款额,Verified paid amount
+没有符合条件的申请,No matching applications
+归属待核对的金额不计入任何子公司；申请和付款不等于 ERP 已入账费用，入账金额请以总账为准。,"Amounts without confirmed attribution are excluded from subsidiary totals. Applications and payments are not ERP booked expenses; use the General Ledger for posted amounts."
+历史归属待复核,Historical attribution needs review
+历史法律公司归属待复核；已有财务确认的记录不能改动公司。,Historical legal attribution needs review. The company cannot be changed after financial confirmation.
+已有财务确认，无法在此修改法律公司；请由财务核查历史归属与映射。,A financial confirmation exists. The legal entity cannot be changed here; ask Finance to review the historical attribution and mapping.
+重新确认法律公司,Reconfirm legal entity
+公司汇总包含所有快捷标签；日期筛选按申请日期，付款额为所选申请的累计已核实付款。,"The company overview includes all quick tabs. Date filters use the application date; paid amounts are cumulative verified payments for the selected applications."
+复核公司,Review legal entity
+公司归属状态,Company attribution status
+公司归属状态筛选无效,Invalid company attribution filter
+已确认,Confirmed
 物料需求视图,Material Request views
 MES 待发料,MES requests awaiting issue
 全部需求,All material requests

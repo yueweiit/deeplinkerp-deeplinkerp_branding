@@ -14,10 +14,11 @@ import hashlib
 import os
 import ipaddress
 import socket
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from contextlib import contextmanager
 from contextvars import ContextVar
 from decimal import Decimal, ROUND_HALF_UP
+from zoneinfo import ZoneInfo
 
 import frappe
 import requests
@@ -25,7 +26,7 @@ from frappe.utils import now_datetime, getdate
 
 from deeplinkerp_branding.services.operating_expense_contract import (
     SOURCE_SYSTEM, SOURCE_URL, MAX_JSON_BYTES, attachment_path, digest, identifier,
-    validate_source, money, expense_facts, event_fingerprint, payment_decision, payment_status, worklist_summary, QUICK_TABS,
+    validate_source, money, expense_facts, event_fingerprint, payment_decision, payment_status, worklist_summary, company_overview, company_review_state, company_sync_needed, current_company_issues, QUICK_TABS,
 )
 from deeplinkerp_branding.services.purchase_payment_service import _require_fields
 from deeplinkerp_branding.services.unified_purchase_service import _require_export_permission
@@ -688,8 +689,8 @@ def _sync_page():
         if root in seen:
             frappe.throw(_i18n("来源页包含重复标识"))
         seen.add(root)
-        current_version, current_company = frappe.db.get_value(SOURCE, root, ["source_version", "company"]) or (None, None)
-        if current_version != item.get("version") or (current_company or "") != (_mapped_company(item, maps) or ""):
+        current_version, current_company, current_issues = frappe.db.get_value(SOURCE, root, ["source_version", "company", "issues"]) or (None, None, None)
+        if company_sync_needed(current_version, current_company, current_issues, item.get("version"), _mapped_company(item, maps)):
             _upsert(item, maps)
     settings.cursor = result["next_cursor"] if not result["end"] else None
     settings.until = result["until"] if not result["end"] else None
@@ -1164,6 +1165,12 @@ def validate_operating_journal(doc, method=None):
         doc.validate_against_jv()
 
 
+def _has_company_financial_confirmation(source_id, *, for_update=False):
+    from .operating_payment_service import PAYMENT, TAKEOVER
+    return any(frappe.db.get_value(doctype, {"source": source_id}, "name", for_update=for_update)
+               for doctype in (MAPPING, EVENT, TAKEOVER, PAYMENT))
+
+
 def _save_source_company(source_id, company, expected_source_version):
     _manager()
     before = _source(source_id)
@@ -1189,12 +1196,10 @@ def _save_source_company(source_id, company, expected_source_version):
         frappe.throw(_i18n("来源标识不符，请重新同步"))
     if doc.source_version != before.source_version and doc.source_version != expected_source_version:
         frappe.throw(_i18n("来源版本已变化，请刷新后复核"))
-    from .operating_payment_service import PAYMENT, TAKEOVER
     # The source lock serializes financial writes. Use current reads here: a
     # consistent snapshot taken before remote IO can miss a newly committed row.
-    for doctype in (MAPPING, EVENT, TAKEOVER, PAYMENT):
-        if frappe.db.get_value(doctype, {"source": doc.name}, "name", for_update=True):
-            frappe.throw(_i18n("已有财务确认，不可改变法律公司"))
+    if _has_company_financial_confirmation(doc.name, for_update=True):
+        frappe.throw(_i18n("已有财务确认，不可改变法律公司"))
     maps = _maps(settings)
     maps["source:" + doc.name] = company
     settings.set("company_mappings", [{"source_company": raw, "company": legal} for raw, legal in maps.items()])
@@ -1244,8 +1249,8 @@ EXPORT_COLUMNS["display_source_id"] = "申请编号"
 EXPORT_COLUMNS["current_approver"] = "当前办理人"
 EXPORT_COLUMNS["source_system"] = "来源"
 EXPORT_COLUMNS["project"] = "项目"
-EXPORT_COLUMNS.update(source_status="付款状态", display_source_id="钉钉申请单号", source_company="应付款公司",
-    amount="应付金额", paid_amount="已支付金额", pending_amount="待付款金额", currency="货币类型",
+EXPORT_COLUMNS.update(source_status="付款状态", display_source_id="钉钉申请单号", source_company="来源组织",
+    amount="申请金额", paid_amount="已支付金额", pending_amount="待付款金额", currency="货币类型",
     project="项目归属", account_nature="账户性质", needed_payment_date="需求付款日期",
     general_manager_approval="总经理审批", remark="备注", blocking_reason="办理阻碍")
 
@@ -1253,7 +1258,7 @@ EXPORT_COLUMNS.update(source_status="付款状态", display_source_id="钉钉申
 def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
     _require_fields(SOURCE, set(LIST_FIELDS))
     filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"company", "application_type", "applicant", "source_status", "approval_state", "date_from", "date_to", "keyword", "quick_tab"}
+    allowed = {"company", "company_review", "application_type", "applicant", "source_status", "approval_state", "date_from", "date_to", "keyword", "quick_tab"}
     if not isinstance(filters, dict) or set(filters) - allowed:
         frappe.throw(_i18n("列表筛选无效"))
     native = []
@@ -1314,11 +1319,31 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
             rows = [r for r in rows if r["approval_state"] == state]
     if keyword:
         rows = [r for r in rows if any(keyword in str(r.get(field) or "").casefold() for field in ("source_id", "approval_no", "summary", "payee_name", "applicant"))]
+    review = filters.get("company_review")
+    if review:
+        if not isinstance(review, str) or review not in {"unmapped", "stale", "confirmed"}:
+            frappe.throw(_i18n("公司归属状态筛选无效"))
+        rows = [row for row in rows if row["company_review_state"] == review]
     tab = filters.get("quick_tab") or "all"
     if tab not in QUICK_TABS:
         frappe.throw(_i18n("快捷筛选无效"))
     selected, counts, totals = worklist_summary(rows, tab)
-    return (selected, counts, totals) if with_summary else selected
+    if with_summary:
+        overview, review_counts = company_overview(rows)
+    if with_summary:
+        return selected, counts, totals, overview, review_counts
+    return selected
+
+
+def _list_source_scope():
+    if _source_mode() != "oa_cashier":
+        return {"mode": "cashier"}
+    from . import operating_oa_source as oa
+    china = ZoneInfo("Asia/Shanghai")
+    return {"mode": "oa_cashier", "region": "CN",
+            "start_date": oa.START.astimezone(china).date().isoformat(),
+            "end_date": (oa.END - timedelta(microseconds=1)).astimezone(china).date().isoformat(),
+            "process_templates": len(oa.PROCESS_CODES)}
 
 
 @frappe.whitelist()
@@ -1326,10 +1351,12 @@ def get_operating_expenses(filters=None, order_by="request_date desc", page_leng
     page_length, start = int(page_length), int(start)
     if page_length not in {20, 100, 500, 2500} or start < 0:
         frappe.throw(_i18n("分页参数无效"))
-    rows, counts, totals = _list_rows(filters, order_by, with_summary=True)
+    rows, counts, totals, overview, review_counts = _list_rows(filters, order_by, with_summary=True)
     page = rows[start:start + page_length]
     _enrich_page(page)
-    return {"rows": page, "total_count": len(rows), "currency_totals": totals, "tab_counts": counts}
+    return {"rows": page, "total_count": len(rows), "currency_totals": totals, "tab_counts": counts,
+            "company_overview": overview, "review_counts": review_counts,
+            "source_scope": _list_source_scope()}
 
 
 def _enrich_page(rows):
@@ -1367,6 +1394,9 @@ def _enrich_page(rows):
 def get_operating_expense_detail(source_id):
     doc = _source(source_id)
     raw = json.loads(doc.source_json)
+    mapped_company = _mapped_company(raw, _maps(_settings()))
+    company_state = company_review_state(doc, mapped_company)
+    company_review_locked = company_state != "confirmed" and _has_company_financial_confirmation(doc.name)
     from .operating_payment_service import merge_source, payment_context, payment_detail
     context = payment_context(doc, raw)
     raw = merge_source(doc, raw, context)
@@ -1406,7 +1436,10 @@ def get_operating_expense_detail(source_id):
     item["attachments"] = _detail_rows(raw.get("attachments"), ("source_id", "filename", "version", "payment_source_id"))
     item.pop("provenance", None)
     item["effective_application_type"] = doc.effective_application_type
-    return {"source": item, "company": doc.company or None, "issues": doc.issues, "mapping": mapping, "mapping_issue": mapping_issue, "events": events, "erp_payments": payment_detail(doc, context)}
+    return {"source": item, "company": doc.company or None,
+            "issues": current_company_issues(doc.issues, doc.company, mapped_company),
+            "company_review_state": company_state, "company_review_locked": company_review_locked,
+            "mapping": mapping, "mapping_issue": mapping_issue, "events": events, "erp_payments": payment_detail(doc, context)}
 
 
 def _detail_rows(rows, fields):
@@ -1419,14 +1452,19 @@ def _readable_source_numbers(rows):
     _require_fields(SOURCE, {"source_id", "source_system", "approval_state", "issues"})
     # Names already passed get_list's native/company permissions. Select only
     # aliased facts, not payment histories or private attachments, in <=500 chunks.
-    paths = ("approval_no", "approvals", "current_approver", "payment_eligibility", "source_conflict", "currency_conflict", "project",
+    paths = ("approval_no", "approvals", "current_approver", "payment_eligibility", "source_conflict", "currency_conflict", "project", "company_mapping_source",
              "source_company", "account_nature", "needed_payment_date", "general_manager_approval", "remark", "projection_conflicts", "original_url")
     expressions = ",".join("JSON_EXTRACT(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'$." + field + "') AS `" + field + "`" for field in paths)
+    expressions += ",JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'$.workflow_summary.lookup_status')) AS workflow_lookup_status"
+    expressions += ",JSON_CONTAINS_PATH(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'one','$.company_mapping_source') AS mapping_source_present"
     raw = {}
+    company_maps = _maps(_settings())
     for offset in range(0, len(rows), 500):
         names = tuple(row["name"] for row in rows[offset:offset + 500])
         for projected in frappe.db.sql("SELECT name," + expressions + " FROM `tabOperating Expense Source` WHERE name IN %(names)s", {"names": names}, as_dict=True):
             raw[projected.name] = {field: json.loads(projected[field]) if projected[field] is not None else None for field in paths}
+            raw[projected.name]["workflow_lookup_status"] = projected.workflow_lookup_status
+            raw[projected.name]["mapping_source_present"] = bool(projected.mapping_source_present)
     for row in rows:
         item = raw.get(row["name"], {})
         item["source_system"] = row["source_system"]
@@ -1441,12 +1479,20 @@ def _readable_source_numbers(rows):
         row["approval_state"] = "unknown" if original.get("scope") == "withdrawn" or original.get("deleted_at") else approval_state(original.get("status"), original.get("result"))
         row["current_approver"] = item.get("current_approver") or ""
         row["payment_eligibility"] = payment_decision(item)
+        row["approval_evidence_missing"] = row["source_system"] == "dingtalk-oa" and (
+            item.get("workflow_lookup_status") != "found")
         for field in ("project", "account_nature", "needed_payment_date", "general_manager_approval", "remark"):
             value = item.get(field)
             row[field] = value if isinstance(value, str) else None
         # Only an explicit canonical organization can replace the cached scalar.
         if isinstance(item.get("source_company"), str):
             row["source_company"] = item["source_company"]
+        mapping_item = {"source_id": row["source_id"], "source_company": row["source_company"]}
+        if item.get("mapping_source_present"):
+            mapping_item["company_mapping_source"] = item.get("company_mapping_source")
+        mapped_company = _mapped_company(mapping_item, company_maps)
+        row["company_review_state"] = company_review_state(row, mapped_company)
+        row["issues"] = current_company_issues(row.get("issues"), row.get("company"), mapped_company)
         conflicts = item.get("projection_conflicts")
         row["projection_conflicts"] = conflicts if isinstance(conflicts, list) else []
         for field in ("source_conflict", "currency_conflict"):
@@ -1472,7 +1518,7 @@ def export_operating_expenses(filters=None, order_by="request_date desc", column
         date_format = workbook.add_format({"num_format": "yyyy-mm-dd"})
         money_fields = {"amount", "paid_amount", "pending_amount"}
         for column_index, field in enumerate(selected):
-            sheet.write(0, column_index, EXPORT_COLUMNS[field])
+            sheet.write(0, column_index, _i18n(EXPORT_COLUMNS[field]))
         for row_index, row in enumerate(rows, 1):
             for column_index, field in enumerate(selected):
                 value = (row.get("approval_no") or "—") if field == "display_source_id" else row.get(field)

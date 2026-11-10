@@ -2247,6 +2247,27 @@ OA 审批接口地址,Dirección de la API de aprobaciones de OA
 请先预览并确认当前同步内容,"Obtenga una vista previa y confirme el contenido actual de la sincronización."
 请先保存当前同步设置，再预览,"Guarde la configuración de sincronización actual antes de obtener una vista previa."
 请先取得当前同步预览并确认待核对来源处理方式,"Obtenga una vista previa actual y confirme cómo se tratarán los orígenes pendientes de revisión."
+范围：法律公司 {0},Alcance: entidad legal {0}
+范围：全部可访问公司（页头当前公司不限制此页）,Alcance: todas las empresas accesibles (la empresa de la cabecera no filtra esta página)
+历史公司待复核,Empresa histórica pendiente de revisión
+付款证据待核对,Comprobante de pago pendiente de revisión
+审批证据待同步,Evidencia de aprobación pendiente de sincronización
+当前 OA 范围：中国区域 {0} 至 {1} 的 {2} 类指定审批模板。申请额可能包含审批中或未通过记录。,"Cobertura actual de OA: {2} plantillas de aprobación designadas en China del {0} al {1}. Los importes solicitados pueden incluir solicitudes pendientes o rechazadas."
+按法律公司查看申请与付款,Solicitudes y pagos por entidad legal
+法律公司 / 归属,Entidad legal / asignación
+申请单数,Solicitudes
+已核实付款额,Importe pagado verificado
+没有符合条件的申请,No hay solicitudes coincidentes
+归属待核对的金额不计入任何子公司；申请和付款不等于 ERP 已入账费用，入账金额请以总账为准。,"Los importes sin asignación confirmada no se incluyen en ninguna filial. Las solicitudes y los pagos no equivalen a gastos contabilizados en ERP; consulte el Libro Mayor para importes registrados."
+历史归属待复核,Asignación histórica pendiente de revisión
+历史法律公司归属待复核；已有财务确认的记录不能改动公司。,La asignación legal histórica requiere revisión. No se puede cambiar la empresa tras la confirmación financiera.
+已有财务确认，无法在此修改法律公司；请由财务核查历史归属与映射。,Ya existe una confirmación financiera; no se puede cambiar aquí la entidad legal. Solicite a Finanzas que revise la asignación histórica y su mapeo.
+重新确认法律公司,Volver a confirmar la entidad legal
+公司汇总包含所有快捷标签；日期筛选按申请日期，付款额为所选申请的累计已核实付款。,"El resumen por empresa incluye todas las pestañas rápidas. El filtro de fechas usa la fecha de solicitud; los importes pagados son los pagos verificados acumulados de las solicitudes seleccionadas."
+复核公司,Revisar entidad legal
+公司归属状态,Estado de asignación de empresa
+公司归属状态筛选无效,Filtro de asignación de empresa no válido
+已确认,Confirmado
 物料需求视图,Vistas de solicitudes de materiales
 MES 待发料,Solicitudes MES pendientes de salida
 全部需求,Todas las solicitudes de materiales

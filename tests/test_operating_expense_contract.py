@@ -77,6 +77,55 @@ class OperatingExpenseContractTest(unittest.TestCase):
         self.assertFalse(contract.quick_tab_matches({**row,"paid_amount":None,"pending_amount":None}, "paid"))
         self.assertTrue(contract.quick_tab_matches({**row,"pending_amount":"0"}, "paid"))
         self.assertFalse(contract.quick_tab_matches({**row,"payment_eligibility":{"can_register_payment":False}}, "pending_payment"))
+        self.assertTrue(contract.quick_tab_matches({**row, "issues": "原法律公司映射已移除，需要复核"}, "reconciliation"))
+
+    def test_company_overview_keeps_disputed_attribution_out_of_subsidiary_totals(self):
+        rows = [
+            {"company": "A", "currency": "CNY", "amount": "100.00", "paid_amount": "20.00", "pending_amount": "80.00"},
+            {"company": "A", "currency": "USD", "amount": "10", "paid_amount": None, "pending_amount": None},
+            {"company": "A", "issues": "原法律公司映射已移除，需要复核", "currency": "CNY", "amount": "200", "paid_amount": "0", "pending_amount": "200", "approval_evidence_missing": True},
+            {"company": "", "currency": "CNY", "amount": "300", "paid_amount": None, "pending_amount": None},
+        ]
+        overview, review = contract.company_overview(rows)
+        self.assertEqual([entry["company"] for entry in overview], ["A", None])
+        self.assertEqual(overview[0]["currencies"]["CNY"]["amount"], "100.00")
+        self.assertEqual(overview[0]["currencies"]["USD"]["paid_amount"], None)
+        self.assertEqual(overview[0]["currency_counts"], {"CNY": 1, "USD": 1})
+        self.assertEqual(overview[1]["currencies"]["CNY"]["amount"], "500")
+        self.assertEqual(review, {"unmapped": 1, "stale": 1, "payment_unknown": 2, "approval_evidence_missing": 1})
+
+    def test_current_mapping_overrides_cached_review_warning(self):
+        row = {"company": "A", "issues": "原法律公司映射已移除，需要复核"}
+        self.assertEqual(contract.company_review_state(row, "A"), "confirmed")
+        self.assertEqual(contract.company_review_state({"company": "A", "issues": ""}, "B"), "stale")
+        self.assertEqual(contract.company_review_state({"company": "A", "issues": ""}, None), "stale")
+        self.assertEqual(contract.company_review_state({"company": "", "issues": ""}, "A"), "unmapped")
+        class SourceDoc:
+            def get(self, key):
+                return {"company": "A"}.get(key)
+
+        self.assertEqual(contract.company_review_state(SourceDoc(), "B"), "stale")
+        row.update(issues=contract.current_company_issues(row["issues"], "A", "A"), currency="CNY", amount="100", paid_amount="0", pending_amount="100")
+        overview, review = contract.company_overview([row])
+        self.assertEqual(overview[0]["company"], "A")
+        self.assertEqual(review["stale"], 0)
+
+    def test_current_mapping_warning_replaces_only_obsolete_cached_company_issue(self):
+        issues = "付款日期待核对；原法律公司映射已移除，需要复核"
+        self.assertEqual(contract.current_company_issues(issues, "A", "A"), "付款日期待核对")
+        self.assertEqual(contract.current_company_issues(issues, "A", "B"),
+                         "付款日期待核对；法律公司映射已变更，需要财务复核")
+        self.assertEqual(contract.current_company_issues("", "A", None), "原法律公司映射已移除，需要复核")
+
+    def test_sync_refreshes_changed_review_state_once_and_clears_restored_mapping(self):
+        needed = contract.company_sync_needed
+        self.assertTrue(needed("v1", "A", "", "v1", "B"))
+        self.assertFalse(needed("v1", "A", "法律公司映射已变更，需要财务复核", "v1", "B"))
+        self.assertTrue(needed("v1", "A", "法律公司映射已变更，需要财务复核", "v1", "A"))
+        self.assertTrue(needed("v1", "A", "法律公司映射已变更，需要财务复核", "v1", None))
+        self.assertFalse(needed("v1", "A", "原法律公司映射已移除，需要复核", "v1", None))
+        self.assertTrue(needed("v1", "", "未映射法律公司", "v1", "A"))
+        self.assertTrue(needed("v1", "A", "", "v2", "A"))
 
     def test_currency_totals_never_turn_unknown_history_into_zero(self):
         rows = [{"currency":"CNY","amount":"100","paid_amount":None,"pending_amount":None},

@@ -906,13 +906,17 @@
 		}
 		async function render(detail) {
 			const load = drawer.loadId;
+			const companyNeedsReview = detail.company_review_state
+				? detail.company_review_state !== "confirmed"
+				: !detail.company || /法律公司映射已(?:变更|移除)/.test(detail.issues || "");
+			const companyReviewLocked = Boolean(detail.company_review_locked);
 			drawer.paymentDirty = null;
 			shared.disposeControls(drawer.controls);
 			drawer.actions = [];
 			existingJE = "";
 			const content = `${sourceHTML(detail)}${
-				!detail.company && isManager()
-					? '<section class="dlp-operating-section"><div class="dlp-operating-company"></div><div class="dlp-operating-company-actions dlp-operating-actions"></div></section>'
+				companyNeedsReview && isManager()
+					? `<section class="dlp-operating-section">${companyReviewLocked ? `<p class="text-warning">${esc(t("已有财务确认，无法在此修改法律公司；请由财务核查历史归属与映射。"))}</p>` : detail.company ? `<p class="text-warning">${esc(t("历史法律公司归属待复核；已有财务确认的记录不能改动公司。"))}</p>` : ""}${companyReviewLocked ? "" : '<div class="dlp-operating-company"></div><div class="dlp-operating-company-actions dlp-operating-actions"></div>'}</section>`
 					: ""
 			}<details class="dlp-operating-section dlp-operating-advanced" data-operating-pane="vouchers"><summary>${esc(t("会计与高级设置"))}</summary>${
 				!eligible()
@@ -951,8 +955,8 @@
 			action(drawer, footer, "刷新抽屉", async () => {
 				if (await drawer.beforeClose()) return w.load();
 			});
-			if (!detail.company && isManager()) {
-				let company = "";
+			if (companyNeedsReview && !companyReviewLocked && isManager()) {
+				let company = detail.company || "";
 				const control = await makeControl(
 					drawer,
 					drawer.panel.find(".dlp-operating-company"),
@@ -960,10 +964,10 @@
 						fieldname: "legal_company",
 						fieldtype: "Link",
 						options: "Company",
-						label: t("明确法律公司"),
+						label: t(detail.company ? "重新确认法律公司" : "明确法律公司"),
 						reqd: 1,
 					},
-					"",
+					detail.company || "",
 					(value) => {
 						company = value;
 						w.invalidate();
@@ -973,7 +977,7 @@
 				action(
 					drawer,
 					drawer.panel.find(".dlp-operating-company-actions"),
-					"保存法律公司",
+						detail.company ? "重新确认法律公司" : "保存法律公司",
 					async () => {
 						const result = await w.saveCompany(company);
 						if (result && drawer.alive()) {

@@ -159,6 +159,50 @@ def payment_decision(item):
 
 QUICK_TABS = ("all", "pending_work", "pending_payment", "approvals_running", "paid", "reconciliation")
 MONEY_FIELDS = ("amount", "paid_amount", "pending_amount")
+COMPANY_MAPPING_ISSUES = ("法律公司映射已变更", "法律公司映射已移除")
+_MAPPING_NOT_SUPPLIED = object()
+
+
+def company_mapping_change(company, mapped_company):
+    if not company:
+        return None
+    if not mapped_company:
+        return "法律公司映射已移除"
+    if mapped_company != company:
+        return "法律公司映射已变更"
+    return None
+
+
+def current_company_issues(issues, company, mapped_company):
+    """Present the current mapping warning without rewriting cached source facts."""
+    other = [part for part in str(issues or "").split("；") if part and
+             not any(marker in part for marker in COMPANY_MAPPING_ISSUES)]
+    change = company_mapping_change(company, mapped_company)
+    if change == "法律公司映射已变更":
+        other.append("法律公司映射已变更，需要财务复核")
+    elif change == "法律公司映射已移除":
+        other.append("原法律公司映射已移除，需要复核")
+    return "；".join(other)
+
+
+def company_review_state(row, mapped_company=_MAPPING_NOT_SUPPLIED):
+    """A retained historical company is not a confirmed legal attribution."""
+    if not row.get("company"):
+        return "unmapped"
+    if mapped_company is not _MAPPING_NOT_SUPPLIED:
+        return "stale" if company_mapping_change(row.get("company"), mapped_company) else "confirmed"
+    if any(issue in str(row.get("issues") or "") for issue in COMPANY_MAPPING_ISSUES):
+        return "stale"
+    return "confirmed"
+
+
+def company_sync_needed(source_version, company, issues, incoming_version, mapped_company):
+    """Refresh a changed source or an attribution whose cached warning is outdated."""
+    if source_version != incoming_version or (not company and mapped_company):
+        return True
+    cached = {issue for issue in COMPANY_MAPPING_ISSUES if issue in str(issues or "")}
+    current = company_mapping_change(company, mapped_company)
+    return cached != ({current} if current else set())
 
 
 def _row_amounts(row):
@@ -185,7 +229,7 @@ def _work_flags(row, amounts):
         "pending_payment": known and pending > 0 and (row.get("payment_eligibility") or {}).get("can_register_payment") is True,
         "approvals_running": state == "pending",
         "paid": known and pending == 0,
-        "reconciliation": not known or not row.get("company") or state == "unknown" or bool(row.get("source_conflict") or row.get("currency_conflict") or row.get("projection_conflicts")),
+        "reconciliation": not known or company_review_state(row) != "confirmed" or state == "unknown" or bool(row.get("source_conflict") or row.get("currency_conflict") or row.get("projection_conflicts")),
     }
 
 
@@ -234,6 +278,31 @@ def currency_totals(rows):
     return _currency_result(buckets)
 
 
+def company_overview(rows):
+    """Group only confirmed legal attributions; keep uncertain rows separate."""
+    grouped = {}
+    review_counts = {"unmapped": 0, "stale": 0, "payment_unknown": 0, "approval_evidence_missing": 0}
+    for row in rows:
+        state = company_review_state(row)
+        if state != "confirmed":
+            review_counts[state] += 1
+        amounts = _row_amounts(row)
+        if amounts["paid_amount"] is None or amounts["pending_amount"] is None or any(
+                value is not None and value < 0 for value in (amounts["paid_amount"], amounts["pending_amount"])):
+            review_counts["payment_unknown"] += 1
+        review_counts["approval_evidence_missing"] += int(bool(row.get("approval_evidence_missing")))
+        # Never place an old, disputed company value into that company's totals.
+        company = row.get("company") if state == "confirmed" else None
+        entry = grouped.setdefault(company, {"company": company, "count": 0, "currency_counts": {}, "currencies": {}})
+        entry["count"] += 1
+        currency = row.get("currency") or "未知"
+        entry["currency_counts"][currency] = entry["currency_counts"].get(currency, 0) + 1
+        _accumulate_currency(entry["currencies"], row, amounts)
+    result = [{**entry, "currencies": _currency_result(entry["currencies"])} for entry in grouped.values()]
+    result.sort(key=lambda entry: (entry["company"] is None, entry["company"] or ""))
+    return result, review_counts
+
+
 def worklist_summary(rows, tab):
     """One O(N) scan for all shortcut counts and the selected monetary totals."""
     if tab not in QUICK_TABS:
@@ -241,6 +310,7 @@ def worklist_summary(rows, tab):
     selected, buckets = [], {}
     counts = dict.fromkeys(QUICK_TABS, 0)
     for row in rows:
+        row["company_review_state"] = company_review_state(row)
         amounts = _row_amounts(row)
         flags = _work_flags(row, amounts)
         blockers = []
@@ -248,9 +318,9 @@ def worklist_summary(rows, tab):
             blockers.append("付款金额异常，待核对")
         elif amounts["paid_amount"] is None or amounts["pending_amount"] is None:
             blockers.append("历史付款待核对")
-        if not row.get("company"):
+        if row["company_review_state"] == "unmapped":
             blockers.append("法律公司待确认")
-        elif any(issue in str(row.get("issues") or "") for issue in ("法律公司映射已变更", "法律公司映射已移除")):
+        elif row["company_review_state"] == "stale":
             blockers.append("法律公司归属待复核")
         decision = row.get("payment_eligibility") or {}
         if decision.get("can_register_payment") is not True:

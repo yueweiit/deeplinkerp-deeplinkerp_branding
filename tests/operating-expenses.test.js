@@ -6,9 +6,11 @@ const create = fs.existsSync(require("node:path").join(__dirname, listPath))
 	? require(listPath)
 	: () => ({});
 const api = create({});
-const expectedColumns = ["source_id","source_status","source_company","applicant","account_nature","summary","amount","paid_amount","pending_amount","currency","project","payee_name","needed_payment_date","general_manager_approval","remark","actions"];
-test("recommended columns follow the cashier order and split readable identity from summary", () => {
+const expectedColumns = ["source_id","source_status","company","source_company","applicant","summary","amount","paid_amount","pending_amount","currency","project","payee_name","needed_payment_date","general_manager_approval","actions","request_date"];
+test("recommended columns show legal attribution alongside the OA organization", () => {
  assert.deepEqual(api.defaultColumns,expectedColumns);
+ assert.equal(api.columns.find(col=>col.fieldname==="source_company").label,"来源组织");
+ assert.equal(api.columns.find(col=>col.fieldname==="amount").label,"申请金额");
  const html=api.renderValue("source_id",{source_id:"x",approval_no:"100",summary:"rent"});
  assert.match(html,/100/); assert.doesNotMatch(html,/rent|<small/);
 });
@@ -70,6 +72,7 @@ test("operating filters retain only the exact backend predicates without type in
 		api.filters({
 			keyword: "编号",
 			company: "Legal",
+			company_review: "stale",
 			application_type: "payment",
 			applicant: "A",
 			source_status: "部分付款",
@@ -81,6 +84,7 @@ test("operating filters retain only the exact backend predicates without type in
 		{
 			keyword: "编号",
 			company: "Legal",
+			company_review: "stale",
 			application_type: "payment",
 			applicant: "A",
 			source_status: "部分付款",
@@ -90,8 +94,13 @@ test("operating filters retain only the exact backend predicates without type in
 		}
 	);
 	assert.throws(() => api.filters({ application_type: "报销付款混合" }), /类型/);
+	assert.throws(() => api.filters({ company_review: "guess" }), /归属/);
 	assert.throws(() => api.filters({ source_status: "partially_paid" }), /状态/);
 	assert.throws(() => api.filters({ source_status: "partial" }), /状态/);
+});
+test("invalid company review filter translates its field label", () => {
+	const localized = create({__: text => ({"{0}无效":"{0} is invalid", "公司归属状态":"Company attribution status"}[text] || text)});
+	assert.throws(() => localized.filters({company_review:"guess"}), /Company attribution status is invalid/);
 });
 test("operating provider requests a stable whitelisted sort and the selected page only", () => {
 	assert.equal(typeof api.request, "function");
@@ -162,6 +171,27 @@ test("summary renders every server currency separately and calls out unknown or 
 	assert.match(html, /USD.*累计已付.*0\.00/);
 	assert.match(html, /JPY.*累计已付 —.*已知 20\.00.*剩余待付 —.*已知 30\.00/);
 	assert.match(html, /异常付款 2.*未计入正常余额/);
+});
+test("company overview separates uncertain attribution and does not present applications as booked expenses", () => {
+	const html = api.summary({quick:{}, providerPayload:{
+		currency_totals:{}, source_scope:{mode:"oa_cashier",start_date:"2026-01-01",end_date:"2026-12-31",process_templates:7},
+		review_counts:{unmapped:1,stale:1,payment_unknown:2,approval_evidence_missing:2},
+		company_overview:[
+			{company:"A<&",count:1,currency_counts:{CNY:1},currencies:{CNY:{amount:"100",paid_amount:"20"}}},
+			{company:null,count:2,currency_counts:{CNY:2},currencies:{CNY:{amount:"500",paid_amount:null,known_totals:{paid_amount:"10"}}}},
+		],
+	}});
+	assert.match(html,/A&lt;&amp;.*100\.00.*20\.00/);
+	assert.doesNotMatch(html,/A<&/);
+	assert.match(html,/归属待核对.*500\.00.*已知.*10\.00/);
+	assert.match(html,/历史公司待复核 1/);
+	assert.match(html,/页头当前公司不限制此页/);
+	assert.match(html,/中国区域 2026-01-01 至 2026-12-31 的 7 类/);
+	assert.match(html,/入账金额请以总账为准/);
+	assert.match(api.renderValue("company",{company:"A",company_review_state:"stale"}),/A.*历史归属待复核/);
+	assert.match(api.renderValue("company",{company:null,company_review_state:"unmapped"}),/公司待确认/);
+	assert.match(create({DeepLinkERPOperatingExpenseDrawer:{isManager:()=>true}}).renderValue("actions",{source_id:"S",company_review_state:"stale"}),/data-tab="request"[^>]*>复核公司/);
+	assert.doesNotMatch(create({DeepLinkERPOperatingExpenseDrawer:{isManager:()=>false}}).renderValue("actions",{source_id:"S",company_review_state:"stale"}),/复核公司/);
 });
 test("full-filter Excel snapshots filters, sort and ordered supported columns before lazy loading", async () => {
 	let resume, args, method, downloaded;
@@ -367,7 +397,7 @@ test("shared column settings opens for a provider whose primary identifier is so
 	assert.equal(c.quick.quick_tab,"pending_work");
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:2`)),oldLayout);
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:legacy`)),legacy);
-	assert.equal(JSON.parse(storage.get(preferenceKey)).version,3);
+	assert.equal(JSON.parse(storage.get(preferenceKey)).version,4);
 	assert.doesNotMatch(renderedHTML,/data-fieldname="_sequence"/);
 	assert.match(renderedHTML,/<input type="checkbox" disabled[^>]*本页不提供批量付款/);
 	const frozen = () => [...renderedHTML.matchAll(/class="([^"]*)" data-fieldname="([^"]*)" style="([^"]*)"/g)].filter(match=>match[1].split(" ").includes("dlp-po-frozen"));
@@ -390,7 +420,8 @@ test("layout migration replaces legacy order once while preserving subsequent de
 	const engine=require("../deeplinkerp_branding/public/js/compact_list.js").create(config);
 	const allowed=new Set(api.columns.map(col=>col.fieldname));
 	const upgraded=engine.normalizePreferences({density:"standard",columns:["request_date","source_id","amount"]},allowed);
-	assert.deepEqual(upgraded,{density:"standard",columns:expectedColumns,version:3});
+	assert.deepEqual(upgraded,{density:"standard",columns:expectedColumns,version:4});
 	assert.deepEqual(engine.normalizePreferences({version:2,density:"standard",columns:["source_status","source_id"]},allowed),upgraded);
-	assert.deepEqual(engine.normalizePreferences({...upgraded,columns:["summary","source_id"]},allowed),{density:"standard",columns:["summary","source_id"],version:3});
+	assert.deepEqual(engine.normalizePreferences({...upgraded,columns:["summary","source_id"]},allowed),{density:"standard",columns:["summary","source_id"],version:4});
+	assert.deepEqual(engine.normalizePreferences({version:3,density:"standard",columns:["summary","source_id"]},allowed),{density:"standard",columns:["summary","source_id"],version:4});
 });
