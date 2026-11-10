@@ -399,6 +399,9 @@
 	function rowSelectable(controller, doc) { return !providerActive(controller) || (!providerReadonly(controller) && config.providerSelectable(doc)); }
 	function displayColumns(controller) { return providerActive(controller) ? config.provider.columns : COLUMNS; }
 	function displayPermissions(controller) { return providerActive(controller) ? controller.providerAllowed : controller.displayAllowed; }
+	function visibleColumns(controller) {
+		return config.visibleColumns ? controller.preferences.columns.filter(field => config.visibleColumns(controller, field)) : controller.preferences.columns;
+	}
 	function currentRows(controller) { return providerActive(controller) ? controller.providerRows : controller.list.data; }
 	function mountDisclosureRowGuard(controller) {
 		const result=controller.list.$result?.[0];
@@ -504,7 +507,9 @@
 			async exportCurrent() {
 				if (providerActive(this)) return config.provider.exportCurrent(this);
 				if (!frappe.model.can_export?.(DOCTYPE)) throw new Error(translateText("当前用户没有导出权限。"));
-				const args = buildRequests(list.get_args(), this.preferences.columns, allowed).export;
+				const columns = visibleColumns(this);
+				const args = buildRequests(list.get_args(), columns, allowed).export;
+				if (config.exportCurrent) return config.exportCurrent(this, args, columns);
 				if (!root.DeepLinkERPPurchaseOrderExport?.exportExcel) await frappe.require("/assets/deeplinkerp_branding/js/purchase_order_export.js");
 				if (!root.DeepLinkERPPurchaseOrderExport?.exportExcel) throw new Error(translateText("Excel 导出组件加载失败，请刷新页面后重试。"));
 				await root.DeepLinkERPPurchaseOrderExport.exportExcel(root, args, config.exportOptions?.(args, this));
@@ -796,7 +801,7 @@
 	}
 
 	function layout(controller) {
-		const cols = controller.preferences.columns.map((field) => displayColumns(controller).find((col) => col.fieldname === field)).filter(Boolean);
+		const cols = visibleColumns(controller).map((field) => displayColumns(controller).find((col) => col.fieldname === field)).filter(Boolean);
 		const lastFrozen = cols.findIndex((col) => col.fieldname === (providerActive(controller) ? config.provider.freezeUntil : config.freezeUntil));
 		const frozenFields = providerActive(controller) ? config.provider.freezeFields : config.freezeFields;
 		let left = config.freezeSelection === false ? 0 : config.hideSequence ? 36 : 76;
@@ -1135,11 +1140,12 @@
 
 	function columnDialog(controller) {
 		const { root, list, translate: t } = controller;
-		const visible = new Set(controller.preferences.columns);
-		const columns = displayColumns(controller);
-		const order = [...controller.preferences.columns, ...columns.map((col) => col.fieldname).filter((field) => displayPermissions(controller).has(field) && !visible.has(field))];
+		const columns = displayColumns(controller).filter(col => !config.visibleColumns || config.visibleColumns(controller, col.fieldname));
+		const hidden = controller.preferences.columns.filter(field => !columns.some(col => col.fieldname === field));
+		const visible = new Set(visibleColumns(controller));
+		const order = [...visibleColumns(controller), ...columns.map((col) => col.fieldname).filter((field) => displayPermissions(controller).has(field) && !visible.has(field))];
 		const dialog = new root.frappe.ui.Dialog({ title: t("列设置"), fields: [{ fieldtype: "HTML", fieldname: "columns" }], primary_action_label: t("保存"), primary_action: () => {
-			controller.setColumns(order.filter((field) => visible.has(field)));
+			controller.setColumns([...order.filter((field) => visible.has(field)), ...hidden]);
 			dialog.hide();
 		} });
 		const wrapper = dialog.fields_dict.columns.$wrapper;

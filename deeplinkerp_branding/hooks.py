@@ -35,7 +35,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
 ]
 app_include_js = [
-	"/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.33",
+	"/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.34",
 	"/assets/deeplinkerp_branding/js/purchase_payments.js?v=0.0.31",
 	"/assets/deeplinkerp_branding/js/sales_receipt_form.js?v=0.0.4",
 	"/assets/deeplinkerp_branding/js/crossborder_procurement.js?v=0.0.5",

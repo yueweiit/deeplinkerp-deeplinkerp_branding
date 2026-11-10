@@ -13,7 +13,7 @@ function setup(options={}){
   let route=['purchase-payment-records'];const calls=[],classes=new Map(),storage=new Map(),routes=[];
   const root={$:()=>new Surface(),document:{body:{classList:{toggle:(key,value)=>classes.set(key,value)}}},localStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},frappe:{get_route:()=>route,router:{on:(_,callback)=>routes.push(callback)},session:{user:'buyer'},boot:{sitename:'qa'},get_meta:()=>options.meta,perm:{has_perm:(doctype,level)=>level!==1},model:{can_export:()=>false},ui:{form:{make_control:()=>({set_value:async()=>{},get_value:()=>''})}},call(request){return new Promise(resolve=>calls.push({request,resolve}));}}};
   const columns=options.columns || [{fieldname:'name',label:'付款单',width:150},{fieldname:'amount',label:'金额',width:130},{fieldname:'references',label:'引用',width:100}];
-  const grid=engine.create({doctype:'Payment Entry',purchaseChrome:options.purchaseChrome,mainFilterFields:[],pageRoute:'purchase-payment-records',routeClass:'only-payment-page',columns,numbers:['amount'],pageFieldMap:options.fieldMap,controls:options.controls,provider:{columns,sortFields:options.sortFields,formLink:doc=>`/desk/payment-entry/${encodeURIComponent(doc.name)}`,request:c=>({method:'records',args:{search:c.quick.search,native_filters:JSON.stringify(c.nativeFilters || []),or_filters:JSON.stringify(c.orFilters || []),order_by:c.providerOrderBy,start:c.page*c.pageSize,page_length:c.pageSize}}),renderValue:field=>field==='references'?'引用':undefined,summary:()=>''}});
+  const grid=engine.create({doctype:'Payment Entry',purchaseChrome:options.purchaseChrome,mainFilterFields:[],pageRoute:'purchase-payment-records',routeClass:'only-payment-page',columns,numbers:['amount'],pageFieldMap:options.fieldMap,controls:options.controls,visibleColumns:options.visibleColumns,provider:{columns,sortFields:options.sortFields,formLink:doc=>`/desk/payment-entry/${encodeURIComponent(doc.name)}`,request:c=>({method:'records',args:{search:c.quick.search,native_filters:JSON.stringify(c.nativeFilters || []),or_filters:JSON.stringify(c.orFilters || []),order_by:c.providerOrderBy,start:c.page*c.pageSize,page_length:c.pageSize}}),renderValue:field=>field==='references'?'引用':undefined,summary:()=>''}});
   let showForm=0;const form=new Surface();
   const controller=grid.mountPage({main:new Surface(),wrapper:new Surface(),...(options.pageForm?{page_form:form,show_form:()=>showForm++}:{})},root);
   return {controller,calls,classes,storage,shown:()=>showForm,leave:()=>route=['List','Item'],navigate:value=>{route=value;routes.forEach(callback=>callback());}};
@@ -25,6 +25,15 @@ test('real page renderer shares column/density preferences and fixed pagination 
   assert.match(c.list.$result.value,/1\.23 USD/);assert.match(c.list.$result.value,/PE&lt;&amp;/);assert.match(c.list.$result.value,/1001/);
   assert.deepEqual(c.list.data,[]);c.preferences.density='standard';c.setColumns(['amount','name']);
   assert.match([...storage.values()][0],/standard/);assert.ok(c.list.$result.value.indexOf('data-fieldname="amount"')<c.list.$result.value.indexOf('data-fieldname="name"'));
+});
+test('view specific columns disappear from the grid while retaining saved selections',async()=>{
+  const {controller:c,calls}=setup({visibleColumns:(owner,field)=>owner.view!=='receipt'||field!=='references'});
+  c.view='receipt';
+  const pending=c.refresh();calls[0].resolve({message:{rows:[{name:'PE-1',references:['PI-1']}],total_count:1}});await pending;
+  assert.doesNotMatch(c.list.$result.value,/data-fieldname="references"/);
+  assert.ok(c.preferences.columns.includes('references'));
+  c.view='all';c.list.render_list();
+  assert.match(c.list.$result.value,/data-fieldname="references"/);
 });
 test('page response becomes stale as soon as filters change, even before delayed new dispatch',async()=>{
   const {controller:c,calls}=setup();const loading=c.refresh();c.quick.search='new';
