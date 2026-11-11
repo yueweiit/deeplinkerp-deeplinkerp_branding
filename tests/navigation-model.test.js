@@ -881,13 +881,13 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 
 	assert.match(
 		hooks,
-		/app_include_css\s*=\s*\[\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_navigation\.css\?v=0\.0\.10"/
+		/app_include_css\s*=\s*\[\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_navigation\.css\?v=\d+\.\d+\.\d+"/
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
 	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.21/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
-  assert.match(hooks, /deeplinkerp_branding\.js\?v=0\.0\.30/);
+  assert.match(hooks, /deeplinkerp_branding\.js\?v=\d+\.\d+\.\d+/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);
 });
 

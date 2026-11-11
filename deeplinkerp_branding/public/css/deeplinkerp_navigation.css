@@ -44,6 +44,39 @@ body:not(.dlp-mes-navigation-enabled) .desktop-container .desktop-icon > .icon-c
 	min-width: 0;
 }
 
+.body-sidebar-container.expanded .body-sidebar .standard-sidebar-item .item-anchor {
+	height: auto;
+	min-height: 30px;
+	padding-block: 5px;
+}
+
+.body-sidebar-container.expanded .body-sidebar .standard-sidebar-item .sidebar-item-label {
+	display: -webkit-box;
+	min-width: 0;
+	line-height: 18px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+}
+
+.body-sidebar-container.expanded .body-sidebar .standard-sidebar-item .sidebar-item-icon {
+	padding-block: 0;
+	flex-shrink: 0;
+}
+
+.body-sidebar-container.expanded .body-sidebar .standard-sidebar-item .sidebar-item-control {
+	align-self: center;
+}
+
+.body-sidebar-container.expanded .body-sidebar .sidebar-item-control .drop-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 20px;
+	line-height: 20px;
+}
+
 body.dlp-mes-navigation-enabled {
 	--sidebar-width: 220px;
 	overflow-x: hidden;
@@ -222,9 +255,10 @@ body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .dlp-me
 	display: flex;
 	align-items: center;
 	width: 100%;
-	height: 40px;
+	height: auto;
+	min-height: 40px;
 	margin: 1px 0;
-	padding: 0 8px 0 calc(8px + var(--dlp-navigation-depth, 0) * 12px);
+	padding: 6px 8px 6px calc(8px + var(--dlp-navigation-depth, 0) * 12px);
 	border: 0;
 	border-radius: 8px;
 	background: transparent;
@@ -265,7 +299,7 @@ body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .sideba
 	align-items: center;
 	justify-content: center;
 	width: 24px;
-	height: 40px;
+	height: 24px;
 	padding: 0;
 	flex: 0 0 24px;
 	color: inherit !important;
@@ -280,6 +314,7 @@ body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .sideba
 }
 
 body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .dlp-mes-navigation__label {
+	display: -webkit-box;
 	min-width: 0;
 	margin-left: 8px;
 	flex: 1;
@@ -288,7 +323,10 @@ body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .dlp-me
 	font-weight: 500;
 	line-height: 20px;
 	text-overflow: ellipsis;
-	white-space: nowrap;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
 }
 
 body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .dlp-mes-navigation__chevron {
@@ -343,7 +381,7 @@ body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .sideba
 
 body.dlp-mes-navigation-enabled .body-sidebar.dlp-mes-navigation-sidebar .sidebar-items .item-anchor {
 	min-height: 40px;
-	padding: 0 8px;
+	padding: 6px 8px;
 	border-radius: 8px;
 	color: #afbfce;
 }

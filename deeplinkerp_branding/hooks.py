@@ -26,7 +26,7 @@ add_to_apps_screen = [
 
 # include js, css files in header of desk.html
 app_include_css = [
-	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.13",
+	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.14",
 	"/assets/deeplinkerp_branding/css/purchase_payments.css?v=0.0.10",
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.29",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.8",
