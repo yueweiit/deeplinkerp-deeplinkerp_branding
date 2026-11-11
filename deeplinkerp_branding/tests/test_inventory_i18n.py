@@ -20,6 +20,44 @@ from deeplinkerp_branding.services import inventory_detail_service as service
 PACKAGE = Path(__file__).resolve().parents[1]
 
 
+def test_inventory_search_controls_submit_values_and_refresh_on_enter():
+	body = r"""
+const assert = require('node:assert/strict');
+const {InventoryDetailPage} = require(SCRIPT);
+const handlers = {};
+const page = {
+  isMaterial:false, allCompanies:true, refreshes:[],
+  refresh(reset) { this.refreshes.push(reset); },
+  $root:{on() {}},
+  page:{
+    add_field(df) {
+      const field = {df, value:df.default ?? '', get_value() {return this.value;},
+        $input:{on(event, callback) {handlers[df.fieldname] = callback;}}};
+      return field;
+    },
+    set_primary_action() {}, add_inner_button() {return {prop() {}};},
+  },
+};
+InventoryDetailPage.prototype.makeFilters.call(page);
+for (const key of ['keyword','item_name','specifications']) {
+  assert.equal(page.fields[key].df.fieldtype, 'Data');
+  page.fields[key].value = {keyword:'MT', item_name:'G66', specifications:'Negro'}[key];
+}
+const filters = InventoryDetailPage.prototype.filters.call(page);
+assert.equal(filters.keyword, 'MT');
+assert.equal(filters.item_name, 'G66');
+assert.equal(filters.specifications, 'Negro');
+assert.equal(filters.all_companies, 1);
+assert.equal(filters.page_length, undefined);
+InventoryDetailPage.prototype.bindEvents.call(page);
+handlers.item_name({key:'Enter'});
+handlers.specifications({key:'Enter'});
+assert.deepEqual(page.refreshes, [true,true]);
+""".replace("SCRIPT", json.dumps(str(PACKAGE / "public/js/inventory_detail.bundle.js")))
+	result = subprocess.run(["node", "-e", body], text=True, capture_output=True)
+	assert result.returncode == 0, result.stderr
+
+
 def catalog(language):
 	with (PACKAGE / "translations" / f"{language}.csv").open(newline="", encoding="utf-8") as handle:
 		return {row[0]: row[1] for row in csv.reader(handle) if row and (len(row) < 3 or not row[2])}

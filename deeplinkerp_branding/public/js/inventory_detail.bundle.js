@@ -379,7 +379,17 @@
 			}
 			this.fields.keyword = this.page.add_field({
 				fieldname: "keyword",
-				label: __("物料编码/名称"),
+				label: __("编码/名称/规格"),
+				fieldtype: "Data",
+			});
+			this.fields.item_name = this.page.add_field({
+				fieldname: "item_name",
+				label: __("物料名称"),
+				fieldtype: "Data",
+			});
+			this.fields.specifications = this.page.add_field({
+				fieldname: "specifications",
+				label: __("规格/颜色"),
 				fieldtype: "Data",
 			});
 			if (this.isMaterial) {
@@ -562,7 +572,7 @@
 					this.refresh();
 				}
 			});
-			["keyword", "original_location"].forEach((fieldname) => {
+			["keyword", "item_name", "specifications", "original_location"].forEach((fieldname) => {
 				this.fields[fieldname]?.$input?.on("keydown", (event) => {
 					if (event.key === "Enter") this.refresh(true);
 				});

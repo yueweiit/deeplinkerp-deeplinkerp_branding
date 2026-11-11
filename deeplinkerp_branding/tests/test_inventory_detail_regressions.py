@@ -141,6 +141,7 @@ def test_snapshot_sql_is_limited_to_permission_filtered_items_and_warehouses(mon
 
 	class FakeFrappe:
 		db = FakeDB()
+		get_meta = staticmethod(lambda _doctype: SimpleNamespace(has_field=lambda _field: False))
 
 	monkeypatch.setattr(service, "frappe", FakeFrappe())
 	monkeypatch.setattr(service, "_accessible_items", lambda: ("ITEM-ALLOWED",))

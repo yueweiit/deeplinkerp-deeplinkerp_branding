@@ -105,6 +105,14 @@ BOM_USAGE_LABELS = {
 }
 BOM_USAGE_SCOPE = "all_companies"
 BOM_USAGE_BATCH_SIZE = 500
+ITEM_SEARCH_FIELDS = {
+	"item_code": "name",
+	"item_name": "item_name",
+	"color": "custom_specifications",
+	"dpci": "custom_dpci",
+	"external_code": "custom_external_code",
+	"original_identifier_alias": "custom_original_identifier_alias",
+}
 DEFAULT_PAGE_LENGTH = 200
 MIN_PAGE_LENGTH = 1
 MAX_PAGE_LENGTH = 2500
@@ -181,6 +189,15 @@ def _contains(value: Any, keyword: Any) -> bool:
 	return _text(keyword).casefold() in _text(value).casefold()
 
 
+def _matches_item_search(row: dict[str, Any], filters: dict[str, Any]) -> bool:
+	keyword = _text(filters.get("keyword") or filters.get("item_code"))
+	return (
+		(not keyword or any(_contains(row.get(field), keyword) for field in ITEM_SEARCH_FIELDS))
+		and _contains(row.get("item_name"), filters.get("item_name"))
+		and _contains(row.get("color"), filters.get("specifications"))
+	)
+
+
 def _bom_usage_filter(filters: dict[str, Any]) -> str:
 	status = _text(filters.get("bom_usage_status"))
 	# Old browser tabs can still submit the retired four-state filter values.
@@ -203,19 +220,7 @@ def _matches_group_filters(row: dict[str, Any], filters: dict[str, Any]) -> bool
 	if snapshot_date and _text(row.get("snapshot_date")) != snapshot_date:
 		return False
 
-	keyword = _text(filters.get("keyword") or filters.get("item_code"))
-	if keyword and not any(
-		_contains(row.get(fieldname), keyword)
-		for fieldname in (
-			"item_code",
-			"item_name",
-			"dpci",
-			"external_code",
-			"original_identifier_alias",
-		)
-	):
-		return False
-	return True
+	return _matches_item_search(row, filters)
 
 
 def _material_bom_candidate_codes(rows: Iterable[dict[str, Any]], filters: dict[str, Any]) -> set[str]:
@@ -478,19 +483,7 @@ def _matches_category_filters(group: dict[str, Any], filters: dict[str, Any]) ->
 		return False
 	if _truthy(filters.get("only_with_stock")) and abs(float(group.get("actual_qty") or 0)) <= 1e-9:
 		return False
-	keyword = _text(filters.get("keyword") or filters.get("item_code"))
-	if keyword and not any(
-		_contains(group.get(fieldname), keyword)
-		for fieldname in (
-			"item_code",
-			"item_name",
-			"dpci",
-			"external_code",
-			"original_identifier_alias",
-		)
-	):
-		return False
-	return True
+	return _matches_item_search(group, filters)
 
 
 def _category_bom_candidate_codes(
@@ -974,6 +967,7 @@ def _load_snapshot_rows(filters: dict[str, Any]) -> list[dict[str, Any]]:
 		return []
 	filters["company"] = company
 	filters["snapshot_key"] = snapshot_key
+	color_value = "COALESCE(item.custom_specifications, '')" if _inventory_color_field("material") else "''"
 	return frappe.db.sql(
 		f"""
         SELECT
@@ -982,6 +976,7 @@ def _load_snapshot_rows(filters: dict[str, Any]) -> list[dict[str, Any]]:
             snapshot.company,
             snapshot.item_code,
             item.item_name,
+            {color_value} AS color,
             snapshot.warehouse,
             snapshot.original_location,
             snapshot.location_qty,
@@ -1100,7 +1095,7 @@ def _category_warehouse_scope(
 
 
 def _inventory_color_field(category: str) -> str:
-	if category not in COLOR_INVENTORY_CATEGORIES or frappe is None:
+	if category not in CATEGORY_DEFINITIONS or frappe is None:
 		return ""
 	meta = frappe.get_meta("Item")
 	fieldname = "custom_specifications"
@@ -1246,6 +1241,7 @@ def _load_category_snapshot_rows(context: dict[str, Any]) -> list[dict[str, Any]
 	if not context["snapshot_key"] or not context["warehouses"] or not context["items"]:
 		return []
 	excluded_clause = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
+	color_value = "COALESCE(item.custom_specifications, '')" if context.get("color_field") == "custom_specifications" else "''"
 	return frappe.db.sql(
 		f"""
         SELECT
@@ -1253,6 +1249,7 @@ def _load_category_snapshot_rows(context: dict[str, Any]) -> list[dict[str, Any]
             snapshot.snapshot_date,
             snapshot.item_code,
             item.item_name,
+            {color_value} AS color,
             snapshot.warehouse,
             snapshot.original_location,
             snapshot.location_qty,
@@ -1310,6 +1307,8 @@ def _paged_category_candidates(
 		return [], 0
 	if _text(filters.get("reference_location") or filters.get("original_location")) and not context["snapshot_key"]:
 		return [], 0
+	if _text(filters.get("specifications")) and not context.get("color_field"):
+		return [], 0
 
 	params = {
 		"company": context["company"],
@@ -1322,6 +1321,8 @@ def _paged_category_candidates(
 		"excluded_groups": context.get("excluded_groups") or ("",),
 		"warehouse": _text(filters.get("warehouse")),
 		"keyword": _text(filters.get("keyword") or filters.get("item_code")),
+		"item_name": _text(filters.get("item_name")),
+		"specifications": _text(filters.get("specifications")),
 		"reference_location": _text(filters.get("reference_location") or filters.get("original_location")),
 	}
 	excluded = "AND item.item_group NOT IN %(excluded_groups)s" if context.get("excluded_groups") else ""
@@ -1384,8 +1385,13 @@ def _paged_category_candidates(
 	if params["keyword"]:
 		conditions.append("(" + " OR ".join(
 			f"INSTR(LOWER(COALESCE(item.{field}, '')), LOWER(%(keyword)s)) > 0"
-			for field in ("name", "item_name", "custom_dpci", "custom_external_code", "custom_original_identifier_alias")
+			for field in ITEM_SEARCH_FIELDS.values()
+			if field != "custom_specifications" or context.get("color_field") == "custom_specifications"
 		) + ")")
+	if params["item_name"]:
+		conditions.append("INSTR(LOWER(COALESCE(item.item_name, '')), LOWER(%(item_name)s)) > 0")
+	if params["specifications"]:
+		conditions.append("INSTR(LOWER(COALESCE(item.custom_specifications, '')), LOWER(%(specifications)s)) > 0")
 	if params["reference_location"]:
 		conditions.append("""
 			EXISTS (SELECT 1 FROM `tabInventory Original Location Snapshot` location

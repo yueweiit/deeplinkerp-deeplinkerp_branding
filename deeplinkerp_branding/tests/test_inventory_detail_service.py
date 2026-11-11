@@ -69,6 +69,34 @@ def test_material_inventory_is_paginated_by_item_warehouse_group() -> None:
 	assert last["groups"][0]["item_code"] == "C"
 
 
+@pytest.mark.parametrize("category", list(service.CATEGORY_DEFINITIONS))
+@pytest.mark.parametrize("filters,expected", [
+	({"item_name": " g66 "}, ["A", "B"]),
+	({"specifications": "NEGRO"}, ["A", "C"]),
+	({"keyword": "negro"}, ["A", "C"]),
+	({"item_name": "g66", "specifications": "negro"}, ["A"]),
+	({"keyword": "G86", "specifications": "Morado"}, []),
+])
+def test_item_search_filters_all_categories_before_pagination(category, filters, expected):
+	rows = [
+		{"item_code": "A", "item_name": "MT G66 5G", "color": "Negro", "warehouse": "W1", "actual_qty": 150},
+		{"item_code": "B", "item_name": "MT G66 5G", "color": "Morado", "warehouse": "W1", "actual_qty": 50},
+		{"item_code": "C", "item_name": "MT G86 5G", "color": "Negro", "warehouse": "W1", "actual_qty": 9},
+	]
+	payload = service.build_categorized_inventory_payload(rows, [], category=category, filters=filters, page_length=1)
+	assert payload["total_count"] == len(expected)
+	assert [row["item_code"] for row in payload["groups"]] == expected[:1]
+	if expected:
+		assert payload["groups"][0]["actual_qty"] == 150
+
+
+def test_snapshot_search_combines_name_and_specifications_without_losing_location_totals():
+	rows = [dict(row, item_name="PET Sheet", color="Transparente") for row in MATERIAL_ROWS]
+	payload = service.build_inventory_location_payload(rows, {"item_name": "pet", "specifications": "transparente", "warehouse": "W1"})
+	assert [(row["item_code"], row["total_qty"]) for row in payload["groups"]] == [("A", 5), ("B", 4)]
+	assert service.build_inventory_location_payload(rows, {"specifications": "Negro"})["total_count"] == 0
+
+
 def test_material_export_can_request_the_complete_filtered_result() -> None:
 	payload = service.build_inventory_location_payload(
 		MATERIAL_ROWS,
@@ -521,6 +549,31 @@ def test_live_inventory_query_pages_authorized_groups_in_database(monkeypatch) -
 	assert (queries[1][1]["start"], queries[1][1]["page_length"]) == (1, 1)
 
 
+def test_paged_search_binds_name_and_specifications_in_count_and_page_queries(monkeypatch):
+	queries = []
+	def sql(query, params, as_dict):
+		queries.append((query, params))
+		if "COUNT(*) AS total" in query:
+			return [{"total": 1}]
+		return [{"item_code": "A", "warehouse": "W1", "actual_qty": 150}]
+	monkeypatch.setattr(service, "frappe", SimpleNamespace(db=SimpleNamespace(sql=sql)))
+	context = {"company": "C", "snapshot_key": "", "items": ("A",), "warehouses": ("W1",),
+		"group_lft": 1, "group_rgt": 10, "color_field": "custom_specifications"}
+	filters = {"keyword": "Negro", "item_name": " G66 ", "specifications": "a%'_", "only_with_stock": 1}
+	rows, total = service._paged_category_candidates(context, filters)
+	assert total == 1 and rows[0]["item_code"] == "A"
+	assert len(queries) == 2
+	for query, params in queries:
+		assert "LOWER(%(item_name)s)" in query and "LOWER(%(specifications)s)" in query
+		assert "item.custom_specifications" in query
+		assert params["item_name"] == "G66" and params["specifications"] == "a%'_"
+		assert "a%'_" not in query
+	queries.clear()
+	context["color_field"] = ""
+	assert service._paged_category_candidates(context, filters) == ([], 0)
+	assert queries == []
+
+
 def test_missing_snapshot_and_blank_snapshot_location_have_different_statuses() -> None:
 	stock = [
 		{"item_code": "NO-SNAPSHOT", "warehouse": "W1", "actual_qty": 2},
@@ -670,6 +723,7 @@ def test_material_category_excludes_finished_semi_finished_and_mold_groups(monke
 	framework = SimpleNamespace(
 		db=FakeDB(), has_permission=lambda *_args: True,
 		get_doc=lambda *_args: FakeDoc(),
+		get_meta=lambda _doctype: SimpleNamespace(has_field=lambda _field: False),
 	)
 	monkeypatch.setattr(service, "frappe", framework)
 	monkeypatch.setattr(service, "_list_category_item_groups", lambda _context: ["Raw Group"])
@@ -868,19 +922,19 @@ def test_material_group_display_keeps_its_actual_group_without_ancestor_queries(
 @pytest.mark.parametrize("category,present,readable,expected", [
 	("semi_finished", True, True, "custom_specifications"),
 	("finished_goods", True, True, "custom_specifications"),
-	("mold", True, True, ""),
-	("material", True, True, ""),
+	("mold", True, True, "custom_specifications"),
+	("material", True, True, "custom_specifications"),
 	("semi_finished", False, True, ""),
 	("finished_goods", False, True, ""),
 	("semi_finished", True, False, ""),
 	("finished_goods", True, False, ""),
 ])
-def test_inventory_color_uses_the_existing_readable_specifications_field_only_for_two_categories(
+def test_inventory_search_uses_the_existing_readable_specifications_field_for_all_categories(
 	monkeypatch, category, present, readable, expected
 ):
 	def get_meta(doctype):
 		assert doctype == "Item"
-		assert category in service.COLOR_INVENTORY_CATEGORIES
+		assert category in service.CATEGORY_DEFINITIONS
 		return SimpleNamespace(
 			has_field=lambda name: name == "custom_specifications" and present,
 			get_permitted_fieldnames=lambda permission_type: ["custom_specifications"] if readable else [],
