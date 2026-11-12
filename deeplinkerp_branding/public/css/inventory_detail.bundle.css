@@ -14,9 +14,16 @@
 .inventory-detail .id-actions {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
   padding-bottom: 8px;
+}
+
+.inventory-detail .id-quick-actions,
+.inventory-detail .id-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .inventory-detail .id-actions button {
@@ -142,6 +149,11 @@
   color: var(--id-muted);
   padding: 32px;
   text-align: center;
+}
+
+.inventory-detail .id-empty-hint {
+  display: block;
+  margin-top: 6px;
 }
 
 .inventory-detail .id-pager {

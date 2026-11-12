@@ -31,7 +31,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.29",
     "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.8",
 	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.15",
-	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.14",
+	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
 ]
 app_include_js = [
@@ -48,7 +48,7 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.21",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_interface_mode.js?v=0.0.3",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.33",
-	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.26",
+	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.29",
 	"/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js",
 	"/assets/deeplinkerp_branding/js/form_grid_insert.js?v=0.0.1",
 ]
@@ -82,6 +82,7 @@ doctype_list_js = {
 doctype_js = {"Material Request": "public/js/material_request_form.js", **{doctype: "public/js/purchase_payment_form.js" for doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice", "Payment Entry")}}
 doctype_js["OA Purchase Request"] = "public/js/oa_purchase_request.js"
 doctype_js["Item"] = "public/js/item_form.js"
+doctype_js["Stock Entry"] = "public/js/stock_entry_quantity_labels.js"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 

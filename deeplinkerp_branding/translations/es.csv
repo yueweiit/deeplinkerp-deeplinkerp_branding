@@ -596,6 +596,7 @@ BOM 用料状态读取失败，请刷新页面后重试。,No se pudo cargar el 
 全选当前页,Seleccionar toda la página
 没有符合条件的库存库位记录。,No hay ubicaciones que coincidan con los filtros.
 没有符合条件的库存记录。,No hay existencias que coincidan con los filtros.
+当前只看有库存；取消勾选可查看零库存物料。,Solo se muestran artículos con existencias; desmarque esta opción para ver artículos sin existencias.
 盘点快照,Referencia de inventario
 下级物料组,Subgrupo de artículos
 物料编码/名称,Código / nombre del artículo
@@ -607,6 +608,9 @@ BOM 用料状态读取失败，请刷新页面后重试。,No se pudo cargar el 
 清除筛选,Limpiar filtros
 切换公司将清空已选物料，是否继续？,Cambiar de empresa borrará los artículos seleccionados. ¿Continuar?
 已选物料 ({0}),Artículos seleccionados ({0})
+新建物料,Crear artículo
+MES 物料简称,Nombre corto del artículo MES
+库存入库,Entrada de existencias
 物料移动 ({0}),Movimiento de materiales ({0})
 正在读取库存…,Cargando existencias…
 第 {0} 页,Página {0}
@@ -2295,3 +2299,5 @@ MES 待发料,Solicitudes MES pendientes de salida
 拖动或按方向键调整列宽,Arrastra o usa las flechas para ajustar el ancho de la columna
 编码/名称/规格,Código / Nombre / Especificaciones
 规格/颜色,Especificaciones / Color
+入库数量（库存单位）,Cantidad recibida (unidad de stock)
+目标仓过账时点库存,Existencias del almacén de destino al contabilizar

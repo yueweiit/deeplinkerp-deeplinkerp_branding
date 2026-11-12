@@ -10,6 +10,11 @@
 	};
 	const BOM_USAGE_SCOPE = "all_companies";
 	const COLOR_CATEGORIES = new Set(["semi_finished", "finished_goods"]);
+	const ITEM_QUICK_ENTRY_FIELDS = [
+		"custom_dpci", "custom_item_classification", "custom_external_code",
+		"custom_original_identifier_alias", "custom_short_name", "custom_sku",
+		"custom_specifications", "custom_item_short_name", "custom_mnemonic_code",
+	];
 	const COUNT_UOM_TOKENS = [
 		"个",
 		"件",
@@ -37,6 +42,45 @@
 		const translate = globalThis.__ || globalThis.frappe?._;
 		if (typeof translate === "function") return translate(message, replacements);
 		return message.replace(/\{(\d+)\}/g, (match, index) => replacements?.[index] ?? match);
+	}
+
+	function inventoryItemQuickFields(meta, standardFields) {
+		const fields = standardFields.map((field) => field.fieldname === "custom_item_short_name"
+			? { ...field, label: __("MES 物料简称") } : field);
+		const included = new Set(fields.map((field) => field.fieldname));
+		const extraFields = ITEM_QUICK_ENTRY_FIELDS.map((fieldname) =>
+			meta.fields.find((field) => field.fieldname === fieldname)
+		).filter((field) => field && !included.has(field.fieldname) &&
+			!field.hidden && !field.read_only && !field.is_virtual && field.fieldtype !== "Table")
+			.map((field) => ({
+				...field,
+				...(field.fieldname === "custom_item_short_name" ? { label: __("MES 物料简称") } : {}),
+			}));
+		if (extraFields.length) {
+			fields.push({ fieldtype: "Column Break", fieldname: "inventory_item_quick_column" });
+			fields.push(...extraFields);
+		}
+		return fields;
+	}
+
+	function openInventoryItemQuickEntry() {
+		if (!globalThis.frappe?.model?.can_create?.("Item")) return;
+		if (frappe.create_routes?.Item) return frappe.new_doc("Item");
+		const Base = frappe.ui?.form?.ItemQuickEntryForm || frappe.ui?.form?.QuickEntryForm;
+		if (!Base) return frappe.new_doc("Item");
+		class InventoryItemQuickEntryForm extends Base {
+			set_meta_and_mandatory_fields() {
+				super.set_meta_and_mandatory_fields();
+				this.docfields = inventoryItemQuickFields(this.meta, this.docfields);
+			}
+
+			render_dialog() {
+				this.size = "large";
+				super.render_dialog();
+			}
+		}
+		frappe.quick_entry = new InventoryItemQuickEntryForm("Item");
+		return frappe.quick_entry.setup();
 	}
 
 	async function resolveDefaultCompany(framework) {
@@ -305,6 +349,7 @@
 			this.selected = new Map();
 			this.currentGroups = [];
 			this.canCreateStockEntry = false;
+			this.canCreateReceipt = false;
 			this.canExportInventory = false;
 			this.page = frappe.ui.make_app_page({
 				parent: wrapper,
@@ -405,7 +450,7 @@
 					fieldname: "only_with_stock",
 					label: __("只看有库存"),
 					fieldtype: "Check",
-					default: 1,
+					default: 0,
 					change: resetAndRefresh,
 				});
 			}
@@ -479,6 +524,7 @@
 					this.selectionCompany = nextCompany;
 					this.effectiveCompany = "";
 					this.canCreateStockEntry = false;
+					this.canCreateReceipt = false;
 					this.canExportInventory = false;
 					this.$exportButton?.prop?.("disabled", true);
 					await this.fields.company.set_value(nextCompany);
@@ -501,11 +547,19 @@
 		}
 
 		renderShell() {
+			const canCreateItem = Boolean(globalThis.frappe?.model?.can_create?.("Item"));
+			const canCreateStockEntry = Boolean(globalThis.frappe?.model?.can_create?.("Stock Entry"));
 			this.$root = $(
 				`<section class="inventory-detail" aria-label="${escapeHtml(this.config.title)}">
           <div class="id-actions">
-            <button type="button" class="btn btn-default btn-sm" data-inventory-action="selected">${escapeHtml(__("已选物料 ({0})", [0]))}</button>
-            <button type="button" class="btn btn-default btn-sm" data-inventory-action="movement" disabled aria-disabled="true">${escapeHtml(__("物料移动 ({0})", [0]))}</button>
+			<div class="id-quick-actions">
+			  ${canCreateItem ? `<button type="button" class="btn btn-default btn-sm" data-inventory-action="new-item">${escapeHtml(__("新建物料"))}</button>` : ""}
+			  ${canCreateStockEntry ? `<button type="button" class="btn btn-default btn-sm" data-inventory-action="receipt" disabled aria-disabled="true">${escapeHtml(__("库存入库"))}</button>` : ""}
+			</div>
+			<div class="id-selection-actions">
+			  <button type="button" class="btn btn-default btn-sm" data-inventory-action="selected">${escapeHtml(__("已选物料 ({0})", [0]))}</button>
+			  <button type="button" class="btn btn-default btn-sm" data-inventory-action="movement" disabled aria-disabled="true">${escapeHtml(__("物料移动 ({0})", [0]))}</button>
+			</div>
           </div>
           <div class="id-summary" role="status">${escapeHtml(__("正在读取库存…"))}</div>
           <div class="id-table-wrap">${
@@ -522,10 +576,20 @@
 			$(this.page.body).append(this.$root);
 			this.$movementButton = this.$root.find('[data-inventory-action="movement"]');
 			this.$selectedButton = this.$root.find('[data-inventory-action="selected"]');
+			this.$stockReceiptButton = this.$root.find('[data-inventory-action="receipt"]');
 			this.updateMovementButton();
 		}
 
 		bindEvents() {
+			this.$root.on("click", '[data-inventory-action="new-item"]', openInventoryItemQuickEntry);
+			this.$root.on("click", '[data-inventory-action="receipt"]', () => {
+				if (!this.canOpenStockReceipt()) return;
+				frappe.new_doc("Stock Entry", {
+					company: this.effectiveCompany,
+					stock_entry_type: "Material Receipt",
+					purpose: "Material Receipt",
+				});
+			});
 			this.$root.on("click", '[data-inventory-action="selected"]', () => this.openSelectionDialog());
 			this.$root.on("click", '[data-inventory-action="movement"]', () =>
 				this.openMovementDialog()
@@ -631,6 +695,7 @@
 		}
 
 		updateMovementButton() {
+			this.updateStockReceiptButton?.();
 			if (!this.$movementButton?.length) return;
 			const label = __("物料移动 ({0})", [this.selected.size]);
 			const pending = [...this.selected.values()].some(row => reversalBlocked(row.reversal));
@@ -646,6 +711,20 @@
 			this.$movementButton.prop("disabled", disabled);
 			this.$movementButton.attr("aria-disabled", disabled ? "true" : "false");
 			this.$movementButton.attr("title", reason);
+		}
+
+		canOpenStockReceipt() {
+			return Boolean(globalThis.frappe?.model?.can_create?.("Stock Entry") &&
+				this.canCreateReceipt && !this.loading && !this.companyChangePending &&
+				this.effectiveCompany && this.effectiveCompany === this.company &&
+				this.effectiveCompany === this.fields?.company?.get_value?.());
+		}
+
+		updateStockReceiptButton() {
+			if (!this.$stockReceiptButton?.length) return;
+			const disabled = !this.canOpenStockReceipt();
+			this.$stockReceiptButton.prop("disabled", disabled);
+			this.$stockReceiptButton.attr("aria-disabled", disabled ? "true" : "false");
 		}
 
 		renderRows() {
@@ -720,6 +799,7 @@
 			const requestedCompany = this.company;
 			this.loading = true;
 			this.canCreateStockEntry = false;
+			this.canCreateReceipt = false;
 			this.canExportInventory = false;
 			this.$exportButton?.prop?.("disabled", true);
 			this.updateMovementButton();
@@ -766,12 +846,18 @@
 				this.selectionCompany = this.effectiveCompany;
 				this.canCreateStockEntry = Boolean(payload.can_create_stock_entry) &&
 					Boolean(this.effectiveCompany) && this.effectiveCompany === requestedCompany;
+			this.canCreateReceipt = this.canCreateStockEntry;
 				this.canExportInventory = Boolean(payload.can_export_inventory) &&
 					this.effectiveCompany === requestedCompany;
 				this.$exportButton?.prop?.("disabled", !this.canExportInventory);
 				this.movementDisabledReason = payload.movement_disabled_reason || "";
 				this.setItemGroupOptions(payload.item_group_options || []);
 				this.renderRows();
+				if (!this.currentGroups.length && this.fields.only_with_stock?.get_value()) {
+					this.$root.find(".id-empty td").append(
+						`<span class="id-empty-hint">${escapeHtml(__("当前只看有库存；取消勾选可查看零库存物料。"))}</span>`
+					);
+				}
 				const summary =
 					payload.warning ||
 					(this.allCompanies
@@ -782,6 +868,7 @@
 			} catch (error) {
 				if (requestId !== this.requestId) return;
 				this.canCreateStockEntry = false;
+			this.canCreateReceipt = false;
 				this.canExportInventory = false;
 				this.$exportButton?.prop?.("disabled", true);
 				if (![...this.currentGroups, ...this.selected.values()].some(row => reversalBlocked(row.reversal))) this.currentGroups = [];
@@ -824,7 +911,7 @@
 			try {
 				for (const [key, field] of Object.entries(this.fields)) {
 					if (key === "company") continue;
-					await field.set_value(key === "page_length" ? DEFAULT_PAGE_LENGTH : key === "only_with_stock" ? 1 : "");
+					await field.set_value(key === "page_length" ? DEFAULT_PAGE_LENGTH : key === "only_with_stock" ? 0 : "");
 				}
 				this.pageLength = DEFAULT_PAGE_LENGTH;
 			} finally {
@@ -1109,6 +1196,8 @@
 		selectionKey,
 		updateCurrentPageSelection,
 		resolveDefaultCompany,
+		inventoryItemQuickFields,
+		openInventoryItemQuickEntry,
 		InventoryDetailPage,
 		bootstrap,
 	};

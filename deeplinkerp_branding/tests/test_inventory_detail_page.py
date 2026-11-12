@@ -39,7 +39,7 @@ for (const isMaterialCategory of [true, false]) {
   const fields = {};
   const page = {
     add_field(df) {
-      fields[df.fieldname] = {df, value:df.default || '', get_value(){return this.value;},
+      fields[df.fieldname] = {df, value:df.default ?? '', get_value(){return this.value;},
         set_value(value){this.value=value;}, refresh(){}};
       return fields[df.fieldname];
     },
@@ -91,7 +91,7 @@ const page=Object.assign(Object.create(prototype),{
 (async()=>{await page.clearFilters();console.log(JSON.stringify({calls,callbacks,...last}));})();
 """)
 	assert result == {"calls": 1, "callbacks": 0, "reset": True, "active": 0,
-		"keyword": "", "pageLength": 200, "onlyStock": 1}
+		"keyword": "", "pageLength": 200, "onlyStock": 0}
 
 
 def test_reversal_stage_blocks_existing_inventory_movement_without_losing_selection():
@@ -182,6 +182,102 @@ def test_shared_page_uses_integer_page_size_and_only_opens_an_unsaved_stock_entr
 	assert 'aria-disabled' in source
 	for forbidden in (".insert(", ".save(", ".submit(", "frappe.client.insert"):
 		assert forbidden not in source
+
+
+@pytest.mark.parametrize("category", ["material", "semi_finished", "finished_goods", "mold"])
+def test_inventory_quick_actions_open_native_drafts_only_with_current_permissions_and_company(category: str) -> None:
+	result = run_js(
+		f"""
+const opened=[], handlers={{}};
+const permissions={{Item:true,'Stock Entry':true}};
+global.frappe={{model:{{can_create:doctype=>permissions[doctype]}},new_doc:(...args)=>opened.push(args)}};
+const button=()=>({{length:1,prop(key,value){{this[key]=value;return this}},attr(key,value){{this[key]=value;return this}},text(){{return this}}}});
+const receipt=button(),movement=button(),selected=button();
+let html='';
+const root={{find(selector){{return selector.includes('receipt')?receipt:selector.includes('movement')?movement:selected}},
+ on(event,selector,handler){{handlers[selector]=handler;return this}}}};
+global.$=value=>typeof value==='string'?(html=value,root):{{children:()=>({{remove(){{}}}}),append(){{}}}};
+const page=Object.assign(Object.create(inventory.InventoryDetailPage.prototype),{{
+ config:{{title:'库存明细',category:{json.dumps(category)}}},isMaterial:false,allCompanies:true,
+ page:{{body:{{}}}},selected:new Map(),currentGroups:[],fields:{{company:{{get_value:()=>page.company}}}},
+ company:'C1',effectiveCompany:'C1',selectionCompany:'C1',canCreateStockEntry:true,canCreateReceipt:true
+}});
+page.renderShell();page.bindEvents();
+const visible={{item:html.includes('data-inventory-action="new-item"'),receipt:html.includes('data-inventory-action="receipt"')}};
+handlers['[data-inventory-action="new-item"]']();
+handlers['[data-inventory-action="receipt"]']();
+page.company='C2';page.updateMovementButton();
+const blockedByCompany=receipt.disabled;
+handlers['[data-inventory-action="receipt"]']();
+page.company='C1';page.canCreateStockEntry=false;page.updateMovementButton();
+const receiptStillEnabled=!receipt.disabled;
+page.canCreateReceipt=false;page.updateMovementButton();
+const blockedByServer=receipt.disabled;
+handlers['[data-inventory-action="receipt"]']();
+permissions.Item=false;permissions['Stock Entry']=false;
+handlers['[data-inventory-action="new-item"]']();
+handlers['[data-inventory-action="receipt"]']();
+page.renderShell();
+const hidden={{item:!html.includes('data-inventory-action="new-item"'),receipt:!html.includes('data-inventory-action="receipt"')}};
+console.log(JSON.stringify({{visible,hidden,opened,blockedByCompany,blockedByServer,receiptStillEnabled}}));
+"""
+	)
+	assert result == {
+		"visible": {"item": True, "receipt": True},
+		"hidden": {"item": True, "receipt": True},
+		"opened": [
+			["Item"],
+			["Stock Entry", {"company": "C1", "stock_entry_type": "Material Receipt", "purpose": "Material Receipt"}],
+		],
+		"blockedByCompany": True,
+		"blockedByServer": True,
+		"receiptStillEnabled": True,
+	}
+
+
+def test_inventory_item_quick_entry_reuses_native_save_and_adds_available_item_fields() -> None:
+	result = run_js("""
+global.__ = text => text;
+const extraNames=[
+ 'custom_dpci','custom_item_classification','custom_external_code',
+ 'custom_original_identifier_alias','custom_short_name','custom_sku',
+ 'custom_specifications','custom_item_short_name','custom_mnemonic_code'
+];
+const meta={fields:extraNames.map(fieldname=>({fieldname,fieldtype:'Data',label:fieldname}))};
+class NativeQuickEntry {
+ constructor(doctype){this.doctype=doctype;}
+ set_meta_and_mandatory_fields(){this.meta=meta;this.docfields=[{fieldname:'item_code'},{fieldname:'item_group'}];}
+ render_dialog(){this.renderedSize=this.size;}
+ setup(){this.set_meta_and_mandatory_fields();this.render_dialog();return Promise.resolve(this);}
+}
+global.frappe={model:{can_create:()=>true},ui:{form:{QuickEntryForm:NativeQuickEntry}}};
+(async()=>{
+ await inventory.openInventoryItemQuickEntry();
+ const entry=frappe.quick_entry;
+ const names=entry.docfields.map(field=>field.fieldname);
+ const mesLabel=entry.docfields.find(field=>field.fieldname==='custom_item_short_name').label;
+ const originalLabel=meta.fields.find(field=>field.fieldname==='custom_item_short_name').label;
+ const limited=inventory.inventoryItemQuickFields({fields:[
+  {fieldname:'custom_dpci',fieldtype:'Data'},
+  {fieldname:'custom_sku',fieldtype:'Data',hidden:1},
+  {fieldname:'custom_specifications',fieldtype:'Data',read_only:1}
+ ]},[{fieldname:'item_code'}]);
+ console.log(JSON.stringify({doctype:entry.doctype,size:entry.renderedSize,names,mesLabel,originalLabel,
+  limited:limited.map(field=>field.fieldname)}));
+})();
+""")
+	assert result == {
+		"doctype": "Item",
+		"size": "large",
+		"names": ["item_code", "item_group", "inventory_item_quick_column", *(
+			"custom_dpci", "custom_item_classification", "custom_external_code",
+			"custom_original_identifier_alias", "custom_short_name", "custom_sku",
+			"custom_specifications", "custom_item_short_name", "custom_mnemonic_code"
+		)],
+		"mesLabel": "MES 物料简称",
+		"originalLabel": "custom_item_short_name",
+		"limited": ["item_code", "inventory_item_quick_column", "custom_dpci"],
+	}
 
 
 def test_reset_selection_clears_visible_row_and_header_checkboxes() -> None:
@@ -648,7 +744,7 @@ console.log(JSON.stringify({html,c1:[...selectedC1.values()].map(row=>row.source
 def test_cross_company_filters_keep_operating_company_but_do_not_restrict_warehouse_search() -> None:
 	result = run_js("""
 const fields={};
-const page={add_field(df){fields[df.fieldname]={df,value:df.default||'',get_value(){return this.value}};
+const page={add_field(df){fields[df.fieldname]={df,value:df.default??'',get_value(){return this.value}};
  return fields[df.fieldname]},set_primary_action(){},add_inner_button(){}};
 const view={page,allCompanies:true,isMaterial:false,refresh(){}};
 inventory.InventoryDetailPage.prototype.makeFilters.call(view);
@@ -657,7 +753,7 @@ console.log(JSON.stringify({label:fields.company.df.label,warehouseQuery:fields.
  filters:inventory.InventoryDetailPage.prototype.filters.call(view)}));
 """)
 	assert result == {"label": "操作公司", "warehouseQuery": {"filters": {}},
-		"filters": {"company": "C1", "only_with_stock": 1, "all_companies": 1}}
+		"filters": {"company": "C1", "only_with_stock": 0, "all_companies": 1}}
 
 
 def test_cross_company_page_keeps_the_same_rows_when_operating_company_changes() -> None:
@@ -770,7 +866,7 @@ def test_all_inventory_pages_send_bom_filter_as_stable_code(category: str) -> No
 const fields={{}};
 const page={{
  add_field(df){{
-  const field={{df,value:df.default || '',get_value(){{return this.value}},set_value(value){{this.value=value}}}};
+  const field={{df,value:df.default ?? '',get_value(){{return this.value}},set_value(value){{this.value=value}}}};
   fields[df.fieldname]=field;return field;
  }},set_primary_action(){{}},add_inner_button(){{}}
 }};
@@ -785,8 +881,8 @@ console.log(JSON.stringify({{options:fields.bom_usage_status.df.options,filters:
 	assert [option["value"] for option in result["options"][1:]] == [
 		"used", "unused"
 	]
-	assert result["filters"] == {"bom_usage_status": "used", "only_with_stock": 1}
-	assert result["defaultStock"] == 1
+	assert result["filters"] == {"bom_usage_status": "used", "only_with_stock": 0}
+	assert result["defaultStock"] == 0
 	assert result["hasSnapshot"] is False
 	assert result["hasReference"] is False
 
