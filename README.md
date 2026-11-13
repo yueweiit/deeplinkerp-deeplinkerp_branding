@@ -99,6 +99,14 @@ env/bin/python -m unittest deeplinkerp_branding.tests.test_purchase_native_repos
 
 在包含 Frappe/ERPNext 源码的开发 bench 中可执行 `node --test tests/form-grid-insert.test.js`，用真实原生排序和凭证新增处理器核对行序、金额、权限及异步边界。该测试不连接数据库；生产发布后仍需在目标站点确认界面资源和各业务自定义新增规则。
 
+### 销售订单切换公司
+
+销售订单草稿切换公司时，表头、物料行及税费行中确认属于其他公司的成本中心自动改为新公司的有效表头成本中心或默认成本中心；都不可用时清空旧值，继续由原生规则校验。新公司已有的手工选择保留，已提交/取消单据不调整。保存前也会等待校正完成，避免新增时预填的空白物料行保留原公司的成本中心。
+
+入口为 `public/js/sales_order_company.js`，通过 `hooks.py:doctype_js` 加载，不依赖 CRM 集成开关。仅调整当前草稿表单，不更改公司设置、权限、服务端校验或历史数据；没有新增字段或迁移。查询返回期间再次切换公司、编辑成本中心、删除行或离开单据时，旧结果不覆盖当前选择。
+
+回归：`node --test deeplinkerp_branding/tests/frontend/sales_order_company.test.js`。发布后清理目标站点缓存并重新加载销售订单表单；浏览器完整交互须在目标环境验收。
+
 ### 运营支出公司视图
 
 `deeplinkerp_branding/services/operating_expenses.py` 从有权限读取的 `Operating Expense Source` 生成列表和公司视图。列表默认同时显示 ERP 法律公司与来源组织；OA 模式下来源组织是申请组织展示字段，不能据此自动确定承担费用的法人。归属状态和页面提示按当前公司映射实时判断，映射已移除或变更时，历史公司值保留供复核，但金额立即进入“归属待核对”组，不计入该公司；映射恢复后不再沿用旧复核标记。同步仅在来源版本、公司赋值或复核标记需要更新时写入缓存。系统管理员可在抽屉中通过现有 `save_source_company` 入口重新确认；服务端会重新读取来源并检查版本、公司权限及财务确认锁。已有财务确认时抽屉只提示人工核查，不提供必然被拒绝的公司保存控件。
