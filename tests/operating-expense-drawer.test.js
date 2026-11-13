@@ -641,7 +641,7 @@ test("source evidence view separates original approved facts, cashier payment ev
 	assert.equal(d.source.approval_no, "AP<&-001");
 	assert.equal(d.source.dingding_id, "DING<&-002");
 	assert.equal(d.source.source_request_id, "REQ<&-003");
-	assert.match(html, /请款网站/);
+	assert.doesNotMatch(html, /payment\.yueweiportal\.com/);
 	assert.match(html, /实际付款证据/);
 	assert.match(html, /data-attachment="att:1"/);
 	assert.match(html, /尚未核销/);
@@ -872,13 +872,13 @@ test("drawer reuses the shared accessible shell factory and stops initializing c
 	assert.equal(controlsMade, 1);
 	assert.equal(made, 1);
 });
-test("settings save disables sync and passes a Password token only when deliberately supplied", async () => {
+test("OA settings save disables sync without exposing or submitting credentials", async () => {
 	const calls = [],
 		settings = {
 			enabled: 1,
-			token_configured: true,
+			source_mode: "oa",
 			company_mappings: { "Legal raw": "C" },
-			source_url: "https://payment.yueweiportal.com",
+			source_url: "http://8.135.70.130:3005",
 		};
 	const a = create({
 		frappe: {
@@ -904,10 +904,8 @@ test("settings save disables sync and passes a Password token only when delibera
 	);
 	assert.equal(calls.at(-1).args.api_token, undefined);
 	assert.equal(w.settings.enabled, 0);
-	w.touchToken("deliberate-secret");
-	await w.save();
-	assert.equal(calls.at(-1).args.api_token, "deliberate-secret");
-	assert.equal(w.token, "");
+	assert.equal(w.touchToken, undefined);
+	assert.equal(w.settings.token_configured, undefined);
 });
 test("settings cannot enable before a current complete preview and explicit confirmation, and edits invalidate it", async () => {
 	let previewCount = 0;
@@ -918,7 +916,7 @@ test("settings cannot enable before a current complete preview and explicit conf
 			call: async (req) => {
 				const settings = {
 					enabled: 0,
-					token_configured: true,
+					source_mode: "oa",
 					company_mappings: { Legal: "C" },
 				};
 				return {
@@ -963,13 +961,13 @@ test("settings manual sync requires explicit enabled state and never dispatches 
 				calls.push(req.method);
 				return {
 					message: req.method.endsWith("get_sync_settings")
-						? { enabled: 0, token_configured: true, company_mappings: { Legal: "C" } }
+						? { enabled: 0, source_mode: "oa", company_mappings: { Legal: "C" } }
 						: req.method.endsWith("preview_sync")
 						? { preview_fingerprint: "p", sources: [], has_more: false }
 						: req.method.endsWith("enable_sync")
 						? {
 								enabled: true,
-								token_configured: true,
+								source_mode: "oa",
 								company_mappings: { Legal: "C" },
 						  }
 						: { count: 5, end: false },
@@ -1000,7 +998,7 @@ test("OA source preview works without a cashier token and never starts sync impl
 			call: async (req) => {
 				calls.push(req.method);
 				return { message: req.method.endsWith("get_sync_settings")
-					? { enabled: 0, token_configured: false, source_mode: "oa_cashier", company_mappings: { Legal: "C" } }
+					? { enabled: 0, token_configured: false, source_mode: "oa", company_mappings: { Legal: "C" } }
 					: { preview_fingerprint: "oa-preview", sources: [], has_more: false } };
 			},
 		},
@@ -1012,7 +1010,7 @@ test("OA source preview works without a cashier token and never starts sync impl
 	assert.ok(calls.some((method) => method.endsWith("preview_sync")));
 	assert.ok(calls.every((method) => !method.endsWith("sync_operating_expenses")));
 });
-test("late settings preview after token or mapping edits cannot restore enable eligibility", async () => {
+test("late settings preview after mapping edits cannot restore enable eligibility", async () => {
 	let finish;
 	const a = create({
 		frappe: {
@@ -1023,7 +1021,7 @@ test("late settings preview after token or mapping edits cannot restore enable e
 					? Promise.resolve({
 							message: {
 								enabled: 0,
-								token_configured: true,
+								source_mode: "oa",
 								company_mappings: { Legal: "C" },
 							},
 					  })
@@ -1034,7 +1032,7 @@ test("late settings preview after token or mapping edits cannot restore enable e
 	const w = a.settingsWorkflow(drawer());
 	await w.load();
 	const pending = w.preview();
-	w.touchToken("changed");
+	w.touchMap(0, "company", "Changed Company");
 	finish({ message: { preview_fingerprint: "stale", sources: [] } });
 	await pending;
 	w.confirm(true);
@@ -1046,7 +1044,7 @@ test("a settings refresh invalidates confirmed preview immediately and failure c
 	const requests = [];
 	const settings = {
 		enabled: 0,
-		token_configured: true,
+		source_mode: "oa",
 		company_mappings: { LegalB: "CompanyB" },
 	};
 	const a = create({
@@ -1165,7 +1163,7 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 	d.error = (error) => errors.push(error.message);
 	const settings = {
 		enabled: 0,
-		token_configured: true,
+		source_mode: "oa",
 		company_mappings: { LegalA: "CompanyA", LegalB: "CompanyB" },
 	};
 	const a = create({
@@ -1266,8 +1264,8 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	const defs = [],
 		html = [],
 		buttons = new Map();
-	let sourceMode = "cashier",
-		sourceUrl = "https://payment.yueweiportal.com";
+	let sourceMode = "oa",
+		sourceUrl = "http://8.135.70.130:3005";
 	const surface = {
 		length: 1,
 		addClass() {
@@ -1350,7 +1348,7 @@ test("settings drawer uses a native Password input and an explicit preview confi
 					has_more: true,
 				} : {
 					enabled: 0,
-					token_configured: true,
+					source_mode: "oa",
 					company_mappings: { Legal: "C" },
 					source_mode: sourceMode,
 					source_url: sourceUrl,
@@ -1374,16 +1372,16 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	});
 	assert.equal(typeof a.openSettings, "function");
 	await a.openSettings();
-	assert.equal(defs.find((df) => df.fieldname === "api_token").fieldtype, "Password");
+	assert.equal(defs.find((df) => df.fieldname === "api_token"), undefined);
 	assert.equal(defs.find((df) => df.fieldname === "confirm_sync_preview").fieldtype, "Check");
 	assert.match(defs.find((df) => df.fieldname === "confirm_sync_preview").label, /未映射来源仅以待核对状态导入/);
-	assert.match(html.join(""), /当前来源模式.*旧出纳接口/);
-	assert.match(html.join(""), /当前手动同步仍读取旧出纳接口/);
+	assert.match(html.join(""), /当前来源模式.*OA 审批接口/);
+	assert.doesNotMatch(html.join(""), /出纳接口|同步密钥/);
 	assert.doesNotMatch(html.join(""), /name="source_url"/);
-	sourceMode = "oa_cashier";
+	sourceMode = "oa";
 	sourceUrl = "http://8.135.70.130:3005";
 	await a.openSettings();
-	assert.match(html.at(-1), /当前来源模式.*OA 新接口/);
+	assert.match(html.at(-1), /当前来源模式.*OA 审批接口/);
 	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.130:3005/);
 	assert.doesNotMatch(html.at(-1), /payment\.yueweiportal\.com/);
 	await buttons.get("预览来源与公司映射")();
@@ -2222,4 +2220,15 @@ test("operating full-document warning predicate reuses live mapping and payment 
 	assert.equal(h.d.beforeUnloadShouldBlock(), true);
 	await h.buttons.get("保存财务映射").handlers["click.dlpDrawer"]();
 	assert.equal(h.d.beforeUnloadShouldBlock(), false);
+});
+
+test("OA settings cannot preview or synchronize against an older cashier backend", async () => {
+    for (const mode of ["cashier", "oa_cashier", undefined]) {
+        const a = create({ frappe: { ...host().frappe, session: { user: "Administrator" },
+            call: async () => ({ message: { enabled: 1, source_mode: mode, token_configured: true, company_mappings: {} } }) } });
+        const w = a.settingsWorkflow(drawer());
+        await w.load();
+        assert.equal(w.canPreview(), false);
+        assert.equal(w.canSync(), false);
+    }
 });

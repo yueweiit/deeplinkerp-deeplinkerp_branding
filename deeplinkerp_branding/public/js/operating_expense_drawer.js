@@ -518,7 +518,7 @@
 		return `${hero}<section class="dlp-operating-section" data-operating-pane="request"><div class="dlp-operating-facts">${fact("法律公司",detail.company)}${fact("收款人",s.payee_name)}${fact("申请日期",s.request_date)}${fact("申请人",s.applicant)}</div><details class="dlp-operating-advanced"><summary>${esc(t("原始来源信息"))}</summary><div class="dlp-operating-facts">${fact(
 			"申请编号",
 			s.source_id
-		)}${fact("原始审批编号", s.approval_no)}${fact("原始钉钉实例编号", s.dingding_id)}${fact("原始来源请求编号", s.source_request_id)}${fact("原始申请类型", s.application_type_raw)}${fact("来源版本", s.version)}${fact("来源公司", s.source_company)}${fact("来源归档表", s.source_sheet)}${fact("当前来源金额", `${money(s.amount)} ${s.currency || t("币种未明确")}`)}${fact("原始批准金额", s.original_source_amount == null ? "—" : `${money(s.original_source_amount)} ${s.original_source_currency || t("币种未明确")}`)}${fact("出纳已付", `${money(s.paid_amount)} ${s.currency || ""}`)}${fact("出纳待付", `${money(s.pending_amount)} ${s.currency || ""}`)}${fact("付款状态", s.source_status)}${fact("出纳原付款状态", s.cashier_reported_payment_status)}</div><p>${original ? `<a href="${esc(original.mobile_url)}" target="_blank" rel="noopener noreferrer">${esc(t("网页原单链接"))}</a> · ` : ""}<a href="https://payment.yueweiportal.com/" target="_blank" rel="noopener noreferrer">${esc(t("请款网站"))}</a></p></details></section>
+		)}${fact("原始审批编号", s.approval_no)}${fact("原始钉钉实例编号", s.dingding_id)}${fact("原始来源请求编号", s.source_request_id)}${fact("原始申请类型", s.application_type_raw)}${fact("来源版本", s.version)}${fact("来源公司", s.source_company)}${fact("来源归档表", s.source_sheet)}${fact("当前来源金额", `${money(s.amount)} ${s.currency || t("币种未明确")}`)}${fact("原始批准金额", s.original_source_amount == null ? "—" : `${money(s.original_source_amount)} ${s.original_source_currency || t("币种未明确")}`)}${fact("累计已付", `${money(s.paid_amount)} ${s.currency || ""}`)}${fact("剩余待付", `${money(s.pending_amount)} ${s.currency || ""}`)}${fact("付款状态", s.source_status)}${s.cashier_reported_payment_status ? fact("出纳原付款状态", s.cashier_reported_payment_status) : ""}</div><p>${original ? `<a href="${esc(original.mobile_url)}" target="_blank" rel="noopener noreferrer">${esc(t("网页原单链接"))}</a>` : ""}</p></details></section>
 		<section class="dlp-operating-section" data-operating-pane="approvals"><div class="dlp-operating-timeline-holder"></div><details class="dlp-operating-advanced"><summary>${esc(
 			t("来源审批与待处理问题")
 		)}</summary><p class="${s.approvals?.eligibility === "eligible" ? "text-success" : "text-warning"}">${esc(root.DeepLinkERPOperatingExpenses.approvalLabel(s.approvals?.eligibility))}</p><div class="dlp-operating-facts">${Object.entries(
@@ -1368,7 +1368,6 @@
 			w.settings = Object.fromEntries(
 				[
 					"enabled",
-					"token_configured",
 					"company_mappings",
 					"source_mode",
 					"source_url",
@@ -1379,7 +1378,6 @@
 			rows = Object.entries(settings.company_mappings || {}).map(
 				([source_company, company]) => ({ source_company, company })
 			);
-			w.token = "";
 			revision++;
 			savedRevision = revision;
 			w.invalidate();
@@ -1388,13 +1386,12 @@
 			if (!isManager()) throw new Error(t("仅系统管理员可管理同步"));
 			return uiTask(drawer, fn);
 		}
-		async function saveValues(mappings, token) {
+		async function saveValues(mappings) {
 			const start = revision;
 			w.invalidate();
 			return task(async (current) => {
 				const result = await call("save_sync_settings", {
 					company_mappings: JSON.stringify(mappings),
-					...(token ? { api_token: token } : {}),
 				});
 				if (!current() || start !== revision) return;
 				reset(result);
@@ -1405,7 +1402,6 @@
 		}
 		const w = {
 			settings: null,
-			token: "",
 			previewResult: null,
 			get rows() {
 				return clone(rows);
@@ -1438,12 +1434,6 @@
 				rows.splice(index, 1);
 				this.changed();
 			},
-			touchToken(value) {
-				const next = String(value ?? "");
-				if (this.token === next) return;
-				this.token = next;
-				this.changed();
-			},
 			confirm(value) {
 				confirmed = boolean(value);
 				state();
@@ -1473,16 +1463,16 @@
 						);
 					mappings[row.source_company] = row.company;
 				}
-				return saveValues(mappings, this.token);
+				return saveValues(mappings);
 			},
 			disable() {
-				return saveValues(this.settings.company_mappings || {}, "");
+				return saveValues(this.settings.company_mappings || {});
 			},
 			canPreview() {
-				return Boolean((this.settings?.source_mode === "oa_cashier" || this.settings?.token_configured) && !this.dirty());
+				return Boolean(this.settings?.source_mode === "oa" && !this.dirty());
 			},
 			async preview() {
-				if (!this.canPreview()) throw new Error(t(this.settings?.source_mode === "oa_cashier" ? "请先保存当前同步设置，再预览" : "请先保存公司映射和同步密钥，再预览"));
+				if (!this.canPreview()) throw new Error(t("请先保存当前同步设置，再预览"));
 				const start = revision;
 				this.invalidate();
 				return task(async (current) => {
@@ -1521,7 +1511,7 @@
 				});
 			},
 			canSync() {
-				return Boolean(this.settings?.enabled && !this.dirty());
+				return Boolean(this.settings?.source_mode === "oa" && this.settings?.enabled && !this.dirty());
 			},
 			async sync() {
 				if (!this.canSync()) throw new Error(t("同步尚未启用，或设置存在未保存修改"));
@@ -1598,8 +1588,8 @@
 			const load = drawer.loadId,
 				settings = w.settings,
 				mode = settings.source_mode,
-				modeLabel = mode === "oa_cashier" ? t("OA 新接口") : mode === "cashier" ? t("旧出纳接口") : t("未返回，请核对部署版本"),
-				urlLabel = mode === "oa_cashier" ? t("OA 审批接口地址") : t("当前来源地址");
+				modeLabel = mode === "oa" ? t("OA 审批接口") : t("未返回，请核对部署版本"),
+				urlLabel = t("OA 审批接口地址");
 			root.DeepLinkERPPurchasePayments.disposeControls(drawer.controls);
 			drawer.actions = [];
 			confirmControl = null;
@@ -1608,21 +1598,17 @@
 				.html(
 					`<section class="dlp-operating-section"><div class="dlp-operating-facts"><div>${esc(
 						t("同步状态")
-					)} · ${esc(t(settings.enabled ? "已启用" : "未启用"))}</div><div>${esc(
-						t("出纳接口密钥")
-					)} · ${esc(
-						t(settings.token_configured ? "已配置" : "未配置")
-					)}</div><div>${esc(t("当前来源模式"))} · ${esc(modeLabel)}</div><div>${esc(urlLabel)} · ${display(
+					)} · ${esc(t(settings.enabled ? "已启用" : "未启用"))}</div><div>${esc(t("当前来源模式"))} · ${esc(modeLabel)}</div><div>${esc(urlLabel)} · ${display(
 						settings.source_url || "—"
 					)}</div><div>${esc(t("上次同步"))} · ${display(
 						settings.last_sync_at
-					)}</div></div>${mode === "cashier" ? `<p class="text-warning">${esc(t("当前手动同步仍读取旧出纳接口；新 OA 接口需启用站点来源模式。"))}</p>` : ""}${mode === "oa_cashier" && !settings.token_configured ? `<p class="text-warning">${esc(t("出纳接口密钥未配置：OA 审批可同步，付款与员工归属待核对。"))}</p>` : ""}${
+					)}</div></div>${
 						settings.last_error
 							? `<p class="text-warning">${display(settings.last_error)}</p>`
 							: ""
 					}<p class="text-muted">${esc(
-						t("保存设置会停用同步，并使已有同步预览失效。密钥留空则保留原密钥。")
-					)}</p><div class="dlp-operating-token"></div></section><section class="dlp-operating-section"><strong>${esc(
+						t("保存设置会停用同步，并使已有同步预览失效。")
+					)}</p></section><section class="dlp-operating-section"><strong>${esc(
 						t("来源法律标识 → ERP 法律公司")
 					)}</strong><p class="text-muted">${esc(
 						t("业务单元和归档表不代表法律公司，请明确映射。")
@@ -1634,14 +1620,6 @@
 						lastSync
 					)}</p><div class="dlp-error text-danger" role="alert"></div>`
 				);
-			const tokenControl = await makeControl(
-				drawer,
-				drawer.panel.find(".dlp-operating-token"),
-				{ fieldname: "api_token", fieldtype: "Password", label: t("新的同步密钥（可选）") },
-				w.token,
-				(value) => w.touchToken(value)
-			);
-			if (!tokenControl) return;
 			for (const [index, row] of w.rows.entries()) {
 				if (!drawer.alive() || load !== drawer.loadId) return;
 				const holder = root

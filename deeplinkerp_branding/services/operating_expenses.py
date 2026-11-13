@@ -1,4 +1,4 @@
-"""Read-only cashier history; explicit finance mapping and native JE drafts.
+"""OA-only operating sources; explicit finance mapping and native JE drafts.
 
 ERP payment registration is isolated in operating_payment_service. Neither
 service transfers money, submits vouchers, creates master data, or writes GL.
@@ -10,10 +10,9 @@ from frappe import _ as _i18n
 
 
 import json
+import copy
 import hashlib
 import os
-import ipaddress
-import socket
 from datetime import date, datetime, timedelta, timezone
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -21,11 +20,10 @@ from decimal import Decimal, ROUND_HALF_UP
 from zoneinfo import ZoneInfo
 
 import frappe
-import requests
 from frappe.utils import now_datetime, getdate
 
 from deeplinkerp_branding.services.operating_expense_contract import (
-    SOURCE_SYSTEM, SOURCE_URL, MAX_JSON_BYTES, attachment_path, digest, identifier,
+    SOURCE_SYSTEM, MAX_JSON_BYTES, attachment_path, digest, identifier,
     validate_source, money, expense_facts, event_fingerprint, payment_decision, payment_status, worklist_summary, company_overview, company_review_state, company_sync_needed, current_company_issues, QUICK_TABS,
 )
 from deeplinkerp_branding.services.purchase_payment_service import _require_fields
@@ -196,15 +194,10 @@ def _audit_financial(operation, source, document, amount, result, *, error=None,
 def get_sync_settings():
     _manager()
     settings = _settings()
-    mode = _source_mode()
-    if mode == "oa_cashier":
-        from deeplinkerp_branding.services import operating_oa_http as oa_http
-        source_url, _ = oa_http.configuration()
-    else:
-        source_url = SOURCE_URL
+    from . import operating_oa_http as oa_http
+    source_url, _ = oa_http.configuration()
     return {key: settings.get(key) for key in ("enabled", "changed_since", "until", "last_sync_at", "last_error", "preview_fingerprint")} | {
-        "company_mappings": _maps(settings), "token_configured": bool(settings.get_password("api_token", raise_exception=False)), "source_url": source_url,
-        "source_mode": mode,
+        "company_mappings": _maps(settings), "source_url": source_url, "source_mode": _source_mode(),
     }
 
 
@@ -221,9 +214,8 @@ def save_sync_settings(company_mappings, api_token=None):
         _read("Company", company, {"name"})
         # Existing mapped/drafted documents cannot be reassigned by changing sync settings.
         rows.append({"source_company": raw, "company": company})
-    if api_token is not None:
-        if not isinstance(api_token, str) or not 8 <= len(api_token) <= 500:
-            frappe.throw(_i18n("同步密钥格式无效"))
+    if api_token:
+        frappe.throw(_i18n("运营支出已改用 OA 接口，请刷新页面后重试"))
     settings = _settings(for_update=True)
     # The settings editor owns organization mappings, not per-application
     # decisions saved by another manager since that editor was opened.
@@ -233,78 +225,12 @@ def save_sync_settings(company_mappings, api_token=None):
         frappe.throw(_i18n("单据法律公司请在对应申请中核对，不能通过同步设置覆盖"))
     submitted.update(overrides)
     settings.set("company_mappings", [{"source_company": raw, "company": legal} for raw, legal in submitted.items()])
-    if api_token is not None:
-        settings.api_token = api_token
     settings.enabled = 0
     settings.preview_fingerprint = None
-    if _source_mode() == "oa_cashier":
-        # Mapping edits are followed by a new preview and a new full OA scan.
-        # An old remote cursor may have expired while synchronization was off.
-        settings.cursor = None
-        settings.until = None
+    settings.cursor = None
+    settings.until = None
     _save(settings)
     return get_sync_settings()
-
-
-def _base_url():
-    override = frappe.conf.get("operating_expense_qa_url")
-    if override:
-        if frappe.local.site != "operating-expenses-qa.localhost" or frappe.conf.db_host != "db" or override != "http://host.docker.internal:64244":
-            frappe.throw(_i18n("测试来源地址仅限专用隔离站点"))
-        return override
-    try:
-        addresses = socket.getaddrinfo("payment.yueweiportal.com", 443, type=socket.SOCK_STREAM)
-        if not addresses or any(not ipaddress.ip_address(address[4][0]).is_global or ipaddress.ip_address(address[4][0]).is_multicast for address in addresses):
-            frappe.throw(_i18n("来源主机必须解析为公开网络地址"))
-    except OSError:
-        frappe.throw(_i18n("出纳来源地址暂不可用，请稍后重试"))
-    return SOURCE_URL
-
-
-def _request(path, params=None, download=False, data=None):
-    resolver = path == "/api/integrations/erp/resolve-applicant-companies"
-    payment_write = path in {"/api/integrations/erp/operating-expenses/takeover-preview", "/api/integrations/erp/operating-expenses/takeover-claim"}
-    workflow = path == "/api/integrations/erp/operating-expenses/workflow"
-    if path not in ("/api/integrations/erp/operating-expenses", "/api/integrations/erp/purchase-expenses") and not (resolver or payment_write or workflow):
-        if path.startswith("/api/integrations/erp/purchase-expenses/"):
-            from .purchase_source_contract import attachment_path as purchase_attachment_path
-            purchase_attachment_path(path)
-        else:
-            attachment_path(path)
-        if path.startswith("/oa-archive/"):
-            frappe.throw(_i18n("OA 归档只能通过授权附件标识读取"))
-    settings = _settings()
-    secret = settings.get_password("api_token", raise_exception=False)
-    if not secret:
-        frappe.throw(_i18n("同步密钥未配置"))
-    limit = 20 * 1024 * 1024 if download else MAX_JSON_BYTES
-    try:
-        post = resolver or payment_write or (workflow and data is not None)
-        transport = requests.post if post else requests.get
-        kwargs = {"json": data} if post else {}
-        with transport(_base_url() + path, params=params, headers={"Authorization": "Bearer " + secret}, **kwargs,
-                          timeout=(5, 20), allow_redirects=False, stream=True) as response:
-            if response.status_code != 200:
-                raise ValueError("source request failed")
-            if int(response.headers.get("Content-Length", "0")) > limit:
-                raise ValueError("source response too large")
-            data = bytearray()
-            for chunk in response.iter_content(65536):
-                data.extend(chunk)
-                if len(data) > limit:
-                    raise ValueError("source response too large")
-            if download:
-                return bytes(data)
-            result = json.loads(data)
-            versions = {1, 2} if workflow or payment_write or resolver else {1}
-            if result.get("schema_version") not in versions or result.get("source_system") != SOURCE_SYSTEM or not isinstance(result.get("items"), list) or len(result["items"]) > 500:
-                raise ValueError("invalid source schema")
-            if not (resolver or payment_write or workflow) and (not isinstance(result.get("end"), bool) or (not result["end"] and not result.get("next_cursor")) or not result.get("until")):
-                raise ValueError("invalid source pagination")
-            return result
-    except (requests.RequestException, ValueError, TypeError, KeyError, AttributeError):
-        # Do not echo remote body, response headers, URLs, credentials or exception text.
-        frappe.throw(_i18n("出纳来源暂不可用或协议无效，请稍后重试"))
 
 
 def _oa_connection():
@@ -313,31 +239,17 @@ def _oa_connection():
 
 
 def _source_mode():
-    mode = frappe.conf.get("operating_expense_source_mode") or "cashier"
-    if mode not in {"cashier", "oa_cashier"}:
+    # Old site flags are aliases only; no configuration can reactivate cashier IO.
+    mode = frappe.conf.get("operating_expense_source_mode") or "oa"
+    if mode not in {"oa", "cashier", "oa_cashier"}:
         frappe.throw(_i18n("运营来源模式无效"))
-    return mode
-
-
-def _cashier_snapshot(until):
-    items, cursor = [], None
-    for _ in range(40):
-        result = _request("/api/integrations/erp/operating-expenses", {"limit": 500, "until": until, **({"cursor": cursor} if cursor else {})})
-        items.extend(result["items"])
-        if result["end"]:
-            if len({i["source_id"] for i in items}) != len(items):
-                frappe.throw(_i18n("出纳来源包含重复根标识"))
-            return items
-        if result["next_cursor"] == cursor:
-            frappe.throw(_i18n("出纳来源分页未前进"))
-        cursor = result["next_cursor"]
-    frappe.throw(_i18n("出纳来源超过本次接入上限，请管理员核查"))
+    return "oa"
 
 
 def _oa_cached_identities():
-    """Use the persisted exact OA identity; cashier joins can change independently."""
+    """Keep persisted exact OA identities and historical ERP document roots."""
     from deeplinkerp_branding.services import operating_oa_source as oa
-    docs = frappe.get_all(SOURCE, filters={"source_system": oa.SOURCE_SYSTEM},
+    docs = frappe.get_all(SOURCE, filters={"source_system": ["in", [oa.SOURCE_SYSTEM, SOURCE_SYSTEM]]},
                           fields=["name", "source_json", "source_version"], limit_page_length=20001)
     if len(docs) > 20000:
         frappe.throw(_i18n("运营来源核对超过本次上限，请管理员核查"))
@@ -345,10 +257,21 @@ def _oa_cached_identities():
     for doc in docs:
         raw = json.loads(doc.source_json or "{}")
         identity = raw.get("oa_identity")
-        if raw.get("source_system") != oa.SOURCE_SYSTEM or not identity:
-            continue
-        if not isinstance(identity, dict) or not all(isinstance(identity.get(k), str) and identity[k] for k in ("corp_id", "process_instance_id")):
+        if raw.get("source_system") == SOURCE_SYSTEM:
+            # Reuse the exact old root; guessing by approval number/name can
+            # duplicate expenses or cross corporation boundaries. Incomplete
+            # legacy identities stop the switch before any new rows are saved.
+            legacy = {key: raw.get(key) for key in ("corp_id", "process_instance_id")}
+            conflicting_identity = identity is not None and (not isinstance(identity, dict)
+                or any(value and value != identity.get(key) for key, value in legacy.items()))
+            if (raw.get("identity_conflict") or raw.get("approval_identity_status") == "conflict"
+                    or conflicting_identity):
+                frappe.throw(_i18n("缓存 OA 身份无效，请管理员核查"))
+            identity = identity if identity is not None else legacy
+        if (not isinstance(identity, dict) or set(identity) != {"corp_id", "process_instance_id"}
+                or not all(isinstance(value, str) and value.strip() == value and 0 < len(value) <= 200 for value in identity.values())):
             frappe.throw(_i18n("缓存 OA 身份无效，请管理员核查"))
+        raw = {**raw, "oa_identity": identity}
         key = (identity["corp_id"], identity["process_instance_id"])
         if key in roots:
             frappe.throw(_i18n("缓存 OA 身份重复，请管理员核查"))
@@ -358,8 +281,7 @@ def _oa_cached_identities():
 
 
 def _source_page(params):
-    if _source_mode() == "cashier":
-        return _request("/api/integrations/erp/operating-expenses", params)
+    _source_mode()
     from deeplinkerp_branding.services import operating_oa_source as oa
     from deeplinkerp_branding.services import operating_oa_http as oa_http
     url, corps = oa_http.configuration()
@@ -377,81 +299,29 @@ def _source_page(params):
         frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
     rows, cursor = oa_http.read_page(url, corps, params.get("limit", 500), until,
                                      cursor=params.get("cursor"), identity=identity)
-    # Periodic bounded rescans also observe new cashier payments and employee mappings
-    # when the original application itself has not changed. Only changed fingerprints
-    # are written to the cache; the checkpoint is never advanced on a failed page.
     selected = [row for row in rows if oa.in_scope(row)]
-    # OA is the application authority. The cashier token is optional for this
-    # read path; without it, payment/workflow/company evidence stays unknown.
-    cashier_available = bool(_settings().get_password("api_token", raise_exception=False))
-    cashier = _cashier_snapshot(until) if cashier_available else []
     manifests = oa_http.attachment_manifests(url, selected, exact=bool(identity)) if selected else []
-    if selected and cashier_available:
-        identities = [{"corp_id": r["corp_id"], "process_instance_id": r["process_instance_id"], "source_id": oa.application_id(r)} for r in selected]
-        workflow_items = _request("/api/integrations/erp/operating-expenses/workflow", data={"identities": identities})["items"]
-        workflows = {(e.get("corp_id"), e.get("process_instance_id")): e for e in workflow_items}
-        expected = {(i["corp_id"], i["process_instance_id"]) for i in identities}
-        if len(workflows) != len(workflow_items) or set(workflows) != expected:
-            frappe.throw(_i18n("审批来源返回身份或数量不符，请核对"))
-        try:
-            selected = [oa.with_workflow(r, workflows[(r["corp_id"], r["process_instance_id"])]) for r in selected]
-        except ValueError as error:
-            frappe.throw(str(error))
-    cashier_index = oa.cashier_index(cashier)
-    # The new API has no global business_count. Only use number-only cashier
-    # links after an exact same-corporation approvalNo query proves uniqueness;
-    # exact instance links continue to work without this extra request.
-    fallback_numbers = {}
-    for row in selected:
-        number = row.get("business_id")
-        if isinstance(number, str) and number and cashier_index[1].get((row["corp_id"], number)):
-            fallback_numbers.setdefault(row["corp_id"], set()).add(number)
-    for corp, numbers in fallback_numbers.items():
-        counts = oa_http.approval_number_counts(url, corp, numbers)
-        for row in selected:
-            if row["corp_id"] == corp:
-                row["business_count"] = counts.get(row.get("business_id"), 0)
-    candidates = [oa.cashier_candidates(r, cashier_index) for r in selected]
     manifests_by_identity = {}
     for manifest in manifests:
         manifests_by_identity.setdefault((manifest["corp_id"], manifest["process_instance_id"]), []).append(manifest)
-    applicants = [{"corp_id": r["corp_id"], **oa.resolution_applicant(r, cashier, candidates=c)} for r, c in zip(selected, candidates)]
-    resolutions = (_request("/api/integrations/erp/resolve-applicant-companies", data={"applicants": applicants})["items"]
-                   if applicants and cashier_available else
-                   [{**applicant, "status": "unavailable"} for applicant in applicants])
-    if len(resolutions) != len(applicants):
-        frappe.throw(_i18n("申请人归属返回数量不符"))
     items = []
-    for row, applicant, resolution, candidate in zip(selected, applicants, resolutions, candidates):
-        if any(resolution.get(k) != applicant[k] for k in ("corp_id", "user_id", "employee_name")):
-            frappe.throw(_i18n("申请人归属返回身份不符"))
-        item = oa.merge_application(row, cashier, resolution, candidates=candidate)
-        item["attachments"].extend(oa.archive_attachments(row, manifests_by_identity.get((row["corp_id"], row["process_instance_id"]), ())))
+    for row in selected:
+        item = oa.merge_application(row)
+        item["attachments"] = oa.archive_attachments(row, manifests_by_identity.get((row["corp_id"], row["process_instance_id"]), ()))
         key = (item["oa_identity"]["corp_id"], item["oa_identity"]["process_instance_id"])
         if identity and item["oa_identity"] != identity:
             frappe.throw(_i18n("OA 返回身份不符，请管理员核查"))
+        # Previously associated roots, finance mappings and local payments keep their identity.
         if key in roots:
             item["source_id"] = roots[key]
-        else:
-            # A proven first join may migrate an existing cashier archive. Never
-            # take a root already bound to another OA corporation or instance.
-            old = item.get("cashier_source_id")
-            if old and frappe.db.exists(SOURCE, old):
-                legacy = json.loads(frappe.db.get_value(SOURCE, old, "source_json") or "{}")
-                if legacy.get("oa_identity") == item["oa_identity"]:
-                    item["source_id"] = old
-                elif not legacy.get("oa_identity") and legacy.get("source_system") == SOURCE_SYSTEM:
-                    if (legacy.get("identity_conflict") or legacy.get("approval_identity_status") == "conflict"
-                            or (legacy.get("process_instance_id") and not oa.matches(row, legacy))
-                            or (legacy.get("corp_id") and legacy["corp_id"] != row["corp_id"])
-                            or (legacy.get("approval_no") and legacy["approval_no"] != row.get("business_id"))):
-                        frappe.throw(_i18n("旧出纳来源身份冲突，请管理员核查"))
-                    item["source_id"] = old
-            if frappe.db.exists(SOURCE, item["source_id"]):
-                existing = json.loads(frappe.db.get_value(SOURCE, item["source_id"], "source_json") or "{}")
-                first_cashier_join = item["source_id"] == old and not existing.get("oa_identity") and existing.get("source_system") == SOURCE_SYSTEM
-                if existing.get("oa_identity") != item["oa_identity"] and not first_cashier_join:
-                    frappe.throw(_i18n("运营来源标识与 OA 身份不符，请管理员核查"))
+            old = cached_raw[item["source_id"]]
+            retired = oa.retired_cashier_evidence(old)
+            if retired:
+                item["retired_cashier_evidence"] = retired
+        elif frappe.db.exists(SOURCE, item["source_id"]):
+            existing = json.loads(frappe.db.get_value(SOURCE, item["source_id"], "source_json") or "{}")
+            if existing.get("oa_identity") != item["oa_identity"]:
+                frappe.throw(_i18n("运营来源标识与 OA 身份不符，请管理员核查"))
         item["version"] = digest({k: v for k, v in item.items() if k != "version"})
         items.append(item)
     # Previously cached applications removed from the accepted scope remain audit-visible
@@ -535,15 +405,9 @@ def preview_sync():
 
 
 def _sync_preview_fingerprint(settings, result):
-    mode = _source_mode()
-    oa_config = None
-    token = settings.get_password("api_token", raise_exception=False)
-    if mode == "oa_cashier":
-        from deeplinkerp_branding.services import operating_oa_http as oa_http
-        oa_config = oa_http.configuration()
-    return digest({"company_mappings": _maps(settings), "mode": mode,
-                   "url": _base_url() if token or mode == "cashier" else None,
-                   "oa_config": oa_config, "token": digest(token),
+    from . import operating_oa_http as oa_http
+    return digest({"company_mappings": _maps(settings), "mode": _source_mode(),
+                   "oa_config": oa_http.configuration(),
                    "sources": [[i.get("source_id"), i.get("version")] for i in result["items"]],
                    "has_more": not result["end"]})
 
@@ -554,26 +418,33 @@ def enable_sync(preview_fingerprint):
     result = _source_page({"limit": 100})
     settings = _settings(for_update=True)
     expected = _sync_preview_fingerprint(settings, result)
-    if ((_source_mode() != "oa_cashier" and not _maps(settings)) or not settings.preview_fingerprint
+    if (not settings.preview_fingerprint
             or preview_fingerprint != settings.preview_fingerprint or expected != preview_fingerprint):
         frappe.throw(_i18n("请先预览并确认当前同步内容"))
     settings.enabled = 1
-    if _source_mode() == "oa_cashier":
-        settings.cursor = None
-        settings.until = None
+    settings.cursor = None
+    settings.until = None
     _save(settings)
     return get_sync_settings()
 
 
-def _issues(item, mapping=None, include_payment_dates=True):
+def _issues(item, mapping=None, include_payment_dates=True, *, require_payment_eligibility=True):
     issues = []
     try:
         validate_source(item)
     except (ValueError, TypeError, AttributeError):
         issues.append("来源数据无效，请核查")
-    decision = payment_decision(item)
-    if not decision["can_register_payment"]:
-        issues.append(decision.get("reason") or "审批证据待核对")
+    if require_payment_eligibility:
+        decision = payment_decision(item)
+        if not decision["can_register_payment"]:
+            issues.append(decision.get("reason") or "审批证据待核对")
+    else:
+        approvals = item.get("approvals") or {}
+        original = approvals.get("raw", {}) if isinstance(approvals, dict) else {}
+        if not isinstance(approvals, dict) or approvals.get("eligibility") != "eligible":
+            issues.append("审批尚未通过，请核对")
+        elif not isinstance(original, dict) or original.get("scope") == "withdrawn" or original.get("deleted_at"):
+            issues.append("申请来源已移除或范围变化，请核对钉钉原单")
     if item.get("source_conflict") or item.get("currency_conflict"):
         issues.append("来源归属或币种冲突")
     if item.get("storage_precision_warning"):
@@ -673,7 +544,7 @@ def _sync_page():
         params["changed_since"] = settings.changed_since
     if settings.cursor:
         params.update(cursor=settings.cursor, until=settings.until)
-    if settings.cursor and _source_mode() == "oa_cashier":
+    if settings.cursor:
         from deeplinkerp_branding.services.operating_oa_http import OAInvalidCursor
         try:
             result = _source_page(params)
@@ -695,8 +566,7 @@ def _sync_page():
     settings.cursor = result["next_cursor"] if not result["end"] else None
     settings.until = result["until"] if not result["end"] else None
     if result["end"]:
-        if _source_mode() == "oa_cashier":
-            _reconcile_oa_cache(result["until"], maps)
+        _reconcile_oa_cache(result["until"], maps)
         settings.changed_since = result["until"]
     settings.last_sync_at = now_datetime()
     settings.last_error = None
@@ -842,9 +712,9 @@ def _confirmed(value):
 
 
 def _expense_lines(item, mapping):
-    issues = _issues(item, mapping, include_payment_dates=False)
+    issues = _issues(item, mapping, include_payment_dates=False, require_payment_eligibility=False)
     if issues:
-        frappe.throw("；".join(issues))
+        frappe.throw("；".join(_i18n(issue) for issue in issues))
     coverage = mapping.get("existing_erp_coverage_confirmed") if mapping.get("recognition_mode") == "existing" else mapping.get("no_existing_erp_coverage")
     if not _confirmed(mapping.get("actual_incurred")) or not _confirmed(coverage):
         frappe.throw(_i18n("必须确认费用实际发生及现有 ERP 覆盖情况"))
@@ -944,6 +814,44 @@ def _match_date(doc, posting_date):
         frappe.throw(_i18n("凭证记账日期与财务确认不符"))
 
 
+def _historical_payment_source(doc, item, mapping, payment_id):
+    """Read retired evidence only for an already associated external payment.
+
+    This projection is local to voucher validation. It never changes the cache,
+    the displayed OA balance, takeover eligibility or local payment reversals.
+    Live approval, legal company and expense fingerprints are checked first.
+    """
+    if any(payment.get("source_id") == payment_id for payment in item["payments"]):
+        return item
+    retired = item.get("retired_cashier_evidence") or {}
+    if payment_id.startswith("erp-payment:") or not isinstance(retired, dict) or not retired.get("payments"):
+        return item
+    key = _event_key(doc, payment_id)
+    if not frappe.db.get_value(EVENT, key, "journal_entry", for_update=True):
+        return item
+    event = _read(EVENT, key, {"source", "company", "operation", "payment_source_id"}, for_update=True)
+    _assert_financial_fields(event, {"source": doc.name, "company": doc.company,
+        "operation": "payment", "payment_source_id": payment_id}, "运营费用凭证关联不可伪造或更改")
+    try:
+        saved = json.loads(event.provenance_json or "{}")["source"]
+        # A matching expense fingerprint binds the source root, organization,
+        # amount, currency, applicant, payee, approval and expense attachments.
+        if (saved.get("oa_identity") != item.get("oa_identity")
+                or digest(expense_facts(saved)) != digest(expense_facts(item))
+                or event_fingerprint(saved, mapping, payment_id) != event.fingerprint):
+            raise ValueError()
+        candidate = copy.deepcopy(item)
+        candidate["payments"] = copy.deepcopy(retired["payments"])
+        candidate["attachments"] += [copy.deepcopy(row) for row in retired.get("attachments", [])
+                                     if row.get("payment_source_id") == payment_id]
+        validate_source(candidate)
+        if event_fingerprint(candidate, mapping, payment_id) != event.fingerprint:
+            raise ValueError()
+    except (ValueError, TypeError, KeyError, AttributeError):
+        frappe.throw(_i18n("来源财务事实已变化，需要复核"))
+    return candidate
+
+
 def _payment_lines(doc, item, mapping, payment_id):
     recognition = _recognition(doc, mapping, item)
     payment = next((p for p in item["payments"] if p["source_id"] == payment_id), None)
@@ -988,10 +896,13 @@ def _preview(doc, item, mapping, payment_id=None):
     if mapping.get("advance"):
         from .operating_payment_service import advance_preview
         return advance_preview(doc, item, payment_id)
-    if _issues(item, mapping, include_payment_dates=False):
-        frappe.throw("；".join(_issues(item, mapping, include_payment_dates=False)))
+    issues = _issues(item, mapping, include_payment_dates=False, require_payment_eligibility=False)
+    if issues:
+        frappe.throw("；".join(_i18n(issue) for issue in issues))
     if mapping.get("expense_fingerprint") != digest(expense_facts(item)):
         frappe.throw(_i18n("来源财务事实已变化，请重新确认；已有凭证不能覆盖"))
+    if payment_id:
+        item = _historical_payment_source(doc, item, mapping, payment_id)
     rows, recognition, posting_date = _payment_lines(doc, item, mapping, payment_id) if payment_id else (_expense_lines(item, mapping), None, getdate(mapping["posting_date"]))
     fingerprint = event_fingerprint(item, mapping, payment_id)
     return {"event_key": _event_key(doc, payment_id), "fingerprint": fingerprint, "source_version": item["version"], "company": doc.company,
@@ -1176,8 +1087,7 @@ def _save_source_company(source_id, company, expected_source_version):
     before = _source(source_id)
     legal = _read("Company", company, {"name"})
     initial_settings = _settings()
-    token_key = {"doctype": SETTINGS, "name": SETTINGS, "fieldname": "api_token", "encrypted": 1}
-    token_before = frappe.db.get_value("__Auth", token_key, "password", order_by=None)
+    mappings_before = _maps(initial_settings)
     result = _source_page({"source_id": before.source_id, "limit": 1})
     if not result["end"] or len(result["items"]) != 1:
         frappe.throw(_i18n("来源已撤回，请重新同步"))
@@ -1188,7 +1098,7 @@ def _save_source_company(source_id, company, expected_source_version):
         frappe.throw(_i18n("来源版本已变化，请刷新后复核"))
     settings = _settings(for_update=True)
     if (settings.enabled != initial_settings.enabled
-            or frappe.db.get_value("__Auth", token_key, "password", order_by=None, for_update=True) != token_before):
+            or _maps(settings) != mappings_before):
         frappe.throw(_i18n("同步设置已变化，请刷新后复核"))
     doc = _source(source_id, write=True)
     legal.check_permission("read")
@@ -1336,11 +1246,9 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
 
 
 def _list_source_scope():
-    if _source_mode() != "oa_cashier":
-        return {"mode": "cashier"}
     from . import operating_oa_source as oa
     china = ZoneInfo("Asia/Shanghai")
-    return {"mode": "oa_cashier", "region": "CN",
+    return {"mode": _source_mode(), "region": "CN",
             "start_date": oa.START.astimezone(china).date().isoformat(),
             "end_date": (oa.END - timedelta(microseconds=1)).astimezone(china).date().isoformat(),
             "process_templates": len(oa.PROCESS_CODES)}
@@ -1576,7 +1484,7 @@ def download_operating_expense_attachment(source_id, attachment_source_id):
         if len(content) != expected_size or hashlib.sha256(content).hexdigest() != expected_hash:
             frappe.throw(_i18n("归档附件校验不一致，请在钉钉原单核对"))
     else:
-        content = _request(current["url"], download=True)
+        frappe.throw(_i18n("此历史附件不属于 OA 归档，请在原系统核对"))
     filename = os.path.basename(str(persisted.get("filename") or "attachment").replace("\\", "/"))[:200]
     filename = "".join(c for c in filename if c.isprintable() and c not in '\r\n"') or "attachment"
     frappe.response["filename"] = filename

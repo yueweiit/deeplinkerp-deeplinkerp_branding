@@ -32,12 +32,12 @@ class OperatingExpenseAssetsTest(unittest.TestCase):
 		provider = "/assets/deeplinkerp_branding/js/operating_expenses.js"
 		self.assertIn(drawer, files)
 		self.assertIn(provider, files)
-		self.assertIn(provider + "?v=0.0.12", hooks.app_include_js)
+		self.assertIn(provider + "?v=0.0.13", hooks.app_include_js)
 		self.assertIn("/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.35", hooks.app_include_js)
 		self.assertIn("/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.9", hooks.app_include_css)
 		self.assertLess(files.index(shell), files.index(drawer))
 		self.assertLess(files.index(drawer), files.index(provider))
-		self.assertIn(drawer + "?v=0.0.22", hooks.app_include_js)
+		self.assertIn(drawer + "?v=0.0.23", hooks.app_include_js)
 		panel = "/assets/deeplinkerp_branding/js/operating_payment_panel.js"
 		self.assertEqual(files.count(panel), 1)
 		self.assertLess(files.index(panel), files.index(drawer))

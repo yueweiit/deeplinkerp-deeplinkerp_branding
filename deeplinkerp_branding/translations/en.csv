@@ -2061,9 +2061,20 @@ Zero Receipt Confirmation Item,Zero Receipt Confirmation Item
 第 {0} 行物料需求单明细与物料不匹配。,Material Request item in row {0} does not match the item.
 第 {0} 行物料需求单明细无法唯一确定。,The Material Request item in row {0} cannot be identified uniquely.
 第 {0} 行物料、目标仓库和来源重复。,"Item, target warehouse and source are duplicated in row {0}."
+OA 审批接口,OA Approval API
+保存设置会停用同步，并使已有同步预览失效。,Saving settings disables synchronization and invalidates the previous preview.
+运营支出已改用 OA 接口，请刷新页面后重试,Operating expenses now use the OA API. Refresh the page and try again.
+此历史附件不属于 OA 归档，请在原系统核对,This historical attachment is not in the OA archive. Verify it in the original system.
+此历史申请尚未关联 OA 实例，请核对原单,This historical request is not linked to an OA instance. Check the original request.
+OA 接口尚未提供可核验的付款历史，付款登记待核对,The OA API does not yet provide verifiable payment history. Payment registration requires review.
+OA 审批任务格式无效，请核对原单,The OA approval task format is invalid. Check the original request.
+OA 审批身份或状态不一致，请核对原单,The OA approval identity or status is inconsistent. Check the original request.
+OA 审批任务身份缺失或重复，请核对原单,OA approval task identifiers are missing or duplicated. Check the original request.
 采购出纳接口设置,Procurement cashier interface settings
 采购出纳接口密钥,Procurement cashier API key
 密钥已配置；输入新密钥以更换。,A key is configured. Enter a new key to replace it.
 密钥尚未配置。,No key is configured.
 采购出纳接口密钥已保存,Procurement cashier API key saved
 采购出纳接口密钥格式无效,Invalid procurement cashier API key format
+审批尚未通过，请核对,Approval has not passed. Please verify.
+申请来源已移除或范围变化，请核对钉钉原单,The source application was removed or is outside the allowed scope. Check the original DingTalk application.

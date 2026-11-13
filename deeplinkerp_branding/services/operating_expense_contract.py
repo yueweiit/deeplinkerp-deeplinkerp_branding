@@ -15,7 +15,6 @@ from datetime import date
 from decimal import Decimal, InvalidOperation
 
 SOURCE_SYSTEM = "cashier-payment-archive"
-SOURCE_URL = "https://payment.yueweiportal.com"
 MAX_JSON_BYTES = 5 * 1024 * 1024
 
 

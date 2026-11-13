@@ -71,7 +71,7 @@ jobs:
       - name: Check navigation and purchase order extensions
         run: |
           node --test tests/*.test.js
-          for module in tests.test_interface_mode tests.test_boot_branding tests.test_interface_mode_metadata tests.test_purchase_order_assets tests.test_unified_purchase_release tests.test_joint_release_guards tests.test_host_maintenance_nginx tests.test_host_maintenance_control tests.test_historical_oa_company tests.test_procurement_navigation tests.test_procurement_release_metadata tests.test_operating_expense_contract tests.test_operating_expense_navigation tests.test_operating_expense_assets tests.test_operating_oa_source tests.test_purchase_source_contract tests.test_purchase_source_adaptation tests.test_dedicated_source_sync_host tests.test_compact_sales_service; do
+          for module in tests.test_interface_mode tests.test_boot_branding tests.test_interface_mode_metadata tests.test_purchase_order_assets tests.test_unified_purchase_release tests.test_joint_release_guards tests.test_host_maintenance_nginx tests.test_host_maintenance_control tests.test_historical_oa_company tests.test_procurement_navigation tests.test_procurement_release_metadata tests.test_operating_expense_contract tests.test_operating_expense_navigation tests.test_operating_expense_assets tests.test_operating_oa_source tests.test_operating_oa_only tests.test_purchase_source_contract tests.test_purchase_source_adaptation tests.test_dedicated_source_sync_host tests.test_compact_sales_service; do
             python -m unittest -v "$module" || exit 1
           done
           bash -n deploy/production/deploy_unified_purchase.sh

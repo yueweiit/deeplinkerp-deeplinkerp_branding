@@ -88,21 +88,27 @@ class OAHttpTests(unittest.TestCase):
         self.assertFalse(oa.matches(row, {"corp_id": "corp-a", "approval_no": "1001",
                                           "approval_identity_status": "explicit"}, require_corp=True))
 
-    def test_number_fallback_uses_exact_number_queries_and_caches_results(self):
-        first = approval()
-        second = approval(instance="instance-b")
-        unrelated = approval(instance="instance-c")
-        unrelated["approvalNo"] = "1002"
-        def lookup(_url, _resource, params):
-            return page([first, second] if params["approvalNo"] == "1001" else [unrelated])
-        with patch.object(client.frappe, "local", SimpleNamespace()), patch.object(
-                client, "_page", side_effect=lookup) as remote:
-            counts = client.approval_number_counts("http://oa:3000", "corp-a", {"1001", "1002"})
-            self.assertEqual(client.approval_number_counts("http://oa:3000", "corp-a", {"1001", "1002"}), counts)
-        self.assertEqual(counts, {"1001": 2, "1002": 1})
-        self.assertEqual(remote.call_count, 2)
-        self.assertEqual({call.args[2]["approvalNo"] for call in remote.call_args_list}, {"1001", "1002"})
-        self.assertTrue(all(call.args[2]["limit"] == 2 for call in remote.call_args_list))
+    def test_approval_passes_department_and_raw_workflow_from_oa(self):
+        value = approval()
+        value.update(originatorDeptId="dept-1", originatorDeptName="Mapped department",
+                     rawPayload={"tasks": [], "operationRecords": []})
+        row = client.approval_row(value)
+        self.assertEqual(row["originator_dept_id"], "dept-1")
+        self.assertEqual(row["originator_dept_name"], "Mapped department")
+        self.assertEqual(row["raw_payload"], value["rawPayload"])
+
+    def test_original_payload_corrects_applicant_without_borrowing_approver_name(self):
+        value = approval()
+        value.update(originatorUserId="current-reviewer", originatorUserName="Reviewer Name",
+                     originatorDeptName="Reviewer Department", rawPayload={"originatorUserId": "applicant-id",
+                     "originatorDeptName": "Applicant Department", "originatorDeptId": "42"})
+        row = client.approval_row(value)
+        self.assertEqual(row["originator_user_id"], "applicant-id")
+        self.assertIsNone(row["originator_user_name"])
+        self.assertEqual(row["originator_dept_name"], "Applicant Department")
+        self.assertEqual(row["originator_dept_id"], "42")
+        value["rawPayload"] = {"originatorUserId": "applicant-id"}
+        self.assertIsNone(client.approval_row(value)["originator_dept_name"])
 
     def test_attachment_pages_filter_exact_identity_and_retirement(self):
         archived = {"corpId": "corp-a", "processInstanceId": "instance-a",

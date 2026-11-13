@@ -2334,9 +2334,20 @@ Zero Receipt Confirmation Item,Línea de recepción de cantidad cero
 第 {0} 行物料需求单明细与物料不匹配。,La línea {0} de la solicitud de material no coincide con el artículo.
 第 {0} 行物料需求单明细无法唯一确定。,No se puede identificar de forma única la línea {0} de la solicitud de material.
 第 {0} 行物料、目标仓库和来源重复。,"El artículo, el almacén de destino y el origen están duplicados en la línea {0}."
+OA 审批接口,API de aprobaciones de OA
+保存设置会停用同步，并使已有同步预览失效。,Guardar la configuración desactiva la sincronización e invalida la vista previa anterior.
+运营支出已改用 OA 接口，请刷新页面后重试,Los gastos operativos ahora utilizan la API de OA. Actualice la página e inténtelo de nuevo.
+此历史附件不属于 OA 归档，请在原系统核对,Este archivo adjunto histórico no pertenece al archivo de OA. Verifíquelo en el sistema original.
+此历史申请尚未关联 OA 实例，请核对原单,Esta solicitud histórica no está vinculada a una instancia de OA. Revise la solicitud original.
+OA 接口尚未提供可核验的付款历史，付款登记待核对,La API de OA aún no proporciona un historial de pagos verificable. El registro de pagos requiere revisión.
+OA 审批任务格式无效，请核对原单,El formato de las tareas de aprobación de OA no es válido. Revise la solicitud original.
+OA 审批身份或状态不一致，请核对原单,La identidad o el estado de la aprobación de OA no coincide. Revise la solicitud original.
+OA 审批任务身份缺失或重复，请核对原单,Faltan identificadores de tareas de aprobación de OA o están duplicados. Revise la solicitud original.
 采购出纳接口设置,Configuración de la interfaz de caja para compras
 采购出纳接口密钥,Clave de API de caja para compras
 密钥已配置；输入新密钥以更换。,Ya hay una clave configurada. Introduzca una nueva para reemplazarla.
 密钥尚未配置。,No hay ninguna clave configurada.
 采购出纳接口密钥已保存,Clave de API de caja para compras guardada
 采购出纳接口密钥格式无效,Formato de clave de API de caja para compras no válido
+审批尚未通过，请核对,La aprobación aún no se ha completado. Verifique la solicitud.
+申请来源已移除或范围变化，请核对钉钉原单,La solicitud de origen se eliminó o está fuera del alcance permitido. Verifique la solicitud original en DingTalk.

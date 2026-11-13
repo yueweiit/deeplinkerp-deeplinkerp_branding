@@ -111,7 +111,7 @@ env/bin/python -m unittest deeplinkerp_branding.tests.test_purchase_native_repos
 
 `deeplinkerp_branding/services/operating_expenses.py` 从有权限读取的 `Operating Expense Source` 生成列表和公司视图。列表默认同时显示 ERP 法律公司与来源组织；OA 模式下来源组织是申请组织展示字段，不能据此自动确定承担费用的法人。归属状态和页面提示按当前公司映射实时判断，映射已移除或变更时，历史公司值保留供复核，但金额立即进入“归属待核对”组，不计入该公司；映射恢复后不再沿用旧复核标记。同步仅在来源版本、公司赋值或复核标记需要更新时写入缓存。系统管理员可在抽屉中通过现有 `save_source_company` 入口重新确认；服务端会重新读取来源并检查版本、公司权限及财务确认锁。已有财务确认时抽屉只提示人工核查，不提供必然被拒绝的公司保存控件。
 
-公司视图按当前列表的公司、公司归属状态、申请日期等筛选统计，但不受“待办理”等快捷标签限制；每个公司和币种分别展示申请单数、申请金额与已核实的累计付款。未知或异常的付款余额不按零处理，部分已知金额仅标为“已知”，未确认归属单列。申请金额可能包含审批中或未通过的申请，付款金额也不代表 ERP 已入账费用；已入账费用应查原生总账。页头当前公司不会自动限制运营支出页，页面明确显示统计范围。`oa_cashier` 模式只读取 `operating_oa_source.py` 所定义的 2026 年中国区域及指定审批模板，不代表所有子公司或年度均已覆盖。
+公司视图按当前列表的公司、公司归属状态、申请日期等筛选统计，但不受“待办理”等快捷标签限制；每个公司和币种分别展示申请单数、申请金额与已核实的累计付款。未知或异常的付款余额不按零处理，部分已知金额仅标为“已知”，未确认归属单列。申请金额可能包含审批中或未通过的申请，付款金额也不代表 ERP 已入账费用；已入账费用应查原生总账。页头当前公司不会自动限制运营支出页，页面明确显示统计范围。`oa` 模式（兼容旧 `oa_cashier/cashier` 配置名）只读取 `operating_oa_source.py` 所定义的 2026 年中国区域及指定审批模板，不代表所有子公司或年度均已覆盖。
 
 实现入口：`public/js/operating_expenses.js`、`public/js/operating_expense_drawer.js`、`services/operating_expense_contract.py`。回归入口：`tests/operating-expenses.test.js`、`tests/operating-expense-drawer.test.js`、`tests/test_operating_expense_contract.py`。运营列表和公司汇总沿用 `frappe.get_list` 的原生 DocType、Company 与字段权限；不新增数据库字段，不改变 OA/出纳同步或会计入账流程。
 
@@ -141,3 +141,5 @@ This app can use GitHub Actions for CI. The following workflows are configured:
 ### License
 
 mit
+
+运营支出已统一从 OA HTTP 接口读取审批、原始任务、部门及归档附件，设置页不再配置出纳密钥。旧出纳补充及付款接管请求已移除，缺少完整付款历史时保留待核对；现有付款、凭证及历史审计记录保留。采购仍使用独立的 `purchase_cashier_http.py` 客户端及原凭据存储。配置、身份兼容及待验证边界见 [运营来源接入](docs/operating-source-integration-20261006.md)。

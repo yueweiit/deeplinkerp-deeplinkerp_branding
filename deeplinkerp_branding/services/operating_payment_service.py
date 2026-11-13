@@ -1,15 +1,14 @@
 """Audited ERP payment registration, never a transfer or accounting submission.
 
-The cashier owns history until it atomically freezes a logical application root.
-Thereafter history is immutable and local records are summed once under a source
-row lock. Batch list overlay is O(N + P), with no upstream requests per row.
+Existing frozen history and local records remain auditable. The read-only OA
+archive does not supply a history-lock protocol, so new takeover is unavailable.
+Batch list overlay is O(N + P), with no upstream requests per row.
 """
 
 from frappe import _ as _i18n
 
 import json
 import os
-import re
 from collections import defaultdict
 
 import frappe
@@ -23,7 +22,7 @@ from .purchase_payment_service import _require_fields
 TAKEOVER = "Operating Expense Takeover"
 PAYMENT = "Operating Expense Payment"
 PAYMENT_FIELDS = ["name", "source", "company", "status", "payment_date", "currency", "amount", "bank_currency", "bank_amount", "bank_account", "party_type", "party", "bank_reference", "remark", "registered_by", "reversal_reason", "reversed_by", "reversed_at"]
-CLAIM_PATH = "/api/integrations/erp/operating-expenses/"
+from .operating_oa_workflow import PAYMENT_NOTICE
 
 
 def _checked(function, *args, **kwargs):
@@ -78,13 +77,12 @@ def _oa_identity(item, doc=None):
         frappe.throw(_i18n("OA 公司及审批实例身份缺失，请重新同步"))
     canonical = "oa:" + digest([identity["corp_id"], identity["process_instance_id"]])
     # A previously joined cashier root keeps its existing ERP document identity.
-    root = item.get("cashier_source_id")
     persisted_alias = False
     if doc is not None and item.get("source_id") == doc.source_id:
         cached = json.loads(doc.source_json)
         persisted_alias = (cached.get("source_system") == "dingtalk-oa" and cached.get("source_id") == doc.source_id
                            and cached.get("oa_identity") == identity)
-    if item.get("source_id") != canonical and not (root and item.get("source_id") == root) and not persisted_alias:
+    if item.get("source_id") != canonical and not persisted_alias:
         frappe.throw(_i18n("OA 来源标识与审批实例不一致，请重新同步"))
     return identity, canonical
 
@@ -286,124 +284,23 @@ def _fresh_base(doc):
     return item
 
 
-def _root(item, doc=None):
-    root = item.get("cashier_source_id") or (item.get("source_id") if item.get("source_system") == "cashier-payment-archive" else None)
-    if not root and item.get("source_system") == "dingtalk-oa":
-        return _oa_identity(item, doc)[1]
-    if not root:
-        frappe.throw(_i18n("尚未找到唯一出纳申请及完整付款历史，请先同步并核对"))
-    return identifier(root)
-
-
-def _source_match(item, history, root, schema_version, doc=None):
-    expected = root
-    if item.get("source_system") == "dingtalk-oa":
-        identity, expected = _oa_identity(item, doc)
-        if (schema_version != 2 or history.get("oa_identity") != identity
-                or any(history.get(key) is not None and history.get(key) != value for key, value in identity.items())
-                or history.get("source_request_id") != item.get("cashier_source_id")):
-            frappe.throw(_i18n("出纳历史与 OA 公司、审批实例或原付款主单不一致，请先核对"))
-        decision = payment_decision(item)
-        returned = history.get("payment_eligibility")
-        if (not isinstance(returned, dict) or returned.get("can_register_payment") is not True
-                or returned.get("evidence_fingerprint") != decision.get("evidence_fingerprint")):
-            frappe.throw(_i18n("审批证据已变化，请重新预览付款接管"))
-    elif schema_version != 1:
-        frappe.throw(_i18n("出纳历史协议无效，请先核对"))
-    if (history.get("source_id") != expected or history.get("currency") != item.get("currency")
-            or money(history.get("amount")) != money(item.get("amount"))):
-        frappe.throw(_i18n("出纳历史与本申请身份、币种或金额不一致，请先核对"))
-    _checked(balance, history, [])
-
-
-def _confirmation(value):
-    if value not in (True, False, 1, 0, "true", "false", "1", "0"):
-        frappe.throw(_i18n("确认值无效"))
-    return value in (True, 1, "true", "1")
-
-
-def _takeover_payload(item, confirmed, doc):
-    root = _root(item, doc)
-    payload = {"source_id": root, "zero_history_confirmed": confirmed,
-               "confirmed_by": frappe.session.user if confirmed else None}
-    if item.get("source_system") == "dingtalk-oa":
-        identity, canonical = _oa_identity(item, doc)
-        payload.update(identity)
-        if not item.get("cashier_source_id"):
-            if item.get("source_id") != canonical:
-                frappe.throw(_i18n("旧出纳主单关联待核对，不能改按零历史接管，请先同步并核对"))
-            if item.get("payments"):
-                frappe.throw(_i18n("已有付款历史尚未定位原出纳主单，请先同步并核对"))
-            if not confirmed:
-                frappe.throw(_i18n("请明确确认未发现历史付款，再接管 OA 申请；不会自动按零历史登记"))
-    return payload
-
-
-def _eligibility_fingerprint(item, expected=None):
-    value = payment_decision(item).get("evidence_fingerprint")
-    if not isinstance(value, str) or not re.fullmatch(r"[0-9a-f]{64}", value):
-        frappe.throw(_i18n("审批证据指纹缺失，请重新同步并预览"))
-    if expected is not None and (not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected) or expected != value):
-        frappe.throw(_i18n("审批证据已变化，请重新预览付款接管"))
-    return value
-
-
 @frappe.whitelist(methods=["POST"])
 def preview_takeover(source_id, zero_history_confirmed=False):
     expenses._finance()
     doc = expenses._source(source_id)
-    existing = _takeover(doc)
-    if existing:
+    if _takeover(doc):
         return {"existing": True, **payment_detail(doc)}
-    item = _fresh_base(doc)
-    confirmed = _confirmation(zero_history_confirmed)
-    payload = _takeover_payload(item, confirmed, doc)
-    fingerprint = _eligibility_fingerprint(item) if item.get("source_system") == "dingtalk-oa" else None
-    response = expenses._request(CLAIM_PATH + "takeover-preview", data=payload)
-    if len(response["items"]) != 1:
-        frappe.throw(_i18n("付款历史返回不唯一"))
-    history = response["items"][0]
-    _source_match(item, history, payload["source_id"], response.get("schema_version"), doc)
-    return {"existing": False, "source_version": item["version"], "history_version": history["version"],
-            "balance": _checked(balance, history, []), "history_count": len(history["payments"]), "currency": item["currency"],
-            "payment_eligibility": payment_decision(item), "eligibility_fingerprint": fingerprint}
+    frappe.throw(_i18n(PAYMENT_NOTICE))
 
 
 @frappe.whitelist(methods=["POST"])
 def claim_takeover(source_id, expected_source_version, expected_history_version, request_id, zero_history_confirmed=False, expected_eligibility_fingerprint=None):
     expenses._finance()
     doc = expenses._source(source_id, write=True)
-    if _takeover(doc,for_update=True):
+    if _takeover(doc, for_update=True):
         return {"existing": True, **_checked_write_detail(doc, "claim")}
-    item = _fresh_base(doc)
-    if item["version"] != expected_source_version:
-        frappe.throw(_i18n("申请事实已变化，请重新预览"))
-    identifier(request_id)
-    # Stable identity lets a retry recover a successful upstream lock even if our
-    # transaction failed after the HTTP response. Never automatically unlock.
-    claim_request = digest([frappe.local.site, doc.name, "cashier-takeover"])
-    confirmed = _confirmation(zero_history_confirmed)
-    payload = _takeover_payload(item, confirmed, doc)
-    payload.update(expected_version=identifier(expected_history_version), request_id=claim_request)
-    if item.get("source_system") == "dingtalk-oa":
-        if expected_eligibility_fingerprint is None:
-            frappe.throw(_i18n("审批证据指纹缺失，请重新预览付款接管"))
-        payload["expected_eligibility_fingerprint"] = _eligibility_fingerprint(item, expected_eligibility_fingerprint)
-    response = expenses._request(CLAIM_PATH + "takeover-claim", data=payload)
-    if len(response["items"]) != 1:
-        frappe.throw(_i18n("接管返回不唯一；对应出纳申请可能已锁定，请管理员核查"))
-    history = response["items"][0]
-    claim = history.get("takeover", {})
-    _source_match(item, history, payload["source_id"], response.get("schema_version"), doc)
-    if claim.get("owner") != "deeplinkerp" or not claim.get("claim_token") or not claim.get("history_fingerprint"):
-        frappe.throw(_i18n("来源未确认付款锁定，ERP 登记仍关闭"))
-    values = {"doctype": TAKEOVER, "source": doc.name, "company": doc.company, "cashier_root": payload["source_id"],
-                        "history_json": json.dumps(history, ensure_ascii=False), "claim_token": claim["claim_token"],
-                        "history_fingerprint": claim["history_fingerprint"], "expense_fingerprint": digest(payment_intent_facts(item)),
-                        "claimed_by": frappe.session.user, "claimed_at": now_datetime()}
-    with expenses.managed_write():
-        frappe.get_doc(values).insert(ignore_permissions=True)
-    return {"existing": False, **_checked_write_detail(doc, "claim", {**values, "history_json": history}, item)}
+    # Old clients retain a stable endpoint but cannot fabricate an OA history lock.
+    frappe.throw(_i18n(PAYMENT_NOTICE))
 
 
 def _values(doc, item, values):
@@ -543,51 +440,20 @@ def reverse_payment(source_id, payment_id, reason, request_id, discard_drafts=Fa
 
 @frappe.whitelist()
 def get_approval_timeline(source_id):
+    from . import operating_oa_http as http
+    from .operating_oa_workflow import workflow
     doc = expenses._source(source_id)
-    raw = json.loads(doc.source_json)
-    is_oa = raw.get("source_system") == "dingtalk-oa"
-    if is_oa:
-        identity, root = _oa_identity(raw, doc)
-        params = {"source_id": root, **identity}
-    else:
-        root = raw.get("cashier_source_id") or (raw.get("source_id") if raw.get("source_system") == "cashier-payment-archive" else None)
-        if not root:
-            return {"lookup_status": "missing", "events": [], "current_tasks": [], "last_synced_at": None, "notice": "暂无唯一审批缓存，可在钉钉原单核对"}
-        params = {"source_id": identifier(root)}
-    response = expenses._request(CLAIM_PATH + "workflow", params=params)
-    if len(response["items"]) != 1 or response["items"][0].get("source_id") != root:
-        frappe.throw(_i18n("审批缓存身份不唯一，请核对钉钉原单"))
-    row = response["items"][0]
-    if is_oa and (response.get("schema_version") != 2 or row.get("oa_identity") != identity
-                  or any(row.get(key) != value for key, value in identity.items())):
-        frappe.throw(_i18n("审批缓存公司或实例身份不符，请核对钉钉原单"))
-    events = row.get("events")
-    if not isinstance(events, list) or len(events) > 5000:
-        frappe.throw(_i18n("审批缓存格式无效"))
-    fields = {"id", "stage", "operator", "operator_id", "time", "time_provenance", "result", "comment", "current", "active", "attachments", "images"}
-    result = {"lookup_status": row.get("lookup_status"), "last_synced_at": row.get("last_synced_at"),
-              "events": [{key: event[key] for key in fields if key in event} for event in events if isinstance(event, dict)]}
-    if is_oa:
-        tasks = row.get("current_tasks")
-        if not isinstance(tasks, list) or len(tasks) > 5000:
-            frappe.throw(_i18n("当前审批任务格式无效"))
-        task_fields = {"id", "stage", "status", "activity_id", "entered_at"}
-        result["current_tasks"] = []
-        for task in tasks:
-            if not isinstance(task, dict) or not isinstance(task.get("assignees"), list) or len(task["assignees"]) > 5000:
-                frappe.throw(_i18n("当前审批任务格式无效"))
-            result["current_tasks"].append({**{key: task[key] for key in task_fields if key in task},
-                                             "assignees": [{key: person[key] for key in ("id", "name") if key in person}
-                                                           for person in task["assignees"] if isinstance(person, dict)]})
-        originator = row.get("originator")
-        result["originator"] = {key: originator.get(key) for key in ("id", "name")} if isinstance(originator, dict) else None
-        for key in ("approval_status", "approval_result", "source_updated_at", "original_url"):
-            result[key] = row.get(key)
-        decision = row.get("payment_eligibility")
-        result["payment_eligibility"] = {key: decision.get(key) for key in ("can_register_payment", "reason", "notice", "policy_version", "evidence_fingerprint")} if isinstance(decision, dict) else None
-        summary = row.get("workflow_summary")
-        result["workflow_summary"] = {key: summary.get(key) for key in ("current_node_name", "current_approver_name", "current_node_entered_at")} if isinstance(summary, dict) else None
-    return result
+    cached = json.loads(doc.source_json)
+    if cached.get("source_system") != "dingtalk-oa":
+        return {"lookup_status": "missing", "events": [], "current_tasks": [], "last_synced_at": None,
+                "notice": _i18n("此历史申请尚未关联 OA 实例，请核对原单")}
+    identity, _ = _oa_identity(cached, doc)
+    url, corps = http.configuration()
+    rows, _ = http.read_page(url, corps, 2, "", identity=identity)
+    if not rows or rows[0].get("deleted_at"):
+        return {"lookup_status": "missing", "events": [], "current_tasks": [], "last_synced_at": None,
+                "notice": _i18n("来源已撤回，请重新同步")}
+    return _checked(workflow, rows[0])
 
 
 @frappe.whitelist()

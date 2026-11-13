@@ -198,7 +198,7 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
         rejection.assert_called_once()
         reader.assert_not_called()
 
-    def test_oa_sync_can_start_with_no_company_map_but_cashier_mode_cannot(self):
+    def test_oa_sync_requires_current_preview_but_allows_pending_company(self):
         self.settings.company_mappings = []
         self.settings.preview_fingerprint = "current-preview"
         source_page = {"items": [], "end": True}
@@ -206,12 +206,13 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
                 patch.object(service, "_sync_preview_fingerprint", return_value="current-preview"), \
                 patch.object(service, "_manager"), \
                 patch.object(service, "get_sync_settings", return_value={"enabled": 1}), \
-                patch.object(service, "_source_mode", return_value="oa_cashier"):
+                patch.object(service, "_source_mode", return_value="oa"):
             result = service.enable_sync("current-preview")
         self.assertEqual(result, {"enabled": 1})
         self.assertEqual(self.settings.enabled, 1)
         self.assertIsNone(self.settings.cursor)
         self.settings.enabled = 0
+        self.settings.preview_fingerprint = "stale-preview"
         def reject(message):
             raise ValueError(message)
         with patch.object(service, "_source_page", return_value=source_page), \
@@ -248,7 +249,7 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
         self.settings.until = "2026-10-06T00:00:00Z"
         self.settings.changed_since = None
         fresh = {"items": [], "end": False, "until": "2026-10-07T00:00:00Z", "next_cursor": "fresh-cursor"}
-        with patch.object(service, "_source_mode", return_value="oa_cashier"), \
+        with patch.object(service, "_source_mode", return_value="oa"), \
                 patch.object(service, "_maps", return_value={}), \
                 patch.object(service, "now_datetime", return_value="2026-10-07 00:00:00"), \
                 patch.object(service, "_source_page", side_effect=[OAInvalidCursor(), fresh]) as reader:
@@ -263,7 +264,7 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
         from deeplinkerp_branding.services.operating_oa_http import OAInvalidCursor
         self.settings.until = "2026-10-06T00:00:00Z"
         self.settings.changed_since = None
-        with patch.object(service, "_source_mode", return_value="oa_cashier"), \
+        with patch.object(service, "_source_mode", return_value="oa"), \
                 patch.object(service, "_maps", return_value={}), \
                 patch.object(service, "_source_page", side_effect=[OAInvalidCursor(), ValueError("OA down")]):
             with self.assertRaisesRegex(ValueError, "OA down"):
@@ -314,7 +315,7 @@ class OperatingExpenseSchedulingTests(unittest.TestCase):
 
 class OperatingOAWithoutCashierTests(unittest.TestCase):
     def test_oa_approvals_remain_readable_without_cashier_token(self):
-        from deeplinkerp_branding.services import operating_oa_http as http
+        from deeplinkerp_branding.services import operating_oa_http as http, purchase_cashier_http
         row = {
             "corp_id": "corp-a", "process_instance_id": "instance-a", "business_id": "1001",
             "process_code": oa.PROCESS_CODES[0], "status": "COMPLETED", "result": "agree",
@@ -329,19 +330,17 @@ class OperatingOAWithoutCashierTests(unittest.TestCase):
                 {"name": "收款人beneficiario", "value": "Vendor"},
             ],
         }
-        settings = SimpleNamespace(company_mappings=[], get_password=lambda *_args, **_kwargs: None)
+        settings = SimpleNamespace(company_mappings=[], get_password=Mock(side_effect=AssertionError("credential read")))
         db = Mock()
         db.exists.return_value = False
         with patch.object(frappe, "db", db), \
-                patch.object(service, "_source_mode", return_value="oa_cashier"), \
+                patch.object(service, "_source_mode", return_value="oa"), \
                 patch.object(service, "_settings", return_value=settings), \
                 patch.object(service, "_oa_cached_identities", return_value=([], {})), \
                 patch.object(http, "configuration", return_value=("http://oa:3000", ("corp-a",))), \
                 patch.object(http, "read_page", return_value=([row], None)), \
                 patch.object(http, "attachment_manifests", return_value=[]), \
-                patch.object(service, "_cashier_snapshot", side_effect=AssertionError("cashier read")), \
-                patch.object(service, "_request", side_effect=AssertionError("cashier call")), \
-                patch.object(service, "_base_url", side_effect=AssertionError("cashier DNS")):
+                patch.object(purchase_cashier_http, "_request", side_effect=AssertionError("cashier call")):
             result = service._source_page({"limit": 100})
             fingerprint = service._sync_preview_fingerprint(settings, result)
         self.assertEqual(len(result["items"]), 1)

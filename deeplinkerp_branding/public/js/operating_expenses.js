@@ -156,7 +156,7 @@
 			["付款证据待核对", review.payment_unknown], ["审批证据待同步", review.approval_evidence_missing],
 		].map(([label, count]) => `${esc(t(label))} ${esc(count ?? 0)}`).join(" · ");
 		const sourceScope = payload.source_scope || {};
-		const scopeNote = sourceScope.mode === "oa_cashier" ?
+		const scopeNote = ["oa", "oa_cashier"].includes(sourceScope.mode) ?
 			`<p class="text-muted">${esc(t("当前 OA 范围：中国区域 {0} 至 {1} 的 {2} 类指定审批模板。申请额可能包含审批中或未通过记录。", [sourceScope.start_date, sourceScope.end_date, sourceScope.process_templates]))}</p>` : "";
 		const companyRows = payload.company_overview.flatMap(entry => Object.entries(entry.currencies || {}).map(([currency, row]) =>
 			`<tr><td>${esc(entry.company || t("归属待核对"))}</td><td>${esc(currency || t("币种未明确"))}</td><td>${esc(entry.currency_counts?.[currency] ?? entry.count)}</td><td>${aggregateMoney(row, "amount")}</td><td>${aggregateMoney(row, "paid_amount")}</td></tr>`)).join("");

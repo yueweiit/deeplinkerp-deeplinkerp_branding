@@ -130,6 +130,8 @@ def approval_row(item):
         ("status", "status"), ("result", "result"),
         ("originatorUserId", "originator_user_id"),
         ("originatorUserName", "originator_user_name"),
+        ("originatorDeptId", "originator_dept_id"), ("originatorDeptName", "originator_dept_name"),
+        ("rawPayload", "raw_payload"),
         ("createTime", "create_time"), ("updatedAt", "updated_at"),
         ("deletedAt", "deleted_at"), ("formComponentValues", "form_component_values"))}
     if not all(isinstance(row.get(key), str) and row[key] for key in (
@@ -143,6 +145,20 @@ def approval_row(item):
     # This API is scoped by corpId and cannot prove business-number uniqueness
     # across other corporations. Do not attach cashier evidence by number alone.
     row["business_count"] = 0
+    # The archive's denormalized originator columns can contain a current
+    # approver. The original DingTalk payload identifies the actual applicant.
+    raw = row.get("raw_payload")
+    if isinstance(raw, dict) and isinstance(raw.get("originatorUserId"), str) and raw["originatorUserId"].strip():
+        same_user = raw["originatorUserId"] == row.get("originator_user_id")
+        row["originator_user_id"] = raw["originatorUserId"]
+        if not same_user:
+            # Do not attach the previous person's name or department to this ID.
+            row["originator_user_name"] = None
+            row["originator_dept_id"] = None
+            row["originator_dept_name"] = None
+        for remote, field in (("originatorDeptId", "originator_dept_id"), ("originatorDeptName", "originator_dept_name")):
+            if raw.get(remote) is not None:
+                row[field] = raw[remote]
     return row
 
 
@@ -224,35 +240,6 @@ def read_page(url, corps, limit, until, cursor=None, identity=None):
             return rows, next_cursor
         index, remote = next_index, next_remote
     return [], _encode_cursor(until, index, remote, corps) if index < len(segments) else None
-
-
-def approval_number_counts(url, corp, numbers):
-    """Prove fallback joins through the OA API's exact approvalNo filter."""
-    cache = getattr(frappe.local, "_operating_oa_number_counts", None)
-    if cache is None:
-        cache = {}
-        frappe.local._operating_oa_number_counts = cache
-    counts = {}
-    for number in set(numbers):
-        key = (url, corp, number)
-        if key in cache:
-            counts[number] = cache[key]
-            continue
-        params = {"corpId": corp, "approvalNo": number, "limit": 2}
-        data, page = _page(url, "approvals", params)
-        instances = set()
-        for item in data:
-            if (not isinstance(item, dict) or item.get("corpId") != corp
-                    or item.get("approvalNo") != number
-                    or not isinstance(item.get("processInstanceId"), str) or not item["processInstanceId"]):
-                frappe.throw(_("运营支出 OA 审批编号核对身份不符，请管理员核查"))
-            if item["processInstanceId"] in instances:
-                frappe.throw(_("运营支出 OA 审批编号核对身份重复，请管理员核查"))
-            instances.add(item["processInstanceId"])
-        # A further page proves ambiguity; fetching it would add no information.
-        counts[number] = max(len(instances), 2 if page["hasMore"] else 0)
-        cache[key] = counts[number]
-    return counts
 
 
 def attachment_manifests(url, rows, *, exact=False):
