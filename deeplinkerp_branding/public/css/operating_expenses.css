@@ -11,6 +11,12 @@ body.dlp-operating-expense-grid-active .dlp-po-grid .result-container {
 	overflow: scroll;
 	scrollbar-gutter: stable;
 }
+body.dlp-operating-expense-grid-active .result-container > .dlp-po-summary {
+	display: block;
+	position: sticky;
+	left: 0;
+	margin-top: 12px;
+}
 body.dlp-operating-expense-grid-active .dlp-po-filter[data-fieldname="keyword"] {
 	width: 235px;
 }
