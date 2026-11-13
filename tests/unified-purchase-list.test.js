@@ -211,6 +211,7 @@ test("only administrators and system managers see the inline procurement source 
 		const surface = { appendTo() { return this; }, insertAfter() { return this; }, on() { return this; } };
 		adapter.configure([]).mountControls({ root: { $: html => { markup.push(html); return surface; }, frappe: { session: { user }, user_roles: roles } }, list: { $result: surface }, $filters: surface, setProviderScope() {} });
 		assert.equal(markup.join("").includes("同步钉钉"), allowed, user);
+		assert.equal(markup.join("").includes("采购出纳接口设置"), allowed, user);
 	}
 });
 

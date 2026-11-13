@@ -215,8 +215,16 @@
 		if (root.frappe.session?.user === "Administrator" || root.frappe.user_roles?.includes("System Manager")) $(`<button type='button' class='btn btn-default btn-sm dlp-source-sync'>${translateText("同步钉钉")}</button>`).appendTo(controller.$providerControls).on("click.dlpUnified", async event => {
 			const button = $(event.currentTarget).prop("disabled", true);
 			try {
-				if (!root.deeplinkerp?.purchaseSource?.sync) await root.frappe.require("/assets/deeplinkerp_branding/js/purchase_source.js?v=0.0.2");
+				if (!root.deeplinkerp?.purchaseSource?.sync) await root.frappe.require("/assets/deeplinkerp_branding/js/purchase_source.js?v=0.0.4");
 				await root.deeplinkerp.purchaseSource.sync(); await controller.refresh();
+			} catch (error) { root.frappe.msgprint({ message: error.message || translateText("采购来源同步失败，请核对系统提示。"), indicator: "red" }); }
+			finally { button.prop("disabled", false); }
+		});
+		if (root.frappe.session?.user === "Administrator" || root.frappe.user_roles?.includes("System Manager")) $(`<button type='button' class='btn btn-default btn-sm dlp-source-settings'>${translateText("采购出纳接口设置")}</button>`).appendTo(controller.$providerControls).on("click.dlpUnified", async event => {
+			const button = $(event.currentTarget).prop("disabled", true);
+			try {
+				if (!root.deeplinkerp?.purchaseSource?.settings) await root.frappe.require("/assets/deeplinkerp_branding/js/purchase_source.js?v=0.0.4");
+				await root.deeplinkerp.purchaseSource.settings();
 			} catch (error) { root.frappe.msgprint({ message: error.message || translateText("采购来源同步失败，请核对系统提示。"), indicator: "red" }); }
 			finally { button.prop("disabled", false); }
 		});

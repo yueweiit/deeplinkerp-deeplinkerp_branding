@@ -2334,3 +2334,9 @@ Zero Receipt Confirmation Item,Línea de recepción de cantidad cero
 第 {0} 行物料需求单明细与物料不匹配。,La línea {0} de la solicitud de material no coincide con el artículo.
 第 {0} 行物料需求单明细无法唯一确定。,No se puede identificar de forma única la línea {0} de la solicitud de material.
 第 {0} 行物料、目标仓库和来源重复。,"El artículo, el almacén de destino y el origen están duplicados en la línea {0}."
+采购出纳接口设置,Configuración de la interfaz de caja para compras
+采购出纳接口密钥,Clave de API de caja para compras
+密钥已配置；输入新密钥以更换。,Ya hay una clave configurada. Introduzca una nueva para reemplazarla.
+密钥尚未配置。,No hay ninguna clave configurada.
+采购出纳接口密钥已保存,Clave de API de caja para compras guardada
+采购出纳接口密钥格式无效,Formato de clave de API de caja para compras no válido

@@ -157,7 +157,7 @@ def _normalize(row, *, occurrences=None):
 
 
 def _cashier_snapshot(until):
-    from .operating_expenses import _request
+    from .purchase_cashier_http import _request
     items, cursor = [], None
     for _ in range(40):
         result = _request("/api/integrations/erp/purchase-expenses", {"limit":500, "until":until, **({"cursor":cursor} if cursor else {})})
@@ -876,7 +876,8 @@ def confirm_purchase_source_rule(name, rule, expected_preview_fingerprint):
 
 @frappe.whitelist()
 def download_source_attachment(name, attachment_id, version):
-    from .operating_expenses import _finance, _request
+    from .operating_expenses import _finance
+    from .purchase_cashier_http import _request
     _finance(); doc = _source(name)
     from .unified_purchase_service import cashier_evidence_readable
     if not cashier_evidence_readable():
@@ -985,7 +986,8 @@ def _reconcile_cached_sources(connection,until,seen,cashier):
 
 
 def _read_sync_snapshot(until):
-	from .operating_expenses import _oa_connection, _request
+	from .operating_expenses import _oa_connection
+	from .purchase_cashier_http import _request
 
 	snapshots = []
 	count = 0

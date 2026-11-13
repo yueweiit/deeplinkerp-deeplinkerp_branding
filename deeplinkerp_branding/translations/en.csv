@@ -2061,3 +2061,9 @@ Zero Receipt Confirmation Item,Zero Receipt Confirmation Item
 第 {0} 行物料需求单明细与物料不匹配。,Material Request item in row {0} does not match the item.
 第 {0} 行物料需求单明细无法唯一确定。,The Material Request item in row {0} cannot be identified uniquely.
 第 {0} 行物料、目标仓库和来源重复。,"Item, target warehouse and source are duplicated in row {0}."
+采购出纳接口设置,Procurement cashier interface settings
+采购出纳接口密钥,Procurement cashier API key
+密钥已配置；输入新密钥以更换。,A key is configured. Enter a new key to replace it.
+密钥尚未配置。,No key is configured.
+采购出纳接口密钥已保存,Procurement cashier API key saved
+采购出纳接口密钥格式无效,Invalid procurement cashier API key format

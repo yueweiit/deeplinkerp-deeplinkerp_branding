@@ -5,6 +5,35 @@ const path = require("node:path");
 const vm = require("node:vm");
 const modulePath = path.join(__dirname, "../deeplinkerp_branding/public/js/purchase_source.js");
 const create = fs.existsSync(modulePath) ? require(modulePath) : () => ({});
+
+test("procurement credentials use a password dialog and a separate POST endpoint", async () => {
+	const calls = [], dialogs = [], alerts = [];
+	const root = { frappe: { session: { user: "Administrator" },
+		call: async request => { calls.push(request); return { message: { token_configured: true } }; },
+		show_alert: value => alerts.push(value),
+		ui: { Dialog: class {
+			constructor(options) { this.options = options; dialogs.push(this); }
+			show() { this.visible = true; } hide() { this.visible = false; }
+			set_value(field, value) { this[field] = value; }
+		} },
+	} };
+	const dialog = await create(root).settings();
+	assert.equal(dialog.options.fields[0].fieldtype, "Password");
+	assert.equal(dialog.options.fields[0].default, undefined);
+	assert.equal(dialog.visible, true);
+	await dialog.options.primary_action({ api_token: "synthetic-secret", company_mappings: { A: "B" } });
+	assert.equal(calls[1].method, "deeplinkerp_branding.services.purchase_cashier_http.save_settings");
+	assert.equal(calls[1].type, "POST");
+	assert.deepEqual(calls[1].args, { api_token: "synthetic-secret" });
+	assert.equal(dialog.api_token, "");
+	assert.equal(dialog.visible, false);
+	assert.equal(JSON.stringify(alerts).includes("synthetic-secret"), false);
+});
+
+test("procurement credentials are unavailable to ordinary users", async () => {
+	const root = { frappe: { session: { user: "ordinary" }, user_roles: ["Purchase User"], call: () => assert.fail("must not call server") } };
+	await assert.rejects(create(root).settings(), /管理员权限/);
+});
 const projection = () => ({
 	name: "OA/1", version: "current-source-and-cashier", target_company: "Company A", purchase_order: null,
 	can_write: true, can_create: true,

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 
 import frappe
+from deeplinkerp_branding.services import purchase_cashier_http
 from deeplinkerp_branding.services import purchase_source_service as service
 
 
@@ -476,7 +477,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 			with (
 				self.subTest(returned=returned),
 				patch.object(
-					operating_expenses,
+					purchase_cashier_http,
 					"_request",
 					return_value={
 						"until": returned,
@@ -497,7 +498,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 			with (
 				self.subTest(returned=returned),
 				patch.object(
-					operating_expenses,
+					purchase_cashier_http,
 					"_request",
 					return_value={
 						"until": returned,
@@ -593,7 +594,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 			patch.object(
 				operating_expenses, "_oa_connection", return_value=SimpleNamespace(_connection=object())
 			),
-			patch.object(operating_expenses, "_request", side_effect=resolve),
+			patch.object(purchase_cashier_http, "_request", side_effect=resolve),
 			patch.object(service, "_cashier_snapshot", return_value=[]),
 			patch.object(service.oa, "read_page", side_effect=read_page) as read,
 			patch.object(service.oa, "resolution_applicant", return_value=applicant),
@@ -637,7 +638,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 				operating_expenses, "_oa_connection", return_value=SimpleNamespace(_connection=object())
 			),
 			patch.object(
-				operating_expenses, "_request", return_value={"items": [{**applicant, "status": "unknown"}]}
+				purchase_cashier_http, "_request", return_value={"items": [{**applicant, "status": "unknown"}]}
 			),
 			patch.object(service, "_cashier_snapshot", return_value=[]),
 			patch.object(
@@ -687,7 +688,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 			patch.object(
 				operating_expenses, "_oa_connection", return_value=SimpleNamespace(_connection=object())
 			),
-			patch.object(operating_expenses, "_request", side_effect=resolution),
+			patch.object(purchase_cashier_http, "_request", side_effect=resolution),
 			patch.object(service, "_cashier_snapshot", return_value=[]),
 			patch.object(service.oa, "read_page", return_value=(rows, None)),
 			patch.object(service.oa, "resolution_applicant", return_value=applicant),
@@ -1013,7 +1014,7 @@ class PurchaseSourceServiceTests(unittest.TestCase):
 			patch.object(service, "_source", return_value=self.doc),
 			patch.object(frappe, "has_permission", return_value=False),
 			patch.object(service, "_fresh_source") as fresh,
-			patch.object(operating_expenses, "_request") as transport,
+			patch.object(purchase_cashier_http, "_request") as transport,
 		):
 			with self.assertRaises(frappe.PermissionError):
 				service.download_source_attachment("OA", "file-1", "v1")

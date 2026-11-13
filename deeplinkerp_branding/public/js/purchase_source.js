@@ -17,6 +17,25 @@
 	const poLink = name => `<a href="/desk/purchase-order/${encodeURIComponent(name)}">${esc(name)}</a>`;
 	const call = async (method, args, options = {}) => (await root.frappe.call({ method: SERVICE + method, args, silent: true, ...options })).message;
 	let syncToken;
+	async function settings() {
+		if (root.frappe.session?.user !== "Administrator" && !root.frappe.user_roles?.includes("System Manager")) throw new Error(t("采购来源同步需要管理员权限。"));
+		const method = "deeplinkerp_branding.services.purchase_cashier_http.";
+		const current = (await root.frappe.call({ method: method + "get_settings" })).message;
+		const dialog = new root.frappe.ui.Dialog({
+			title: t("采购出纳接口设置"),
+			fields: [{ fieldname: "api_token", fieldtype: "Password", label: t("采购出纳接口密钥"), reqd: 1,
+				description: t(current.token_configured ? "密钥已配置；输入新密钥以更换。" : "密钥尚未配置。") }],
+			primary_action_label: t("保存"),
+			async primary_action(values) {
+				await root.frappe.call({ method: method + "save_settings", type: "POST", args: { api_token: values.api_token } });
+				dialog.set_value("api_token", "");
+				dialog.hide();
+				root.frappe.show_alert({ message: t("采购出纳接口密钥已保存"), indicator: "green" });
+			},
+		});
+		dialog.show();
+		return dialog;
+	}
 	async function sync() {
 		if (root.frappe.session?.user !== "Administrator" && !root.frappe.user_roles?.includes("System Manager")) throw new Error(t("采购来源同步需要管理员权限。"));
 		syncToken ||= root.DeepLinkERPPurchasePayments.retryToken(() => root.crypto.randomUUID(), `dlp-source-sync:${root.frappe.boot?.sitename || root.location?.host}:${root.frappe.session?.user}`);
@@ -288,5 +307,5 @@
 		event.preventDefault(); event.stopPropagation();
 		open(button.dataset.purchaseSource).catch(error => root.frappe.msgprint({ message: esc(error.message || t("采购来源读取失败，请刷新重试。")), indicator: "red" }));
 	}, true);
-	return { open, sync };
+	return { open, sync, settings };
 });
