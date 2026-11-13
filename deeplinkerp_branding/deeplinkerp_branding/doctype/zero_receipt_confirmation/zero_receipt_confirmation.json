@@ -1,0 +1,29 @@
+{
+  "doctype": "DocType",
+  "name": "Zero Receipt Confirmation",
+  "module": "Deeplinkerp Branding",
+  "custom": 0,
+  "engine": "InnoDB",
+  "autoname": "format:ZRC-{YYYY}-{#####}",
+  "allow_rename": 0,
+  "is_submittable": 1,
+  "track_changes": 1,
+  "sort_field": "creation",
+  "sort_order": "DESC",
+  "field_order": ["company", "receipt_date", "receipt_time", "stock_entry_type", "reason", "source_note", "items"],
+  "fields": [
+    {"fieldname": "company", "fieldtype": "Link", "label": "公司", "options": "Company", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "receipt_date", "fieldtype": "Date", "label": "确认日期", "default": "Today", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "receipt_time", "fieldtype": "Time", "label": "确认时间", "default": "Now", "reqd": 1},
+    {"fieldname": "stock_entry_type", "fieldtype": "Link", "label": "原入库类型", "options": "Stock Entry Type", "default": "Material Receipt", "reqd": 1},
+    {"fieldname": "reason", "fieldtype": "Small Text", "label": "零收货原因", "reqd": 1},
+    {"fieldname": "source_note", "fieldtype": "Small Text", "label": "来源说明", "description": "无物料需求单时请说明入库来源。"},
+    {"fieldname": "items", "fieldtype": "Table", "label": "实际收到 0 的物料", "options": "Zero Receipt Confirmation Item", "reqd": 1}
+  ],
+  "permissions": [
+    {"role": "Stock User", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1},
+    {"role": "Stock Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1, "export": 1},
+    {"role": "Manufacturing User", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1},
+    {"role": "Manufacturing Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "print": 1, "report": 1}
+  ]
+}

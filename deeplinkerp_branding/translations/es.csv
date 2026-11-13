@@ -2301,3 +2301,36 @@ MES 待发料,Solicitudes MES pendientes de salida
 规格/颜色,Especificaciones / Color
 入库数量（库存单位）,Cantidad recibida (unidad de stock)
 目标仓过账时点库存,Existencias del almacén de destino al contabilizar
+Zero Receipt Confirmation,Confirmación de recepción de cantidad cero
+Zero Receipt Confirmation Item,Línea de recepción de cantidad cero
+确认日期,Fecha de confirmación
+原入库类型,Tipo de entrada original
+零收货原因,Motivo de recepción cero
+实际收到 0 的物料,Artículos recibidos con cantidad cero
+物料号,Código de artículo
+目标仓库,Almacén de destino
+实际收到数量,Cantidad recibida real
+记录零数量入库,Registrar recepción de cantidad cero
+本单仅记录实际收到 0，不生成库存流水或会计分录。,Este documento registra una cantidad recibida de cero; no genera movimientos de inventario ni asientos contables.
+请先选择公司并填写至少一行物料。,Seleccione una empresa e introduzca al menos un artículo.
+零数量入库确认只接受数量为 0 的明细；正数入库请使用原生库存单。,La confirmación de recepción cero solo admite líneas con cantidad cero; use una entrada de inventario normal para cantidades positivas.
+零数量入库确认需要目标仓库，且不能填写来源仓库。,La confirmación de recepción cero requiere un almacén de destino y no admite almacén de origen.
+没有创建零数量入库确认单的权限。,No tiene permiso para crear una confirmación de recepción cero.
+请填写零收货原因。,Indique el motivo por el que no se recibió ninguna cantidad.
+零数量入库确认单需要 1 至 100 行物料。,La confirmación de recepción cero requiere entre 1 y 100 líneas de artículos.
+零数量入库确认单仅支持入库类型。,La confirmación de recepción cero solo admite tipos de entrada.
+第 {0} 行实际收到数量必须为 0。,La cantidad recibida real en la línea {0} debe ser cero.
+第 {0} 行需要物料和目标仓库。,La línea {0} requiere un artículo y un almacén de destino.
+第 {0} 行物料不可用于库存确认。,El artículo de la línea {0} no se puede usar para la confirmación de inventario.
+第 {0} 行目标仓库不属于所选公司或不可使用。,El almacén de destino de la línea {0} no se puede usar o no pertenece a la empresa seleccionada.
+没有提交物料移动单的权限。,No tiene permiso para confirmar una entrada de inventario.
+仅新建的入库单可记录零数量收货。,Solo una entrada nueva puede registrar una recepción de cantidad cero.
+来源说明,Detalles del origen
+无物料需求单时请说明入库来源。,Describa el origen de la entrada si no hay una solicitud de material vinculada.
+物料需求单,Solicitud de material
+物料需求单明细,Línea de solicitud de material
+无物料需求单的明细需要填写来源说明。,Indique el origen de las líneas sin solicitud de material.
+第 {0} 行物料需求单来源无效。,La solicitud de material de la línea {0} no es válida.
+第 {0} 行物料需求单明细与物料不匹配。,La línea {0} de la solicitud de material no coincide con el artículo.
+第 {0} 行物料需求单明细无法唯一确定。,No se puede identificar de forma única la línea {0} de la solicitud de material.
+第 {0} 行物料、目标仓库和来源重复。,"El artículo, el almacén de destino y el origen están duplicados en la línea {0}."

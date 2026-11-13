@@ -1,0 +1,19 @@
+{
+  "doctype": "DocType",
+  "name": "Zero Receipt Confirmation Item",
+  "module": "Deeplinkerp Branding",
+  "custom": 0,
+  "engine": "InnoDB",
+  "istable": 1,
+  "editable_grid": 1,
+  "field_order": ["item_code", "target_warehouse", "received_qty", "stock_uom", "material_request", "material_request_item"],
+  "fields": [
+    {"fieldname": "item_code", "fieldtype": "Link", "label": "物料号", "options": "Item", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "target_warehouse", "fieldtype": "Link", "label": "目标仓库", "options": "Warehouse", "reqd": 1, "in_list_view": 1},
+    {"fieldname": "received_qty", "fieldtype": "Float", "label": "实际收到数量", "default": "0", "read_only": 1, "in_list_view": 1},
+    {"fieldname": "stock_uom", "fieldtype": "Link", "label": "库存单位", "options": "UOM", "read_only": 1, "in_list_view": 1},
+    {"fieldname": "material_request", "fieldtype": "Link", "label": "物料需求单", "options": "Material Request", "in_list_view": 1},
+    {"fieldname": "material_request_item", "fieldtype": "Link", "label": "物料需求单明细", "options": "Material Request Item", "read_only": 1}
+  ],
+  "permissions": []
+}

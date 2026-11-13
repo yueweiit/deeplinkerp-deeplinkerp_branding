@@ -82,7 +82,10 @@ doctype_list_js = {
 doctype_js = {"Material Request": "public/js/material_request_form.js", **{doctype: "public/js/purchase_payment_form.js" for doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice", "Payment Entry")}}
 doctype_js["OA Purchase Request"] = "public/js/oa_purchase_request.js"
 doctype_js["Item"] = "public/js/item_form.js"
-doctype_js["Stock Entry"] = "public/js/stock_entry_quantity_labels.js"
+doctype_js["Stock Entry"] = [
+	"public/js/stock_entry_quantity_labels.js",
+	"public/js/stock_entry_zero_receipt.js",
+]
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
