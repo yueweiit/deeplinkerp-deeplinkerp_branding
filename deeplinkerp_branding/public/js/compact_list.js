@@ -450,7 +450,7 @@
 			}
 		}
 		const controller = {
-			list, root, allowed, displayAllowed, originals, quick: {}, controls: {}, resetting: false, preferences: config.provider?.alwaysActive ? normalizePreferences(providerSaved, providerAllowed, config.provider.columns) : normalizePreferences(saved, displayAllowed),
+			list, root, allowed, displayAllowed, originals, quick: config.defaultQuickFilters?.() || {}, controls: {}, resetting: false, preferences: config.provider?.alwaysActive ? normalizePreferences(providerSaved, providerAllowed, config.provider.columns) : normalizePreferences(saved, displayAllowed),
 			providerAllowed, providerScope: "orders", providerRows: [], providerPayload: null, providerOrderBy: config.defaultSort,
 			nativePreferences: normalizePreferences(saved, displayAllowed), providerPreferences: config.provider ? normalizePreferences(providerSaved, providerAllowed, config.provider.columns) : null,
 			page: 0, pageSize: 100, requestId: 0, querySignature: null, total: null, summary: [], nativeControlFields: new Set(),
@@ -950,10 +950,10 @@
 			},
 			async clearQuickFilters() {
 				return this.mutateFilters(async () => {
-					this.quick = {};
+					this.quick = config.defaultQuickFilters?.() || {};
 					this.resetAdvancedFilters?.();
 					await this.list.filter_area?.clear(false);
-					await Promise.all(Object.entries(this.controls).filter(([field]) => !this.nativeControlFields.has(field)).map(([,control]) => control.set_value('')));
+					await Promise.all(Object.entries(this.controls).filter(([field]) => !this.nativeControlFields.has(field)).map(([field,control]) => control.set_value(this.quick[field] ?? '')));
 					this.$providerControls?.find('input, select').val('').prop('checked', false);
 					this.restoreSavedFilterLabel?.();
 				});
@@ -1029,7 +1029,7 @@
 				controller.nativeControlFields.add(control.fieldname);
 				continue;
 			}
-			const input = root.frappe.ui.form.make_control({ parent: holder, df: { ...control, label: t(control.label), placeholder: t(control.label), change: () => {
+			const input = root.frappe.ui.form.make_control({ parent: holder, df: { ...control, initial_value: controller.quick[control.fieldname] ?? control.initial_value, label: t(control.label), placeholder: t(control.label), change: () => {
 				if (controller.resetting) return;
 				controller.quick[control.fieldname] = input.get_value();
 				controller.setPage(0);
@@ -1226,7 +1226,7 @@
 			} catch (_) { /* Migration must remain usable when optional browser storage is disabled. */ }
 		}
 		const c = { pageSurface: true, root, list: surface, nativeAllowed, allowed: permitted, displayAllowed: permitted, providerAllowed: permitted,
-			preferences, controls: {}, quick: {}, resetting: false,
+			preferences, controls: {}, quick: config.defaultQuickFilters?.() || {}, resetting: false,
 			providerRows: [], providerPayload: null, providerOrderBy: config.defaultSort, page: 0, pageSize: 100, total: null, requestId: 0, querySignature: null,
 			translate: root.__ || (x => x),
 			setPage(value) { this.page = Math.max(0, Number(value) || 0); },

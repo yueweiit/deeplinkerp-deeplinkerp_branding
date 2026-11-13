@@ -7,6 +7,17 @@ const create = fs.existsSync(require("node:path").join(__dirname, listPath))
 	: () => ({});
 const api = create({});
 const expectedColumns = ["source_id","source_status","company","source_company","applicant","summary","amount","paid_amount","pending_amount","currency","project","payee_name","needed_payment_date","general_manager_approval","actions","request_date"];
+test("default dates cover 180 inclusive days and leave explicit ranges unchanged", () => {
+	for (const [today, start] of [["2026-11-13", "2026-05-18"], ["2026-01-01", "2025-07-06"], ["2024-03-01", "2023-09-04"]]) {
+		const dates = create({frappe: {datetime: {
+			get_today: () => today,
+			add_days: (date, days) => {assert.equal(date, today); assert.equal(days, -179); return start;},
+		}}}).defaultQuickFilters();
+		assert.deepEqual(dates, {quick_tab: "pending_work", date_from: start, date_to: today});
+		const c = {quick: {...dates, date_from: "2020-01-01"}, providerOrderBy: "request_date desc", page: 0, pageSize: 100};
+		assert.equal(JSON.parse(api.request(c).args.filters).date_from, "2020-01-01");
+	}
+});
 test("recommended columns show legal attribution alongside the OA organization", () => {
  assert.deepEqual(api.defaultColumns,expectedColumns);
  assert.equal(api.columns.find(col=>col.fieldname==="source_company").label,"来源组织");
@@ -273,10 +284,11 @@ test("operating Page reuses the shared readonly engine with scalar permission al
 	assert.ok(config.controls.every((c) => c.permission_field));
 	assert.ok(config.provider.exportCurrent);
 });
-test("shared column settings opens for a provider whose primary identifier is source_id and virtual columns are permission aliases", () => {
+test("shared column settings opens for a provider whose primary identifier is source_id and virtual columns are permission aliases", async () => {
 	const shared = require("../deeplinkerp_branding/public/js/compact_list.js"),
 		handlers = new Map();
-	let dialogHTML = "", renderedHTML = "";
+	let dialogHTML = "", renderedHTML = "", summaryParent = "";
+	const initialFilters = new Map();
 	const tabText = new Map(), storage = new Map();
 	const preferenceKey = shared.create({doctype:"Operating Expense Source",columns:[]}).preferenceKey("qa","finance");
 	const oldLayout = {version:2,density:"standard",columns:["source_status","source_id","amount"]};
@@ -296,8 +308,8 @@ test("shared column settings opens for a provider whose primary identifier is so
 		first() {
 			return this;
 		}
-		parent() {
-			return this;
+		parent(selector) {
+			return new Surface(selector);
 		}
 		html(value) {
 			if (this.key === "dialog") dialogHTML = value;
@@ -311,7 +323,8 @@ test("shared column settings opens for a provider whose primary identifier is so
 		append() {
 			return this;
 		}
-		appendTo() {
+		appendTo(target) {
+			if (this.key.includes('class="dlp-po-summary"')) summaryParent = target.key;
 			return this;
 		}
 		prependTo() {
@@ -365,6 +378,7 @@ test("shared column settings opens for a provider whose primary identifier is so
 		DeepLinkERPOperatingExpenseDrawer: { isManager: () => false },
 		document: { body: { classList: { toggle() {} } } },
 		frappe: {
+			datetime: {get_today: () => "2026-11-13", add_days: () => "2026-05-18"},
 			boot: {sitename:"qa"},
 			get_route: () => ["operating-expenses"],
 			session: { user: "finance" },
@@ -381,7 +395,11 @@ test("shared column settings opens for a provider whose primary identifier is so
 					}
 					hide() {}
 				},
-				form: { make_control: () => ({ get_value: () => "", set_value: async () => {} }) },
+				form: { make_control: ({df}) => {
+					let value = df.initial_value ?? "";
+					initialFilters.set(df.fieldname, value);
+					return {get_value: () => value, set_value: async next => {value = next;}};
+				}},
 			},
 		},
 	};
@@ -395,6 +413,10 @@ test("shared column settings opens for a provider whose primary identifier is so
 	assert.deepEqual(c.preferences.columns, expectedColumns);
 	assert.equal(c.preferences.density,"standard");
 	assert.equal(c.quick.quick_tab,"pending_work");
+	assert.deepEqual(c.quick, {quick_tab: "pending_work", date_from: "2026-05-18", date_to: "2026-11-13"});
+	assert.equal(initialFilters.get("date_from"), "2026-05-18");
+	assert.equal(initialFilters.get("date_to"), "2026-11-13");
+	assert.equal(summaryParent, ".result-container", "totals scroll below rows instead of reducing the viewport");
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:2`)),oldLayout);
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:legacy`)),legacy);
 	assert.equal(JSON.parse(storage.get(preferenceKey)).version,4);
@@ -412,6 +434,12 @@ test("shared column settings opens for a provider whose primary identifier is so
 	assert.match(frozen()[0][3],/--dlp-po-left:0px/);
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:2`)),oldLayout,"later custom layouts never overwrite the backup");
 	assert.deepEqual(JSON.parse(storage.get(`${preferenceKey}:backup:legacy`)),legacy);
+	c.quick.keyword = "old";
+	c.quick.date_from = "2020-01-01";
+	c.refresh = async () => {};
+	await c.clearQuickFilters();
+	assert.deepEqual(c.quick, {quick_tab: "pending_work", date_from: "2026-05-18", date_to: "2026-11-13"});
+	assert.equal(c.controls.date_from.get_value(), "2026-05-18");
 });
 
 test("layout migration replaces legacy order once while preserving subsequent density and custom columns",()=>{

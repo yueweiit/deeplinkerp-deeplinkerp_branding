@@ -98,6 +98,10 @@
 	function currentFilters(c) {
 		return filters({ quick_tab: "pending_work", ...c.quick });
 	}
+	function defaultQuickFilters() {
+		const today = root.frappe.datetime.get_today();
+		return { quick_tab: "pending_work", date_from: root.frappe.datetime.add_days(today, -179), date_to: today };
+	}
 	// Display rounds decimal text without changing the exact text used by financial controls.
 	function money(value) {
 		if (value == null || value === "" || !["string", "number"].includes(typeof value))
@@ -220,13 +224,13 @@
 			observeTargets: [
 				c.$filters?.[0]?.parentElement,
 				c.$toolbar?.[0],
-				c.$summary?.[0],
 				c.$paging?.[0],
 			],
 		});
 	}
 	function mountControls(c) {
 		c.quick.quick_tab ||= "pending_work";
+		c.$summary.appendTo(c.list.$result.parent(".result-container"));
 		c.$operatingTabs=root.$(`<nav class="dlp-operating-list-tabs" aria-label="${esc(t("运营支出筛选"))}">${quickTabs.map(([value,label])=>`<button type="button" class="btn btn-default btn-sm" data-quick-tab="${value}">${esc(t(label))}</button>`).join("")}</nav>`).insertBefore(c.$toolbar);
 		c.updateOperatingTabs=()=>{
 			const selected=c.quick.quick_tab||"pending_work", counts=c.providerPayload?.tab_counts;
@@ -325,6 +329,7 @@
 			freezeSelection: false,
 			disabledSelectionLabel: "本页不提供批量付款",
 			defaultSort: "request_date desc",
+			defaultQuickFilters,
 			pageFieldMap,
 			controls,
 			numbers: ["amount", "paid_amount", "pending_amount"],
@@ -363,6 +368,7 @@
 		quickTabs,
 		sortFields,
 		filters,
+		defaultQuickFilters,
 		orderBy,
 		request,
 		money,
