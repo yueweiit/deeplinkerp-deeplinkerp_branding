@@ -1,0 +1,995 @@
+/* Every rule is scoped to this Page or its native Dialog. */
+.mx-expenses {
+	--mx-bg: #f6f8fb;
+	--mx-ink: #28384f;
+	--mx-muted: #8b99ad;
+	--mx-line: #e6ecf4;
+	--mx-blue: #4f77d9;
+	--mx-blue-light: #eef3fe;
+	color: var(--mx-ink);
+	font-size: 12px;
+	padding: 8px 10px 24px;
+	background: var(--mx-bg);
+	border-radius: 10px;
+	min-height: 65vh;
+}
+.mx-expenses * {
+	box-sizing: border-box;
+}
+.mx-expenses button,
+.mx-expenses input,
+.mx-expenses select {
+	font: inherit;
+}
+.mx-expenses button {
+	cursor: pointer;
+}
+.mx-expenses button:disabled {
+	cursor: default;
+	opacity: 0.5;
+}
+.mx-expenses button:focus-visible,
+.mx-expenses input:focus-visible,
+.mx-expenses select:focus-visible,
+.mx-expenses [tabindex]:focus-visible {
+	outline: 2px solid #91aef1;
+	outline-offset: 3px;
+}
+.mx-expenses h2,
+.mx-expenses h3,
+.mx-expenses p {
+	margin: 0;
+}
+.mx-expenses .mx-report-tabs button {
+	background: none;
+	border: 0;
+	border-bottom: 2px solid transparent;
+	padding: 0 0 12px;
+	color: #90a0b6;
+	white-space: nowrap;
+}
+.mx-expenses .mx-report-tabs button.active {
+	color: var(--mx-blue);
+	border-color: var(--mx-blue);
+	font-weight: 600;
+}
+.mx-expenses .mx-filters {
+	display: flex;
+	align-items: end;
+	gap: 12px;
+	background: var(--fg-color, #fff);
+	border: 1px solid var(--mx-line);
+	border-radius: 10px;
+	padding: 16px 17px;
+	flex-wrap: wrap;
+	margin-bottom: 18px;
+}
+.mx-expenses .mx-filter {
+	flex: 1;
+	min-width: 110px;
+	max-width: 240px;
+	margin: 0;
+}
+.mx-expenses .mx-filter > span {
+	display: block;
+	font-size: 10px;
+	color: var(--mx-muted);
+	margin-bottom: 7px;
+}
+.mx-expenses .mx-filter select,
+.mx-expenses .mx-filter input {
+	width: 100%;
+	height: 34px;
+	padding: 0 9px;
+	border: 1px solid var(--mx-line);
+	border-radius: 6px;
+	background: var(--fg-color, #fff);
+	color: #5e7292;
+	min-width: 0;
+	font-size: 11px;
+}
+.mx-expenses .mx-select {
+	position: relative;
+}
+.mx-expenses .mx-select-toggle {
+	width: 100%;
+	height: 34px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 0 11px;
+	border: 1px solid var(--mx-line);
+	border-radius: 6px;
+	background: var(--fg-color, #fff);
+	color: #5e7292;
+	font-size: 11px;
+	text-align: start;
+}
+.mx-expenses .mx-select-toggle > span {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.mx-expenses .mx-select-toggle:hover:not(:disabled),
+.mx-expenses .mx-select.show .mx-select-toggle {
+	border-color: var(--mx-blue);
+}
+.mx-expenses .mx-select.show .mx-select-toggle {
+	box-shadow: 0 0 0 2px var(--mx-blue-light);
+}
+.mx-expenses .mx-select-chevron {
+	width: 6px;
+	height: 6px;
+	border-right: 1.5px solid currentColor;
+	border-bottom: 1.5px solid currentColor;
+	transform: translateY(-2px) rotate(45deg);
+	flex-shrink: 0;
+}
+.mx-expenses .mx-select.show .mx-select-chevron {
+	transform: translateY(2px) rotate(225deg);
+}
+.mx-expenses .mx-select-menu {
+	width: 100%;
+	min-width: 0;
+	max-height: 280px;
+	max-height: min(280px, 60vh);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	margin-top: 5px;
+	padding: 5px;
+	border: 1px solid var(--mx-line);
+	border-radius: 10px;
+	background: var(--fg-color, #fff);
+	box-shadow: 0 8px 28px rgba(40, 56, 79, 0.14);
+}
+.mx-expenses .mx-select-option {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 8px;
+	padding: 9px 10px;
+	border: 0;
+	border-radius: 6px;
+	background: transparent;
+	color: #5e7292;
+	font-size: 12px;
+	text-align: start;
+	white-space: normal;
+	overflow-wrap: anywhere;
+}
+.mx-expenses .mx-select-option:hover,
+.mx-expenses .mx-select-option:focus,
+.mx-expenses .mx-select-option[aria-selected="true"] {
+	background: var(--mx-blue-light);
+	color: var(--mx-blue);
+}
+.mx-expenses .mx-select-check {
+	visibility: hidden;
+	font-style: normal;
+	flex-shrink: 0;
+}
+.mx-expenses .mx-select-option[aria-selected="true"] .mx-select-check {
+	visibility: visible;
+}
+.mx-expenses .mx-date-control {
+	position: relative;
+}
+.mx-expenses .mx-date-control .frappe-control {
+	margin: 0;
+	padding: 0;
+}
+.mx-expenses .mx-date-control input {
+	padding-right: 34px;
+	box-shadow: none;
+}
+.mx-expenses .mx-date-control input:focus {
+	border-color: var(--mx-blue);
+	box-shadow: 0 0 0 2px var(--mx-blue-light);
+}
+.mx-expenses .mx-date-trigger {
+	position: absolute;
+	right: 1px;
+	top: 1px;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: 5px;
+	background: transparent;
+	color: #5e7292;
+	display: grid;
+	place-items: center;
+}
+.mx-expenses .mx-date-trigger:hover {
+	background: var(--mx-blue-light);
+}
+/* Native Frappe popups live under body, so scope their theme with a dedicated class. */
+.datepicker.mx-expense-datepicker {
+	font-family: inherit;
+	font-size: 12px;
+	color: var(--text-color, #28384f);
+	border: 1px solid var(--border-color, #e6ecf4);
+	border-radius: 10px;
+	box-shadow: 0 8px 28px rgba(40, 56, 79, 0.14);
+}
+.mx-expense-datepicker .datepicker--nav {
+	border-bottom-color: var(--border-color, #e6ecf4);
+	padding: 8px;
+}
+.mx-expense-datepicker .datepicker--cell {
+	border-radius: 6px;
+}
+.mx-expense-datepicker .datepicker--cell.-current-,
+.mx-expense-datepicker .datepicker--day-name,
+.mx-expense-datepicker .datepicker--button {
+	color: #4f77d9;
+}
+.mx-expense-datepicker .datepicker--cell.-selected-,
+.mx-expense-datepicker .datepicker--cell.-selected-.-focus- {
+	background: #4f77d9;
+	color: #fff;
+}
+.mx-expense-datepicker .datepicker--cell.-focus- {
+	background: var(--control-bg, #eef3fe);
+}
+.mx-expenses .mx-reset {
+	border: 0;
+	background: transparent;
+	color: #95a3b6;
+	font-size: 10px;
+	padding: 8px 0;
+}
+.mx-expenses .mx-scope {
+	display: flex;
+	justify-content: space-between;
+	gap: 15px;
+	font-size: 10px;
+	color: var(--mx-muted);
+	padding: 0 3px;
+	margin-bottom: 15px;
+}
+.mx-expenses .mx-scope i {
+	display: inline-block;
+	width: 5px;
+	height: 5px;
+	background: #51b2a3;
+	border-radius: 50%;
+	margin: 0 6px 2px 0;
+}
+.mx-expenses .mx-cards {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 16px;
+	margin-bottom: 20px;
+}
+.mx-expenses .mx-card {
+	padding: 21px 19px 18px;
+	border: 1px solid var(--mx-line);
+	border-radius: 11px;
+	background: var(--fg-color, #fff);
+	text-align: left;
+}
+.mx-expenses .mx-card.first {
+	background: #f0f5ff;
+	border-color: #dce6fa;
+}
+.mx-expenses .mx-card > span {
+	color: var(--mx-muted);
+	font-size: 11px;
+}
+.mx-expenses .mx-card-value {
+	font-size: 24px;
+	font-weight: 600;
+	color: #2e405b;
+	line-height: 1.4;
+	margin: 15px 0 9px;
+	white-space: normal;
+	overflow-wrap: anywhere;
+	font-variant-numeric: tabular-nums;
+}
+.mx-expenses .mx-card small {
+	color: #97a3b5;
+	font-size: 10px;
+}
+.mx-expenses .mx-card .currency-symbol {
+	font-size: 0.6em;
+	color: var(--mx-muted);
+}
+.mx-expenses .mx-button {
+	border: 1px solid #e0e7f0;
+	background: var(--fg-color, #fff);
+	color: #6c7f9c;
+	border-radius: 6px;
+	padding: 8px 12px;
+	font-size: 11px;
+	white-space: nowrap;
+}
+.mx-expenses .mx-button:hover {
+	background: #f5f8fd;
+}
+.mx-expenses .mx-button.active {
+	color: var(--mx-blue);
+	border-color: #bfd0f2;
+	background: #f0f5ff;
+}
+.mx-expenses .mx-button.mx-primary {
+	background: var(--mx-blue);
+	color: #fff;
+	border-color: var(--mx-blue);
+}
+.mx-expenses .mx-link {
+	background: none;
+	border: 0;
+	color: var(--mx-blue);
+	padding: 0;
+	font-size: 11px;
+}
+.mx-expenses .mx-panel {
+	border: 1px solid var(--mx-line);
+	border-radius: 11px;
+	background: var(--fg-color, #fff);
+	overflow: hidden;
+}
+.mx-expenses .mx-panel-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 15px;
+	padding: 20px 21px 17px;
+}
+.mx-expenses h3 {
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.7;
+}
+.mx-expenses .mx-panel-head p {
+	font-size: 10px;
+	color: #99a6b8;
+	margin-top: 6px;
+}
+.mx-expenses .mx-panel-head > span {
+	font-size: 10px;
+	color: #9aabc1;
+}
+.mx-expenses .mx-chart-grid {
+	display: grid;
+	grid-template-columns: 1.6fr 1fr;
+	gap: 18px;
+	margin-bottom: 20px;
+}
+.mx-expenses .mx-trend {
+	padding: 0 17px 10px;
+	height: 219px;
+}
+.mx-expenses .mx-trend svg {
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+.mx-expenses .mx-trend text {
+	font-size: 9px;
+	fill: #9aaac1;
+}
+.mx-expenses .mx-trend g {
+	cursor: pointer;
+}
+.mx-expenses .mx-composition {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 24px;
+	padding: 24px 23px 30px;
+	min-height: 200px;
+}
+.mx-expenses .mx-donut {
+	width: 132px;
+	height: 132px;
+	border-radius: 50%;
+	position: relative;
+	flex-shrink: 0;
+}
+.mx-expenses .mx-donut > div {
+	position: absolute;
+	inset: 17px;
+	border-radius: 50%;
+	background: var(--fg-color, #fff);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	flex-direction: column;
+}
+.mx-expenses .mx-donut b {
+	font-size: 28px;
+	font-weight: 600;
+}
+.mx-expenses .mx-donut small {
+	color: #9dabc0;
+	font-size: 9px;
+	margin-top: 4px;
+}
+.mx-expenses .mx-legend {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+.mx-expenses .mx-legend button {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	align-items: center;
+	text-align: left;
+	padding: 0;
+	background: none;
+	border: 0;
+	color: #8191a9;
+	font-size: 10px;
+}
+.mx-expenses .mx-legend button:hover {
+	color: var(--mx-blue);
+}
+.mx-expenses .mx-legend i {
+	display: inline-block;
+	width: 6px;
+	height: 6px;
+	border-radius: 2px;
+	margin-right: 6px;
+}
+.mx-expenses .mx-legend strong {
+	font-weight: 500;
+	color: #667c9d;
+}
+.mx-expenses .mx-scroll {
+	overflow: auto;
+	max-width: 100%;
+	overscroll-behavior-x: contain;
+}
+.mx-expenses table {
+	width: 100%;
+	border-collapse: collapse;
+	white-space: nowrap;
+	font-size: 11px;
+}
+.mx-expenses th {
+	background: #f8fafc;
+	font-size: 10px;
+	font-weight: 400;
+	color: #94a3b9;
+	padding: 12px 17px;
+	border-top: 1px solid var(--mx-line);
+	border-bottom: 1px solid var(--mx-line);
+	text-align: left;
+}
+.mx-expenses td {
+	padding: 16px 17px;
+	border-bottom: 1px solid #eef2f7;
+	color: #6d819f;
+	text-align: left;
+}
+.mx-expenses tbody tr:last-child td {
+	border-bottom: 0;
+}
+.mx-expenses tbody tr[data-row],
+.mx-expenses tbody tr[data-company],
+.mx-expenses tbody tr[data-month] {
+	cursor: pointer;
+}
+.mx-expenses tbody tr:hover {
+	background: #f8faff;
+}
+.mx-expenses td.num,
+.mx-expenses th.num {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+.mx-expenses td.mx-strong {
+	font-weight: 600;
+	color: #48658e;
+}
+.mx-expenses td > small {
+	display: block;
+	font-size: 9px;
+	color: #a1aec1;
+	margin-top: 5px;
+}
+.mx-expenses .mx-company {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+.mx-expenses .mx-company > span {
+	height: 28px;
+	width: 28px;
+	border-radius: 7px;
+	background: #edf3fc;
+	color: #82a1cb;
+	display: grid;
+	place-items: center;
+	font-size: 9px;
+}
+.mx-expenses .mx-company > strong {
+	font-size: 11px;
+	font-weight: 500;
+	color: #557095;
+}
+.mx-expenses .mx-mini-bar {
+	display: flex;
+	height: 5px;
+	gap: 2px;
+	width: 160px;
+	border-radius: 3px;
+	overflow: hidden;
+}
+.mx-expenses .mx-panel-foot {
+	display: flex;
+	justify-content: space-between;
+	gap: 15px;
+	align-items: center;
+	padding: 13px 19px;
+	font-size: 10px;
+	color: #9aa9bf;
+	border-top: 1px solid var(--mx-line);
+	line-height: 1.9;
+}
+.mx-expenses .mx-panel-foot > div {
+	display: flex;
+	gap: 8px;
+}
+.mx-expenses .mx-description {
+	max-width: 210px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.mx-expenses .mx-source-number {
+	color: #648bbd;
+}
+.mx-expenses .mx-pill {
+	display: inline-block;
+	padding: 4px 7px;
+	border-radius: 4px;
+	font-size: 9px;
+	background: #f1f4f8;
+	color: #9aa6b8;
+	white-space: nowrap;
+	line-height: 1.5;
+}
+.mx-expenses .mx-pill.mx-approved {
+	color: #4c9f88;
+	background: #edf7f2;
+}
+.mx-expenses .mx-pill.mx-pending {
+	color: #6d90c4;
+	background: #edf3fb;
+}
+.mx-expenses .mx-pill.mx-rejected {
+	color: #bc8886;
+	background: #fff0ef;
+}
+.mx-expenses .mx-pill.mx-warning {
+	color: #bb985e;
+	background: #fff6e6;
+}
+.mx-expenses .mx-notice {
+	display: flex;
+	gap: 12px;
+	align-items: center;
+	border: 1px solid #e0e9fa;
+	border-radius: 7px;
+	padding: 12px 15px;
+	background: #f0f5ff;
+	color: #8297b6;
+	font-size: 11px;
+	line-height: 1.9;
+	margin-bottom: 18px;
+}
+.mx-expenses .mx-notice.mx-warning {
+	background: #fffaf0;
+	border-color: #f0e4cf;
+	color: #b09365;
+}
+.mx-expenses .mx-notice .mx-link {
+	margin-left: auto;
+	flex-shrink: 0;
+}
+.mx-expenses .mx-empty {
+	padding: 60px 20px;
+	text-align: center;
+	color: #a0aec1;
+	font-size: 12px;
+	line-height: 2;
+}
+.mx-expenses .mx-empty > span {
+	display: block;
+	font-size: 35px;
+	font-weight: 300;
+	color: #b4c1d3;
+}
+.mx-expenses .mx-empty strong {
+	display: block;
+	font-weight: 500;
+	color: #8497b2;
+}
+.mx-expenses .mx-empty p {
+	font-size: 11px;
+	margin-top: 6px;
+}
+.mx-expenses .mx-search {
+	width: 240px;
+	max-width: 100%;
+	padding: 9px 11px;
+	border: 1px solid var(--mx-line);
+	border-radius: 6px;
+	font-size: 10px;
+	background: var(--fg-color, #fff);
+}
+.mx-expenses .mx-payroll-cards {
+	display: grid;
+	grid-template-columns: repeat(5, minmax(0, 1fr));
+	gap: 13px;
+	margin-bottom: 21px;
+}
+.mx-expenses .mx-payroll-cards .mx-card {
+	padding: 17px 15px;
+}
+.mx-expenses .mx-payroll-cards .mx-card-value {
+	font-size: 19px;
+	margin-bottom: 0;
+}
+.mx-expenses .mx-report-tabs {
+	display: flex;
+	gap: 24px;
+	margin: 3px 2px 19px;
+	border-bottom: 1px solid var(--mx-line);
+	overflow: auto;
+}
+.mx-expenses tfoot td {
+	background: #f3f7ff;
+	color: #6483ae;
+	font-weight: 600;
+	border-top: 1px solid var(--mx-line);
+}
+.mx-expenses .mx-issue-filters {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 7px;
+	margin-bottom: 18px;
+}
+.mx-expenses .mx-issue-filters button {
+	font-size: 10px;
+	padding: 7px 10px;
+}
+.mx-expenses .mx-footer {
+	display: flex;
+	justify-content: space-between;
+	gap: 20px;
+	color: #a2afc1;
+	font-size: 9px;
+	margin-top: 22px;
+}
+.mx-detail-dialog .modal-dialog {
+	margin: 0 0 0 auto;
+	width: 650px;
+	max-width: 100vw;
+	height: 100dvh;
+}
+.mx-detail-dialog .modal-content {
+	border-radius: 0;
+	min-height: 100dvh;
+}
+.mx-detail-dialog .modal-body {
+	padding: 0 0 20px;
+}
+.mx-detail-dialog .mx-drawer-content {
+	padding: 22px 24px;
+	background: var(--fg-color, #fff);
+	border-radius: 0;
+}
+.mx-detail-dialog .mx-detail-amount {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	background: #f0f5ff;
+	padding: 17px;
+	border-radius: 8px;
+	margin-bottom: 22px;
+	color: #8aa0bd;
+	font-size: 11px;
+}
+.mx-detail-dialog .mx-detail-amount strong {
+	font-size: 23px;
+	color: #597cb4;
+}
+.mx-detail-dialog .mx-detail-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	padding: 18px;
+	background: #f8fafc;
+	border: 1px solid var(--mx-line);
+	border-radius: 8px;
+	margin-bottom: 24px;
+}
+.mx-detail-dialog dt {
+	font-size: 10px;
+	font-weight: 400;
+	color: #9aabc1;
+	margin-bottom: 6px;
+}
+.mx-detail-dialog dd {
+	font-size: 11px;
+	color: #6d83a3;
+	line-height: 1.8;
+	overflow-wrap: anywhere;
+	margin: 0;
+}
+.mx-detail-dialog h3 {
+	margin-bottom: 13px;
+	margin-top: 25px;
+}
+.mx-detail-dialog .mx-help {
+	font-size: 10px;
+	line-height: 1.9;
+	color: #9aaac1;
+	margin-top: 12px;
+}
+.mx-detail-dialog .mx-timeline {
+	padding-left: 18px;
+	border-left: 1px solid var(--mx-line);
+	margin-left: 5px;
+}
+.mx-detail-dialog .mx-timeline > div {
+	position: relative;
+	padding-bottom: 20px;
+}
+.mx-detail-dialog .mx-timeline > div:before {
+	content: "";
+	position: absolute;
+	left: -23px;
+	top: 3px;
+	background: #a8c0e7;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	box-shadow: 0 0 0 3px #fff;
+}
+.mx-detail-dialog .mx-timeline strong {
+	font-size: 11px;
+	font-weight: 500;
+	color: #7388a6;
+}
+.mx-detail-dialog .mx-timeline small {
+	display: block;
+	font-size: 9px;
+	color: #a4b1c3;
+	margin-top: 6px;
+}
+.mx-detail-dialog .mx-timeline p {
+	font-size: 10px;
+	color: #99a8bc;
+	margin-top: 7px;
+}
+.mx-detail-dialog .mx-detail-actions {
+	margin-top: 25px;
+	display: flex;
+	justify-content: end;
+	padding-top: 17px;
+	border-top: 1px solid var(--mx-line);
+}
+.mx-detail-dialog .mx-attachment {
+	width: 100%;
+	border: 1px solid var(--mx-line);
+	border-radius: 6px;
+	background: #fafbfd;
+	padding: 13px;
+	color: #6e84a5;
+	display: flex;
+	justify-content: space-between;
+	text-align: left;
+	margin-bottom: 8px;
+	font-size: 11px;
+	gap: 15px;
+}
+@media (max-width: 1250px) {
+	.mx-expenses .mx-card-value {
+		font-size: 20px;
+	}
+	.mx-expenses .mx-chart-grid {
+		grid-template-columns: 1.25fr 1fr;
+	}
+	.mx-expenses .mx-composition {
+		gap: 15px;
+		padding: 24px 15px;
+	}
+	.mx-expenses .mx-donut {
+		width: 110px;
+		height: 110px;
+	}
+	.mx-expenses .mx-filter {
+		min-width: 120px;
+	}
+	.mx-expenses .mx-legend button {
+		font-size: 9px;
+	}
+	.mx-expenses .mx-payroll-cards .mx-card-value {
+		font-size: 16px;
+	}
+}
+@media (max-width: 900px) {
+	.mx-expenses .mx-cards {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 12px;
+	}
+	.mx-expenses .mx-chart-grid {
+		grid-template-columns: 1fr;
+	}
+	.mx-expenses .mx-composition {
+		justify-content: start;
+		gap: 40px;
+		padding: 25px 30px;
+	}
+	.mx-expenses .mx-donut {
+		height: 140px;
+		width: 140px;
+	}
+	.mx-expenses .mx-legend button {
+		font-size: 11px;
+	}
+	.mx-expenses .mx-payroll-cards {
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+	}
+	.mx-expenses .mx-payroll-cards .mx-card-value {
+		font-size: 20px;
+	}
+}
+@media (max-width: 550px) {
+	.mx-expenses {
+		padding: 0 0 20px;
+	}
+	.mx-expenses .mx-filters {
+		gap: 13px 10px;
+		padding: 13px;
+	}
+	.mx-expenses .mx-filter {
+		min-width: calc(50% - 6px);
+		max-width: none;
+	}
+	.mx-expenses .mx-reset {
+		margin-left: auto;
+	}
+	.mx-expenses .mx-scope {
+		align-items: start;
+		font-size: 9px;
+		line-height: 1.8;
+		gap: 15px;
+	}
+	.mx-expenses .mx-scope span:last-child {
+		text-align: right;
+		max-width: 120px;
+	}
+	.mx-expenses .mx-card {
+		padding: 16px 12px;
+	}
+	.mx-expenses .mx-card > span {
+		font-size: 10px;
+	}
+	.mx-expenses .mx-card-value {
+		font-size: 19px;
+	}
+	.mx-expenses .mx-card small {
+		font-size: 9px;
+	}
+	.mx-expenses .mx-panel-head {
+		padding: 18px 15px 16px;
+		flex-wrap: wrap;
+		align-items: start;
+	}
+	.mx-expenses h3 {
+		font-size: 12px;
+	}
+	.mx-expenses .mx-panel-head p {
+		font-size: 9px;
+	}
+	.mx-expenses .mx-composition {
+		padding: 24px 18px;
+		gap: 23px;
+	}
+	.mx-expenses .mx-donut {
+		width: 115px;
+		height: 115px;
+	}
+	.mx-expenses .mx-donut > div {
+		inset: 15px;
+	}
+	.mx-expenses .mx-legend button {
+		font-size: 10px;
+	}
+	.mx-expenses .mx-legend {
+		gap: 13px;
+	}
+	.mx-expenses .mx-notice {
+		font-size: 10px;
+		align-items: start;
+		padding: 11px 12px;
+		flex-wrap: wrap;
+	}
+	.mx-expenses .mx-notice .mx-link {
+		margin-left: 0;
+	}
+	.mx-expenses .mx-trend {
+		height: 185px;
+		padding: 5px 8px 12px;
+	}
+	.mx-expenses .mx-panel-foot {
+		padding: 12px 14px;
+		font-size: 9px;
+	}
+	.mx-expenses .mx-panel-foot .mx-button {
+		font-size: 10px;
+		padding: 5px 8px;
+	}
+	.mx-expenses .mx-payroll-cards {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 10px;
+	}
+	.mx-expenses .mx-payroll-cards .mx-card {
+		padding: 15px 12px;
+	}
+	.mx-expenses .mx-payroll-cards .mx-card-value {
+		font-size: 19px;
+	}
+	.mx-expenses .mx-search {
+		width: 100%;
+	}
+	.mx-expenses .mx-footer {
+		font-size: 8px;
+		line-height: 1.8;
+	}
+	.mx-detail-dialog .mx-drawer-content {
+		padding: 18px;
+	}
+	.mx-detail-dialog .mx-detail-grid {
+		padding: 15px;
+		gap: 17px;
+	}
+	.mx-detail-dialog .mx-detail-amount strong {
+		font-size: 20px;
+	}
+	.mx-detail-dialog .mx-detail-amount {
+		padding: 14px;
+		gap: 10px;
+	}
+	.mx-expenses .mx-report-tabs {
+		gap: 20px;
+		font-size: 11px;
+	}
+}
+[data-theme="dark"] .mx-expenses {
+	--mx-bg: var(--bg-color);
+	--mx-ink: var(--text-color);
+	--mx-line: var(--border-color);
+	--mx-muted: var(--text-muted);
+	--mx-blue-light: #253451;
+}
+[data-theme="dark"] .mx-expenses .mx-card.first,
+[data-theme="dark"] .mx-expenses th,
+[data-theme="dark"] .mx-expenses tfoot td,
+[data-theme="dark"] .mx-expenses .mx-notice,
+[data-theme="dark"] .mx-expenses .mx-detail-grid {
+	background: var(--control-bg);
+}
+
+.navbar-breadcrumbs .mx-breadcrumb-current {
+	color: var(--text-color);
+	font-size: var(--text-lg);
+	font-weight: 600;
+	cursor: default;
+}
+.navbar-breadcrumbs .mx-breadcrumb-current::before {
+	content: "/";
+	display: inline-block;
+	margin: 0 6px;
+	color: var(--ink-gray-4);
+	font-weight: 400;
+}

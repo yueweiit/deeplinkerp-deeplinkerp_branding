@@ -254,6 +254,7 @@ test("applies the approved fixed DL root order", () => {
 		{ name: "China Finance", label: "China Finance" },
 		{ name: "Buying", label: "Buying" },
 		{ name: "Overseas Costing", label: "Overseas Costing" },
+		{ name: "Mexico Expenses", label: "Mexico Expenses" },
 		{ name: "Stock", label: "Stock" },
 		{ name: "Quality", label: "Quality" },
 		{ name: "Assets", label: "Assets" },
@@ -275,6 +276,7 @@ test("applies the approved fixed DL root order", () => {
 			"Assets",
 			"China Finance",
 			"Overseas Costing",
+			"Mexico Expenses",
 			"Projects",
 			"Quality",
 			"Subcontracting",
@@ -340,6 +342,44 @@ test("classic sorting tolerates the optional sidebar missing and recognizes Chin
 	]);
 	arrangeClassicSidebar(classic);
 	assert.deepEqual(classic.container.children.map((button) => button.dataset.iconLabel), ["采购", "资产", "中国财务", "海外成本核算"]);
+});
+
+test("Mexico expense identity uses the same receipt icon in all navigation languages", () => {
+	for (const label of ["Mexico Expenses", "Expenses (MX)", "费用支出（MX）", "Gastos (MX)"])
+		assert.equal(navigation.getNavigationIcon(label), "receipt-text");
+});
+
+test("existing home layouts gain only the authorized Mexico expense entry without being mutated", () => {
+	const icon = {name:"Mexico Expenses",label:"Mexico Expenses",link_type:"Workspace Sidebar",link_to:"Mexico Expenses",idx:103};
+	const layout = [{name:"Stock",idx:4,hidden:0},{name:"Private Folder",idx:7,icon_type:"Folder"}];
+	const before = structuredClone(layout);
+	const result = navigation.includeMexicoExpenseDesktopIcon([icon,{name:"Other New Module"}],layout);
+	assert.deepEqual(layout,before);
+	assert.equal(result.length,3);
+	assert.equal(result[0],layout[0]);
+	assert.deepEqual(result[2],{...icon,idx:8});
+	assert.equal(navigation.includeMexicoExpenseDesktopIcon([icon],result),result);
+	assert.equal(icon.idx,103);
+});
+
+test("home visibility follows boot authority and preserves an explicit user hide", () => {
+	const icon = {name:"Mexico Expenses",hidden:0};
+	const layout = [{name:"Stock"}];
+	assert.equal(navigation.includeMexicoExpenseDesktopIcon([],layout),layout);
+	const hidden = [...layout,{...icon,hidden:1}];
+	assert.equal(navigation.includeMexicoExpenseDesktopIcon([icon],hidden),hidden);
+	assert.deepEqual(navigation.includeMexicoExpenseDesktopIcon([],hidden),layout);
+	assert.deepEqual(navigation.includeMexicoExpenseDesktopIcon([{...icon,hidden:1}],hidden),layout);
+});
+
+test("Mexico expense native Page route selects its own navigation root", () => {
+	const model = navigation.buildNavigationModel({
+		desktopIcons:[{name:"Accounting",label:"Accounting"},{name:"Mexico Expenses",label:"Mexico Expenses",link_to:"Mexico Expenses",navigation_route:"/desk/mexico-expenses?sidebar=Mexico%20Expenses"}],
+		workspaceSidebars:{"mexico expenses":{label:"Mexico Expenses",items:[{type:"Link",link_type:"Page",link_to:"mexico-expenses"}]}},
+		route:"/desk/mexico-expenses?sidebar=Mexico%20Expenses"
+	});
+	assert.equal(model.activeItem.name,"Mexico Expenses");
+	assert.equal(model.nativeHostKey,model.activeItem.key);
 });
 
 test("clones authorized workspace items before native nesting mutates them", () => {
@@ -885,7 +925,7 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
-	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.21/);
+	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.22/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
   assert.match(hooks, /deeplinkerp_branding\.js\?v=\d+\.\d+\.\d+/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);

@@ -1,0 +1,18 @@
+{
+ "doctype": "Page",
+ "name": "mexico-personnel-report",
+ "module": "Deeplinkerp Branding",
+ "title": "Mexico Personnel Expenses",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

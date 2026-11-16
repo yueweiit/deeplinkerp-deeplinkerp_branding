@@ -1,0 +1,18 @@
+{
+ "doctype": "Page",
+ "name": "mexico-expenses",
+ "module": "Deeplinkerp Branding",
+ "title": "Expense Overview",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

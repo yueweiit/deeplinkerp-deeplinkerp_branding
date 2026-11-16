@@ -1,0 +1,18 @@
+{
+ "doctype": "Page",
+ "name": "mexico-expense-review",
+ "module": "Deeplinkerp Branding",
+ "title": "Data Review",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

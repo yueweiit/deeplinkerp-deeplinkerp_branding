@@ -1,0 +1,107 @@
+{
+ "app": "deeplinkerp_branding",
+ "doctype": "Workspace Sidebar",
+ "header_icon": "receipt-text",
+ "items": [
+  {
+   "child": 0,
+   "collapsible": 0,
+   "icon": "layout-dashboard",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Expense Overview",
+   "link_to": "mexico-expenses",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 0,
+   "icon": "list",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Expense Details",
+   "link_to": "mexico-expense-details",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 0,
+   "icon": "users",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Personnel Expenses",
+   "link_to": "mexico-personnel-expenses",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 1,
+   "icon": "chart-no-axes-combined",
+   "indent": 1,
+   "keep_closed": 1,
+   "label": "Expense Reports",
+   "link_to": "",
+   "link_type": "",
+   "show_arrow": 0,
+   "type": "Section Break"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Mexico Subsidiary Expenses",
+   "link_to": "mexico-expense-reports",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Mexico Personnel Expenses",
+   "link_to": "mexico-personnel-report",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 1,
+   "collapsible": 0,
+   "icon": "",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Mexico Expense Trend",
+   "link_to": "mexico-expense-trend",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  },
+  {
+   "child": 0,
+   "collapsible": 0,
+   "icon": "clipboard-check",
+   "indent": 0,
+   "keep_closed": 0,
+   "label": "Data Review",
+   "link_to": "mexico-expense-review",
+   "link_type": "Page",
+   "show_arrow": 0,
+   "type": "Link"
+  }
+ ],
+ "module": "Deeplinkerp Branding",
+ "name": "Mexico Expenses",
+ "standard": 1,
+ "title": "Mexico Expenses"
+}

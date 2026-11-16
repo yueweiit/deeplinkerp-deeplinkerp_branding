@@ -12,6 +12,10 @@
 		framework: "blocks",
 		"ai assistant": "bot",
 		"china finance": "file-text",
+		"mexico expenses": "receipt-text",
+		"expenses (mx)": "receipt-text",
+		"费用支出（mx）": "receipt-text",
+		"gastos (mx)": "receipt-text",
 		organization: "network",
 		accounting: "landmark",
 		assets: "warehouse",
@@ -32,6 +36,7 @@
 		["assets", "资产"],
 		["china finance", "中国财务", "财务"],
 		["overseas costing", "overseas cost", "overseas cost workbench", "海外成本核算"],
+		["mexico expenses", "expenses (mx)", "费用支出（mx）", "gastos (mx)"],
 		["projects", "项目"],
 		["quality", "质量"],
 		["subcontracting", "委外"],
@@ -101,6 +106,20 @@
 			if (!included.has(key)) projected.push({ ...icon });
 		}
 		return projected;
+	}
+
+	function includeMexicoExpenseDesktopIcon(authorizedIcons, runtimeLayout) {
+		if (!Array.isArray(runtimeLayout)) return runtimeLayout;
+		const key = "mexico expenses";
+		const icon = (authorizedIcons || []).find((item) => desktopIconKey(item) === key);
+		const present = runtimeLayout.some((item) => desktopIconKey(item) === key);
+		if (!icon || icon.hidden === 1 || icon.hidden === "1") {
+			return present ? runtimeLayout.filter((item) => desktopIconKey(item) !== key) : runtimeLayout;
+		}
+		if (present) return runtimeLayout;
+		const lastIndex = Math.max(-1, ...runtimeLayout.map((item) => Number(item.idx)).filter(Number.isFinite));
+		// Add only this new, permission-filtered entry in memory. Keep user layout choices intact.
+		return [...runtimeLayout, { ...icon, idx: lastIndex + 1 }];
 	}
 
 	function replaceNavigationRoot(top, nativeItems, buildNavigation) {
@@ -639,6 +658,7 @@
 		collectDisclosureState,
 		getNavigationDisplayLabel,
 		getNavigationIcon,
+		includeMexicoExpenseDesktopIcon,
 		isInternalDeskLink,
 		normalizeRoute,
 		observeNativeSidebarChanges,

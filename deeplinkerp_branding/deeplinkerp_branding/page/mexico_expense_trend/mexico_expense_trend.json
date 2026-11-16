@@ -1,0 +1,18 @@
+{
+ "doctype": "Page",
+ "name": "mexico-expense-trend",
+ "module": "Deeplinkerp Branding",
+ "title": "Mexico Expense Trend",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

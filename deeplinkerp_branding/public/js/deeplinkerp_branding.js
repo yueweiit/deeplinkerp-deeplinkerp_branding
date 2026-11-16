@@ -659,7 +659,21 @@
 		window.DeepLinkERPInterfaceMode?.finishDLPreparation(document);
 	}
 
+	function ensureMexicoExpenseHomeIcon() {
+		if (!["desktop", "home"].includes(frappe.get_route?.()[0])) return false;
+		const desktop = frappe.pages?.desktop?.desktop_page;
+		if (!desktop || desktop.edit_mode || !window.DeepLinkERPNavigation) return false;
+		const layout = frappe.desktop_icons;
+		const projected = DeepLinkERPNavigation.includeMexicoExpenseDesktopIcon(frappe.boot.desktop_icons, layout);
+		if (projected === layout) return false;
+		// Native rendering only; never save or reset the user's Desktop Layout.
+		desktop.data = projected;
+		desktop.update();
+		return true;
+	}
+
 	function refreshDeskEnhancements() {
+		if (ensureMexicoExpenseHomeIcon()) return;
 		patchSidebarMenuIcons();
 		patchSidebarSubtitle();
 		applyBranding();
