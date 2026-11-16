@@ -2351,3 +2351,332 @@ OA 审批任务身份缺失或重复，请核对原单,Faltan identificadores de
 采购出纳接口密钥格式无效,Formato de clave de API de caja para compras no válido
 审批尚未通过，请核对,La aprobación aún no se ha completado. Verifique la solicitud.
 申请来源已移除或范围变化，请核对钉钉原单,La solicitud de origen se eliminó o está fuera del alcance permitido. Verifique la solicitud original en DingTalk.
+A review note is required,Se requiere una nota de revisión
+Access to all subsidiaries in this approval is required to view its attachments,Se requiere acceso a todas las subsidiarias de la solicitud para ver sus adjuntos
+Accounting and Legal Services,Servicios contables y legales
+Accounts permission is required,Se requieren permisos de contabilidad
+Active,Activo
+Active Applications,Solicitudes vigentes
+Adjust the filters or check Data Review for incomplete records,Ajusta los filtros o consulta los registros incompletos en Revisión
+Air Freight,Transporte aéreo
+All Categories,Todas las categorías
+All Issues,Todas las incidencias
+All Statuses,Todos los estados
+All Subsidiaries,Todas las subsidiarias
+Allocation between subsidiaries required,Asignación entre subsidiarias pendiente
+Amount,Importe
+Amount requires review,Importe por revisar
+Amounts are summed by expense line; application counts are distinct,Los importes se suman por partida; las solicitudes se cuentan sin duplicados
+Annual Bonus,Aguinaldo
+Applicant,Solicitante
+Application Amount,Importe solicitado
+Application Date,Fecha de solicitud
+Application Timestamp,Fecha y hora de solicitud
+Applications,Solicitudes
+Applications in Approval,Importe en aprobación
+Applications to Review,Solicitudes por revisar
+Approval Instance ID,ID de instancia de aprobación
+Approval Number,Número de solicitud
+Approval Source,Origen de aprobación
+Approval Status,Estado de aprobación
+Approval Timeline,Historial de aprobación
+Approval source changed; synchronize before reading attachments,La solicitud cambió; sincroniza antes de consultar los adjuntos
+Approval source is unavailable; synchronize again,El origen de la solicitud no está disponible; sincroniza de nuevo
+Approved,Aprobada
+Approved Application Amount,Importe aprobado
+Attachment download failed; refresh or synchronize the source,No se pudo descargar el adjunto; actualiza o sincroniza el origen
+Attachment integrity verification failed,Falló la verificación de integridad del adjunto
+Attachment is unavailable or not archived,El adjunto no está disponible o no se ha archivado
+Attachment presence does not confirm payment,La existencia de adjuntos no confirma el pago
+Beneficiary,Beneficiario
+Bonus,Bonificación
+Business Timezone,Zona horaria del negocio
+CFE (Electricity),CFE (electricidad)
+Calculation Basis,Criterios de cálculo
+Categories,Categorías
+Clear Subcategory,Quitar filtro de subcategoría
+Company,Empresa
+Company Assignment Basis,Criterio de asignación de empresa
+Configuration Version,Versión de configuración
+Confirm Expense Period,Confirmar período del gasto
+Corporation ID,ID de la organización
+Correct the subsidiary allocation in OA before assigning a company,Corrige el desglose entre subsidiarias en OA antes de asignar la empresa
+Courier,Mensajería
+Currency,Moneda
+Currency requires review,Moneda por revisar
+Custom Period,Período personalizado
+Data Review,Revisión de datos
+Date Basis,Base de fecha
+Department,Departamento
+Download,Descargar
+Duplicate source entity mapping,Asignación de entidad de origen duplicada
+Each currency is reported separately,Cada moneda se informa por separado
+Enable Mexico Expense Sync,Activar sincronización de gastos de México
+Entity Kind,Tipo de entidad
+Entity Mapping Key,Clave de asignación de entidad
+Expense Application Details,Detalle de la solicitud de gastos
+Expense Application Register,Registro de solicitudes de gastos
+Expense Category,Categoría de gasto
+Expense Composition,Distribución del gasto
+Expense Description,Descripción del gasto
+Expense Details,Detalle de gastos
+Expense Entity,Entidad que asume el gasto
+Expense Overview,Resumen de gastos
+Expense Period,Período del gasto
+Expense Period End,Fin del período del gasto
+Expense Period Start,Inicio del período del gasto
+Expense Period Type,Tipo de período del gasto
+Expense Reports,Informes de gastos
+Expense Subcategory,Subcategoría de gasto
+Expense Trend,Tendencia del gasto
+Expense category requires review,Categoría de gasto por revisar
+Expense entities are mapped explicitly to ERP subsidiaries,Las entidades que asumen el gasto se vinculan explícitamente con las subsidiarias en ERP
+Expense line confirmed,Partida de gasto confirmada
+Expense line not found,No se encontró la partida de gasto
+Expense period required,Falta el período del gasto
+Expense source changed; reload and review again,El origen del gasto cambió; actualiza y vuelve a revisar
+Expenses by Subsidiary,Gasto por subsidiaria
+"Expenses by subsidiary, category and reporting period","Consulta gastos por subsidiaria, categoría y período"
+Export Excel,Exportar a Excel
+Export exceeds 20000 rows; narrow the filters,La exportación supera 20000 filas; limita los filtros
+Federal Taxes,Impuestos federales
+Fonacot,Fonacot
+General Taxes,Tributos
+Half Monthly,Quincenal
+Header and detail totals do not match,El total de cabecera no coincide con las partidas
+In Approval,En aprobación
+Invalid Mexico expense filters,Filtros de gastos de México no válidos
+Invalid OA template cursor,Cursor de paginación de plantilla OA no válido
+Invalid attachment identity,Identificador de adjunto no válido
+Invalid business timezone,Zona horaria del negocio no válida
+Invalid expense category,Categoría de gasto no válida
+Invalid expense period or reporting month,Período del gasto o mes del informe no válido
+Invalid expense report,Informe de gastos no válido
+Invalid pagination,Parámetros de paginación no válidos
+Invalid reporting month,Mes del informe no válido
+Invalid review issue,Tipo de incidencia de revisión no válido
+Invalid search text,Texto de búsqueda no válido
+Invalid source line key,Identificador de partida de origen no válido
+Invalid subsidiary mappings,Configuración de asignaciones de subsidiarias no válida
+Invalid synchronization setting,Configuración de sincronización no válida
+Key Attachments,Documentos justificativos
+Last Successful Sync,Última sincronización correcta
+Last Sync Error,Último error de sincronización
+Load OA Attachments,Consultar adjuntos de OA
+Loading,Cargando
+Loading Mexico expenses,Cargando gastos de México
+Mapping Version,Versión de asignaciones
+Mappings use the exact source entity label and kind; department names never imply a company,Configura el nombre exacto y el tipo de entidad de origen; el departamento no determina la empresa
+Mexico Expense Company Map,Asignación de empresas para gastos de México
+Mexico Expense Line,Partida de gasto de México
+Mexico Expense Settings,Configuración de gastos de México
+Mexico Expense Source,Origen de aprobaciones de gastos de México
+Mexico Expense Sync Failed,Error de sincronización de gastos de México
+Mexico Expense Synchronization,Sincronización de gastos de México
+Mexico Expense Trend,Tendencia mensual de gastos de México
+Mexico Expenses,Gastos (MX)
+Mexico Personnel Expenses,Resumen de remuneraciones y personal de México
+Mexico Subsidiary Expenses,Resumen de gastos por subsidiaria de México
+Mexico approval scan exceeds the configured page limit,La consulta de aprobaciones de México supera el límite de páginas
+Mexico expense records can only be changed through the workbench,Los registros de gastos de México solo se pueden modificar desde su área de trabajo
+Mexico expense synchronization failed; retry or contact an administrator,Falló la sincronización de gastos de México; inténtalo de nuevo o contacta al administrador
+Mexico expenses could not be loaded,No se pudieron cargar los gastos de México
+Missing expense periods are listed by application month for review only,Los registros sin período de gasto aparecen por mes de solicitud únicamente para su revisión
+Monthly,Mensual
+Next,Siguiente
+No approval timeline available,No hay historial de aprobación disponible
+No archived attachments,No hay adjuntos archivados
+No expenses match the current filters,No hay gastos que coincidan con los filtros actuales
+Not Archived,Sin archivar
+Not Confirmed,Por confirmar
+Not Mapped,Sin asignar
+Not Synchronized,Sin sincronizar
+Not permitted to access this subsidiary,No tienes permiso para acceder a esta subsidiaria
+Not permitted to export Mexico expenses,No tienes permiso para exportar gastos de México
+Not permitted to read Mexico expenses,No tienes permiso para consultar gastos de México
+OA approvals do not prove actual payment,La aprobación en OA no demuestra el pago efectivo
+OA synchronization snapshot changed; restart the scan,La instantánea de sincronización de OA cambió; reinicia la consulta
+OA template cursor did not advance,El cursor de la plantilla OA no avanzó
+OA template response identity mismatch,La identidad de origen de la respuesta de plantilla OA no coincide
+Ocean Freight,Transporte marítimo
+Only a System Manager can configure Mexico expense synchronization,Solo un administrador del sistema puede configurar la sincronización de gastos de México
+Only an Accounts Manager can confirm expense periods,Solo un responsable contable puede confirmar los períodos de gasto
+Only authorized subsidiary lines are shown; the full approval and attachments require access to all subsidiaries,Solo se muestran partidas de subsidiarias autorizadas; la solicitud completa y los adjuntos requieren acceso a todas las subsidiarias
+Only confirmed expense lines are included,Solo se incluyen partidas de gasto confirmadas
+Open Data Review,Abrir revisión de datos
+Open Native Report,Abrir informe estándar
+Original Amount,Importe original de origen
+Payment Terms,Condiciones de pago
+"Payroll is summarized by subsidiary, category and period; no employee details","El personal se resume por subsidiaria, concepto y período, sin datos individuales de empleados"
+Personnel Expenses,Remuneraciones y personal
+Personnel Share,Participación de personal
+Planned Payment Date,Fecha de pago prevista
+Previous,Anterior
+Process Code,Código de plantilla de aprobación
+Professional Services,Servicios profesionales
+Raw Source JSON,JSON de origen
+Refresh,Actualizar
+Rejected,Rechazada
+Remunerations and Personnel,Remuneraciones y personal
+Rent,Renta
+Reporting Month,Mes del informe
+Reporting periods are confirmed independently from planned payment dates,Los períodos de gasto se confirman por separado de las fechas de pago previstas
+Reports include confirmed expense lines in the selected approval status,Los informes incluyen partidas confirmadas con el estado de aprobación seleccionado
+Requires Review,Requiere revisión
+Reset,Restablecer
+Retry,Reintentar
+Review Issues,Incidencias de revisión
+Review Note,Nota de revisión
+Review State,Estado de revisión
+Review saved; source issues still require attention,Revisión guardada; quedan incidencias de origen pendientes
+Reviewed At,Fecha de revisión
+Reviewed By,Revisado por
+Reviewed Source Fingerprint,Huella de origen revisada
+Salary,Salario
+Save Review,Guardar revisión
+Save Settings,Guardar configuración
+"Search approval number, entity or description","Buscar número de solicitud, entidad o concepto"
+Search expenses,Buscar gastos
+Select a category to view its details,Selecciona una categoría para ver sus partidas
+Settings changed; reload and try again,La configuración cambió; actualiza e inténtalo de nuevo
+Settings saved; cached records will be rechecked,Configuración guardada; se volverán a revisar los registros en caché
+Shared approvals are summed by line and counted once,Las solicitudes compartidas se asignan por partida y se cuentan una sola vez
+Six months of confirmed expense lines,Partidas confirmadas de los últimos seis meses
+Social Contributions,Cotizaciones sociales
+Source Entity,Entidad de origen
+Source Issues,Incidencias de origen
+Source Key,Clave única de origen
+Source Line Key,Clave única de partida de origen
+Source Row Fingerprint,Huella de la fila de origen
+Source Row ID,ID de fila de origen
+Source Table ID,ID de tabla de origen
+Source Version,Versión de origen
+"Source amount, currency and allocation errors must be corrected in OA and synchronized again","Los errores de importe, moneda y asignación deben corregirse en OA y sincronizarse de nuevo"
+Source changed; review again,El origen cambió; vuelve a revisar
+Source form requires review,Estructura del formulario de origen por revisar
+Source row identity requires review,Identidad de la partida de origen por revisar
+Subsidiary,Subsidiaria
+Subsidiary Mappings,Asignaciones de subsidiarias
+Subsidiary mapping required,Subsidiaria sin asignar
+Sync Cursor,Cursor de sincronización
+Sync Page Count,Número de páginas sincronizadas
+Sync Snapshot,Instantánea de sincronización
+Synchronization Settings,Configuración de sincronización
+Synchronization queued; refresh after the background job finishes,Sincronización en cola; actualiza cuando termine la tarea
+Synchronize Now,Sincronizar ahora
+Taxes and Contributions,Impuestos y contribuciones
+Terminated,Terminada
+The Mexico approval corporation is not enabled in the OA connection,La organización de las aprobaciones de México no está habilitada en la conexión OA
+This expense line was removed from the source; refresh the page,Esta partida se eliminó del origen; actualiza la página
+Too many source lines; use the filtered expense list,Demasiadas partidas de origen; utiliza la lista de gastos filtrada
+Transport and Logistics,Transporte y logística
+Unclassified,Sin clasificar
+Unconfirmed records are excluded from subsidiary charts and reports,Los registros pendientes de revisión se excluyen de los gráficos e informes confirmados
+Unknown,Desconocido
+Utilities and Operations,Servicios públicos y operativos
+View Expense Details,Ver partidas de gasto
+Visible Expense Amount,Importe de las partidas visibles
+Water,Agua
+Weekly,Semanal
+Withdrawn,Retirada
+{0} applications,{0} solicitudes
+{0} applications · {1} expense lines,{0} solicitudes · {1} partidas
+pending,En aprobación
+approved,Aprobada
+rejected,Rechazada
+terminated,Terminada
+withdrawn,Retirada
+unknown,Desconocido
+personnel,Remuneraciones y personal
+tax,Impuestos y contribuciones
+utilities,Servicios públicos y operativos
+logistics,Transporte y logística
+services,Servicios profesionales
+entity,Entidad que asume el gasto
+department,Departamento
+mapping,Asignación configurada
+manual,Confirmación manual
+month,Mensual
+half_month,Quincenal
+week,Semanal
+custom,Período personalizado
+confirmed,Confirmada
+needs_review,Requiere revisión
+Amount incomplete,Importe incompleto
+Application Timestamp (UTC),Fecha y hora de solicitud (UTC)
+Access to all mapped subsidiaries is required to manage synchronization,Se requiere acceso a todas las subsidiarias asignadas para administrar la sincronización
+MX Finance Approval Time,Hora de aprobación de Finanzas MX
+MX Finance Approval Date,Fecha de aprobación de Finanzas MX
+Awaiting MX Finance approval,Pendiente de aprobación de Finanzas MX
+Finance approval evidence requires review,Revisar la evidencia de aprobación financiera
+Finance Approved,Aprobado por Finanzas
+Reporting months follow MX Finance approval in the business timezone,El mes corresponde a la aprobación de Finanzas MX en la zona horaria operativa
+Expenses require MX Finance approval and valid subsidiary allocation before reporting,Los informes requieren aprobación de Finanzas MX y asignación válida a una filial
+Review Expense Line,Revisar detalle del gasto
+Only an Accounts Manager can review expense lines,Solo un responsable de contabilidad puede revisar los gastos
+Expense periods follow MX Finance approval and cannot be entered manually,El período se determina por la aprobación de Finanzas MX y no se puede introducir manualmente
+Expense Period Version,Versión del período de gastos
+Expense period recalculation pending,Recálculo del período de gastos pendiente
+Expense periods are being recalculated; view Data Review and retry after recalculation,Los períodos de gastos están pendientes de recálculo; consulte la revisión de datos y vuelva a intentarlo al finalizar
+Start Date,Fecha de inicio
+End Date,Fecha de fin
+Date Range,Rango de fechas
+Enter a valid start and end date; the start date must not be after the end date,Introduzca fechas de inicio y fin válidas; la fecha de inicio no puede ser posterior a la fecha de fin
+Confirmed expenses within the selected date range by month,Gastos confirmados dentro del rango de fechas seleccionado por mes
+Expenses awaiting period assignment are listed by application date for review only,Los gastos sin período asignado se muestran por fecha de solicitud solo para revisión
+Approval Form,Formulario de aprobación
+All Approval Forms,Todos los formularios
+Operating Expenses,Gastos operativos
+Expense Requests,Solicitudes de gastos
+Purchase Expenses,Gastos de compras
+Invalid approval form,Formulario de aprobación no válido
+This approval form is not connected yet; no data is available,Este formulario aún no está conectado; no hay datos disponibles
+Clear Expense Category,Quitar categoría de gasto
+Administrative Expenses,Gastos administrativos
+Selling Expenses,Gastos de venta
+Employee Benefits,Prestaciones al personal
+MRO Purchases,Compras MRO
+Order Purchases,Compras por pedido
+Investment Purchases,Compras de inversión
+Service Purchases,Compras de servicios
+Project Purchases,Compras para proyectos
+Approval Details,Detalles de la aprobación
+Approval Templates,Plantillas de aprobación
+Business Category,Clasificación del negocio
+Salary Type,Tipo de salario
+Templates Initialized,Plantillas inicializadas
+Zero amount requires review,Importe cero pendiente de revisión
+Mexico Expense Template,Plantilla de gastos de México
+Template Name,Nombre de la plantilla
+Finance Node Names,Nombres de etapas financieras (uno por línea)
+Finance Activity IDs,Identificadores de etapas financieras (uno por línea)
+Field Mapping JSON,Mapeo de campos JSON
+Enabled,Habilitado
+Invalid approval template,Configuración de plantilla no válida
+Invalid template field mapping,Mapeo de campos no válido
+Finance nodes are required,Configure las etapas de aprobación financiera
+Approval template is not configured,La plantilla de aprobación no está configurada
+Approval instance identity conflicts with another template,La identidad de la aprobación entra en conflicto con otra plantilla
+Duplicate or unauthorized approval template,Plantilla duplicada o empresa no autorizada
+An existing template cannot change approval form,No se puede cambiar la categoría de una plantilla existente
+Disable historical templates instead of removing them,Desactive las plantillas históricas en lugar de eliminarlas
+No sample approvals found; save this template disabled first,No hay aprobaciones de muestra; guarde primero la plantilla desactivada
+Template fields require mapping before synchronization can be enabled,Configure el mapeo de campos antes de habilitar la sincronización
+Production Type,Tipo de producción
+Execution Region,Región de ejecución
+Application Type,Tipo de solicitud
+Source Department,Departamento de origen
+Delivery Date,Fecha de entrega
+Budget Snapshot,Presupuesto al solicitar
+Used Budget Snapshot,Presupuesto utilizado al solicitar
+Finance Status,Estado financiero
+Supporting item details; amounts are not added again,Detalles de respaldo; los importes no se suman de nuevo
+Select one template to preview. Disable historical templates instead of deleting them. Field mappings use logical names and component ID arrays.,Seleccione una plantilla para previsualizar. Desactive las plantillas históricas en lugar de eliminarlas. Use nombres lógicos y listas de IDs de componentes en el mapeo.
+Preview Selected Template,Previsualizar plantilla seleccionada
+Select exactly one template,Seleccione exactamente una plantilla
+operating,Gastos operativos
+expense,Solicitudes de gastos
+purchase,Gastos de compra
+administration,Gastos administrativos
+selling,Gastos de venta
+procurement,Gastos de compra

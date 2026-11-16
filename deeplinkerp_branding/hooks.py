@@ -131,6 +131,7 @@ boot_session = "deeplinkerp_branding.deeplinkerp_branding.branding.apply_boot_br
 
 # before_install = "deeplinkerp_branding.install.before_install"
 after_install = ["deeplinkerp_branding.inventory_install.after_install", "deeplinkerp_branding.procurement_navigation.ensure_procurement_navigation", "deeplinkerp_branding.operating_navigation.ensure_operating_navigation"]
+after_install.append("deeplinkerp_branding.mexico_expense_install.after_migrate")
 
 # Uninstallation
 # ------------
@@ -168,6 +169,7 @@ after_migrate = [
 	"deeplinkerp_branding.purchase_fulfilment_install.after_migrate",
 	"deeplinkerp_branding.purchase_reversal_install.after_migrate",
 	"deeplinkerp_branding.operating_navigation.ensure_operating_navigation",
+	"deeplinkerp_branding.mexico_expense_install.after_migrate",
 ]
 
 permission_query_conditions = {
@@ -182,6 +184,11 @@ permission_query_conditions["OA Purchase Request"] = "deeplinkerp_branding.servi
 has_permission["OA Purchase Request"] = "deeplinkerp_branding.services.purchase_source_service.has_permission"
 permission_query_conditions["Purchase Fulfilment Link"] = "deeplinkerp_branding.services.purchase_fulfilment_service.permission_query_conditions"
 has_permission["Purchase Fulfilment Link"] = "deeplinkerp_branding.services.purchase_fulfilment_service.has_permission"
+permission_query_conditions["Mexico Expense Line"] = "deeplinkerp_branding.services.mexico_expenses.permission_query_conditions"
+has_permission["Mexico Expense Line"] = "deeplinkerp_branding.services.mexico_expenses.has_permission"
+permission_query_conditions["Mexico Expense Source"] = "deeplinkerp_branding.services.mexico_expenses.source_permission_query_conditions"
+has_permission["Mexico Expense Source"] = "deeplinkerp_branding.services.mexico_expenses.source_has_permission"
+has_permission["Mexico Expense Settings"] = "deeplinkerp_branding.services.mexico_expenses.settings_has_permission"
 doc_events = {
     "Journal Entry": {"validate": "deeplinkerp_branding.services.operating_expenses.validate_operating_journal"},
     "File": {"validate": "deeplinkerp_branding.services.operating_payment_service.validate_payment_file", "on_trash": "deeplinkerp_branding.services.operating_payment_service.validate_payment_file"},
@@ -220,6 +227,7 @@ override_whitelisted_methods.update({"frappe.desk.form.save.savedocs": "deeplink
     "erpnext.buying.doctype.purchase_order.purchase_order.close_or_unclose_purchase_orders": "deeplinkerp_branding.services.purchase_repost_boundary.close_or_unclose_purchase_orders",
     "erpnext.controllers.accounts_controller.update_child_qty_rate": "deeplinkerp_branding.services.purchase_repost_boundary.update_child_qty_rate"})
 scheduler_events = {"cron": {"*/15 * * * *": ["deeplinkerp_branding.services.operating_expenses.scheduled_sync", "deeplinkerp_branding.services.purchase_source_service.scheduled_sync", "deeplinkerp_branding.services.purchase_reversal_progress.recover"]}}
+scheduler_events["cron"]["*/15 * * * *"].append("deeplinkerp_branding.services.mexico_expenses.scheduled_sync")
 website_context = {
 	"favicon": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_64.png?v=0.0.9",
 	"splash_image": "/assets/deeplinkerp_branding/logo/erp_logo_rounded_192.png?v=0.0.9",

@@ -679,3 +679,332 @@ OA 审批任务身份缺失或重复，请核对原单,OA 审批任务身份缺�
 申请来源已移除或范围变化，请核对钉钉原单,申请来源已移除或范围变化，请核对钉钉原单
 缓存 OA 身份无效，请管理员核查,缓存 OA 身份无效，请管理员核查
 缓存 OA 身份重复，请管理员核查,缓存 OA 身份重复，请管理员核查
+A review note is required,请填写核对说明
+Access to all subsidiaries in this approval is required to view its attachments,查看整单附件需要拥有该审批涉及的全部子公司权限
+Accounting and Legal Services,会计及法律服务
+Accounts permission is required,需要财务权限
+Active,有效
+Active Applications,有效申请
+Adjust the filters or check Data Review for incomplete records,请调整筛选条件，或到数据核对页查看待完善记录
+Air Freight,空运
+All Categories,全部类别
+All Issues,全部问题
+All Statuses,全部状态
+All Subsidiaries,全部子公司
+Allocation between subsidiaries required,多主体待分摊
+Amount,金额
+Amount requires review,金额待核对
+Amounts are summed by expense line; application counts are distinct,金额按费用明细汇总，申请数量按审批单去重
+Annual Bonus,年终奖
+Applicant,申请人
+Application Amount,申请金额
+Application Date,申请日期
+Application Timestamp,申请时间
+Applications,申请数
+Applications in Approval,审批中申请额
+Applications to Review,待核对申请
+Approval Instance ID,审批实例 ID
+Approval Number,审批单号
+Approval Source,审批来源
+Approval Status,审批状态
+Approval Timeline,审批进度
+Approval source changed; synchronize before reading attachments,审批来源已变化，请同步后再读取附件
+Approval source is unavailable; synchronize again,审批来源不可用，请重新同步
+Approved,已审批
+Approved Application Amount,已审批申请额
+Attachment download failed; refresh or synchronize the source,附件下载失败，请刷新页面或同步来源
+Attachment integrity verification failed,附件完整性校验失败
+Attachment is unavailable or not archived,附件不可用或尚未归档
+Attachment presence does not confirm payment,附件存在不代表付款已完成
+Beneficiary,收款人
+Bonus,奖金
+Business Timezone,业务时区
+CFE (Electricity),CFE（电费）
+Calculation Basis,统计口径
+Categories,类别
+Clear Subcategory,清除子类筛选
+Company,公司
+Company Assignment Basis,公司归属依据
+Configuration Version,配置版本
+Confirm Expense Period,确认费用期间
+Corporation ID,企业 ID
+Correct the subsidiary allocation in OA before assigning a company,请先在 OA 修正多主体金额分摊，再确认公司
+Courier,快递
+Currency,币种
+Currency requires review,币种待核对
+Custom Period,自定义期间
+Data Review,数据核对
+Date Basis,日期口径
+Department,部门
+Download,下载
+Duplicate source entity mapping,来源主体映射重复
+Each currency is reported separately,各币种分别统计，不跨币种合计
+Enable Mexico Expense Sync,启用墨西哥费用同步
+Entity Kind,主体类型
+Entity Mapping Key,主体映射标识
+Expense Application Details,费用申请详情
+Expense Application Register,费用申请台账
+Expense Category,费用类别
+Expense Composition,费用构成
+Expense Description,事项说明
+Expense Details,费用明细
+Expense Entity,费用承担主体
+Expense Overview,费用概览
+Expense Period,费用所属期间
+Expense Period End,费用期间结束
+Expense Period Start,费用期间开始
+Expense Period Type,费用期间类型
+Expense Reports,统计报表
+Expense Subcategory,费用子类
+Expense Trend,费用趋势
+Expense category requires review,费用分类待核对
+Expense entities are mapped explicitly to ERP subsidiaries,费用承担主体需明确映射到 ERP 子公司
+Expense line confirmed,费用明细已确认
+Expense line not found,费用明细不存在
+Expense period required,费用期间缺失
+Expense source changed; reload and review again,费用来源已变化，请刷新后重新核对
+Expenses by Subsidiary,子公司费用分布
+"Expenses by subsidiary, category and reporting period",按子公司、费用类别和所属期间查看支出情况
+Export Excel,导出 Excel
+Export exceeds 20000 rows; narrow the filters,导出超过 20000 行，请缩小筛选范围
+Federal Taxes,联邦税
+Fonacot,Fonacot 劳动消费基金
+General Taxes,税费
+Half Monthly,半月
+Header and detail totals do not match,表头与明细金额不一致
+In Approval,审批中
+Invalid Mexico expense filters,墨西哥费用筛选条件无效
+Invalid OA template cursor,OA 模板分页游标无效
+Invalid attachment identity,附件标识无效
+Invalid business timezone,业务时区无效
+Invalid expense category,费用分类无效
+Invalid expense period or reporting month,费用期间或归属月份无效
+Invalid expense report,费用报表无效
+Invalid pagination,分页参数无效
+Invalid reporting month,归属月份无效
+Invalid review issue,核对问题类型无效
+Invalid search text,搜索内容无效
+Invalid source line key,来源明细标识无效
+Invalid subsidiary mappings,子公司映射配置无效
+Invalid synchronization setting,同步设置无效
+Key Attachments,关键凭证
+Last Successful Sync,最近成功同步
+Last Sync Error,最近同步错误
+Load OA Attachments,读取 OA 附件
+Loading,加载中
+Loading Mexico expenses,正在加载墨西哥费用支出
+Mapping Version,映射版本
+Mappings use the exact source entity label and kind; department names never imply a company,请按来源主体原名和类型配置映射；部门名称不会自动对应公司
+Mexico Expense Company Map,墨西哥费用公司映射
+Mexico Expense Line,墨西哥费用明细
+Mexico Expense Settings,墨西哥费用设置
+Mexico Expense Source,墨西哥费用审批来源
+Mexico Expense Sync Failed,墨西哥费用同步失败
+Mexico Expense Synchronization,墨西哥费用同步设置
+Mexico Expense Trend,墨西哥月度费用趋势
+Mexico Expenses,费用支出（MX）
+Mexico Personnel Expenses,墨西哥薪酬人事汇总
+Mexico Subsidiary Expenses,墨西哥子公司费用汇总
+Mexico approval scan exceeds the configured page limit,墨西哥审批扫描超过配置的分页上限
+Mexico expense records can only be changed through the workbench,墨西哥费用记录只能通过专用工作台修改
+Mexico expense synchronization failed; retry or contact an administrator,墨西哥费用同步失败，请重试或联系管理员
+Mexico expenses could not be loaded,墨西哥费用支出加载失败
+Missing expense periods are listed by application month for review only,缺少费用期间的记录仅在核对页按申请月份展示
+Monthly,月度
+Next,下一页
+No approval timeline available,暂无审批进度记录
+No archived attachments,暂无已归档附件
+No expenses match the current filters,没有符合当前条件的费用记录
+Not Archived,尚未归档
+Not Confirmed,待确认
+Not Mapped,未映射
+Not Synchronized,尚未同步
+Not permitted to access this subsidiary,无权访问该子公司
+Not permitted to export Mexico expenses,无权导出墨西哥费用支出
+Not permitted to read Mexico expenses,无权查看墨西哥费用支出
+OA approvals do not prove actual payment,OA 审批通过不代表实际付款
+OA synchronization snapshot changed; restart the scan,OA 同步快照已变化，请重新开始扫描
+OA template cursor did not advance,OA 模板分页游标未前进
+OA template response identity mismatch,OA 模板响应来源身份不符
+Ocean Freight,海运
+Only a System Manager can configure Mexico expense synchronization,仅系统管理员可配置墨西哥费用同步
+Only an Accounts Manager can confirm expense periods,仅财务经理可确认费用期间
+Only authorized subsidiary lines are shown; the full approval and attachments require access to all subsidiaries,仅展示已授权子公司的明细；查看整单审批和附件需要全部相关子公司权限
+Only confirmed expense lines are included,仅汇总已确认的费用明细
+Open Data Review,查看待核对项
+Open Native Report,打开标准报表
+Original Amount,来源原始金额
+Payment Terms,付款条件
+"Payroll is summarized by subsidiary, category and period; no employee details",薪酬人事按子公司、类别和期间汇总，不含个人工资明细
+Personnel Expenses,薪酬人事
+Personnel Share,薪酬人事占比
+Planned Payment Date,计划付款日期
+Previous,上一页
+Process Code,审批模板编码
+Professional Services,专业服务
+Raw Source JSON,原始来源 JSON
+Refresh,刷新
+Rejected,已驳回
+Remunerations and Personnel,薪酬人事
+Rent,租金
+Reporting Month,归属月份
+Reporting periods are confirmed independently from planned payment dates,费用期间需单独确认，不从计划付款日推定
+Reports include confirmed expense lines in the selected approval status,报表仅包含符合所选审批状态的已确认明细
+Requires Review,待核对
+Reset,重置
+Retry,重试
+Review Issues,核对问题
+Review Note,核对说明
+Review State,核对状态
+Review saved; source issues still require attention,核对已保存，来源问题仍需处理
+Reviewed At,核对时间
+Reviewed By,核对人
+Reviewed Source Fingerprint,已核对来源指纹
+Salary,工资
+Save Review,保存核对
+Save Settings,保存设置
+"Search approval number, entity or description",搜索审批单号、主体或事项
+Search expenses,搜索费用
+Select a category to view its details,点击类别查看对应明细
+Settings changed; reload and try again,配置已变化，请刷新后重试
+Settings saved; cached records will be rechecked,设置已保存，缓存记录将重新核对
+Shared approvals are summed by line and counted once,多公司审批按明细分别归属，申请数量去重统计
+Six months of confirmed expense lines,近六个月已确认费用明细
+Social Contributions,社保
+Source Entity,来源主体
+Source Issues,来源问题
+Source Key,来源唯一标识
+Source Line Key,来源明细唯一标识
+Source Row Fingerprint,来源行指纹
+Source Row ID,来源行 ID
+Source Table ID,来源表格 ID
+Source Version,来源版本
+"Source amount, currency and allocation errors must be corrected in OA and synchronized again",来源金额、币种和分摊问题需在 OA 修正后重新同步
+Source changed; review again,来源已变化，需重新核对
+Source form requires review,来源表单结构待核对
+Source row identity requires review,来源明细行标识待核对
+Subsidiary,子公司
+Subsidiary Mappings,子公司映射
+Subsidiary mapping required,子公司待映射
+Sync Cursor,同步游标
+Sync Page Count,同步分页数
+Sync Snapshot,同步快照
+Synchronization Settings,同步设置
+Synchronization queued; refresh after the background job finishes,同步任务已排队，请在后台任务完成后刷新
+Synchronize Now,立即同步
+Taxes and Contributions,税费
+Terminated,已终止
+The Mexico approval corporation is not enabled in the OA connection,OA 连接尚未启用墨西哥审批所属企业
+This expense line was removed from the source; refresh the page,该费用明细已从来源移除，请刷新页面
+Too many source lines; use the filtered expense list,来源明细过多，请使用筛选后的费用列表
+Transport and Logistics,运输物流
+Unclassified,未分类
+Unconfirmed records are excluded from subsidiary charts and reports,待核对记录不计入子公司图表和已确认报表
+Unknown,未知
+Utilities and Operations,公用运营
+View Expense Details,查看费用明细
+Visible Expense Amount,当前可见明细金额
+Water,水费
+Weekly,周度
+Withdrawn,已撤回
+{0} applications,{0} 笔申请
+{0} applications · {1} expense lines,{0} 笔申请 · {1} 条费用明细
+pending,审批中
+approved,已审批
+rejected,已驳回
+terminated,已终止
+withdrawn,已撤回
+unknown,未知
+personnel,薪酬人事
+tax,税费
+utilities,公用运营
+logistics,运输物流
+services,专业服务
+entity,费用承担主体
+department,部门
+mapping,配置映射
+manual,人工确认
+month,月度
+half_month,半月
+week,周度
+custom,自定义期间
+confirmed,已确认
+needs_review,待核对
+Amount incomplete,金额待完整核对
+Application Timestamp (UTC),申请时间（UTC）
+Access to all mapped subsidiaries is required to manage synchronization,管理同步需要拥有全部已映射子公司的访问权限
+MX Finance Approval Time,MX财务审批通过时间
+MX Finance Approval Date,MX财务审批通过日期
+Awaiting MX Finance approval,等待MX财务审批通过
+Finance approval evidence requires review,财务审批依据待核对
+Finance Approved,财务已通过
+Reporting months follow MX Finance approval in the business timezone,按业务时区下MX财务审批通过时间归属月份
+Expenses require MX Finance approval and valid subsidiary allocation before reporting,MX财务审批通过且子公司归属等信息完整后计入报表
+Review Expense Line,核对费用明细
+Only an Accounts Manager can review expense lines,仅财务经理可以核对费用明细
+Expense periods follow MX Finance approval and cannot be entered manually,费用期间按MX财务审批通过时间自动归属，不可手工填写
+Expense Period Version,费用归期版本
+Expense period recalculation pending,费用期间待重算
+Expense periods are being recalculated; view Data Review and retry after recalculation,费用期间尚未完成重算，请在数据核对中查看，重算完成后重试
+Start Date,开始日期
+End Date,结束日期
+Date Range,时间范围
+Enter a valid start and end date; the start date must not be after the end date,请填写有效的开始和结束日期，开始日期不能晚于结束日期
+Confirmed expenses within the selected date range by month,所选日期范围内已确认费用，按月汇总
+Expenses awaiting period assignment are listed by application date for review only,尚未归期的费用仅在核对页按申请日期展示
+Approval Form,审批表
+All Approval Forms,全部审批表
+Operating Expenses,运营支出
+Expense Requests,费用支出
+Purchase Expenses,采购支出
+Invalid approval form,无效的审批表
+This approval form is not connected yet; no data is available,该审批表尚未接入，暂无数据
+Clear Expense Category,清除费用分类
+Administrative Expenses,管理费用
+Selling Expenses,销售费用
+Employee Benefits,职工福利
+MRO Purchases,MRO采购
+Order Purchases,订单采购
+Investment Purchases,投资采购
+Service Purchases,服务采购
+Project Purchases,项目开发采购
+Approval Details,审批业务详情
+Approval Templates,审批模板
+Business Category,业务分类
+Salary Type,工资类型
+Templates Initialized,模板已初始化
+Zero amount requires review,零金额待核对
+Mexico Expense Template,墨西哥支出审批模板
+Template Name,模板名称
+Finance Node Names,财务节点名称（每行一个）
+Finance Activity IDs,财务节点ID（每行一个）
+Field Mapping JSON,差异字段映射 JSON
+Enabled,启用
+Invalid approval template,审批模板配置无效
+Invalid template field mapping,模板字段映射无效
+Finance nodes are required,请配置财务审批节点
+Approval template is not configured,审批模板尚未配置
+Approval instance identity conflicts with another template,审批实例与其他模板的来源身份冲突
+Duplicate or unauthorized approval template,审批模板重复或企业未获授权
+An existing template cannot change approval form,已有模板不能更改审批分类
+Disable historical templates instead of removing them,历史模板请停用，不可删除
+No sample approvals found; save this template disabled first,暂无样例审批，请先保存为停用状态
+Template fields require mapping before synchronization can be enabled,模板字段需要配置映射后才能启用同步
+Production Type,生产类型
+Execution Region,执行地区
+Application Type,申请类型
+Source Department,来源部门
+Delivery Date,交付日期
+Budget Snapshot,申请时预算金额
+Used Budget Snapshot,申请时预算已用金额
+Finance Status,财务状态
+Supporting item details; amounts are not added again,以下为辅助明细，金额不重复计入汇总
+Select one template to preview. Disable historical templates instead of deleting them. Field mappings use logical names and component ID arrays.,勾选一个模板后预览；历史模板请停用而非删除。差异映射填写逻辑字段名及组件 ID 数组。
+Preview Selected Template,预览所选模板
+Select exactly one template,请勾选一个模板
+operating,运营支出
+expense,费用支出
+purchase,采购支出
+administration,管理费用
+selling,销售费用
+procurement,采购支出

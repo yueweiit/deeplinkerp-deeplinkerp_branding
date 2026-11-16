@@ -2078,3 +2078,333 @@ OA 审批任务身份缺失或重复，请核对原单,OA approval task identifi
 采购出纳接口密钥格式无效,Invalid procurement cashier API key format
 审批尚未通过，请核对,Approval has not passed. Please verify.
 申请来源已移除或范围变化，请核对钉钉原单,The source application was removed or is outside the allowed scope. Check the original DingTalk application.
+A review note is required,A review note is required
+Access to all subsidiaries in this approval is required to view its attachments,Access to all subsidiaries in this approval is required to view its attachments
+Accounting and Legal Services,Accounting and Legal Services
+Accounts permission is required,Accounts permission is required
+Active,Active
+Active Applications,Active Applications
+Adjust the filters or check Data Review for incomplete records,Adjust the filters or check Data Review for incomplete records
+Air Freight,Air Freight
+All Categories,All Categories
+All Issues,All Issues
+All Statuses,All Statuses
+All Subsidiaries,All Subsidiaries
+Allocation between subsidiaries required,Allocation between subsidiaries required
+Amount,Amount
+Amount requires review,Amount requires review
+Amounts are summed by expense line; application counts are distinct,Amounts are summed by expense line; application counts are distinct
+Annual Bonus,Annual Bonus
+Applicant,Applicant
+Application Amount,Application Amount
+Application Date,Application Date
+Application Timestamp,Application Timestamp
+Applications,Applications
+Applications in Approval,Applications in Approval
+Applications to Review,Applications to Review
+Approval Instance ID,Approval Instance ID
+Approval Number,Approval Number
+Approval Source,Approval Source
+Approval Status,Approval Status
+Approval Timeline,Approval Timeline
+Approval source changed; synchronize before reading attachments,Approval source changed; synchronize before reading attachments
+Approval source is unavailable; synchronize again,Approval source is unavailable; synchronize again
+Approved,Approved
+Approved Application Amount,Approved Application Amount
+Attachment download failed; refresh or synchronize the source,Attachment download failed; refresh or synchronize the source
+Attachment integrity verification failed,Attachment integrity verification failed
+Attachment is unavailable or not archived,Attachment is unavailable or not archived
+Attachment presence does not confirm payment,Attachment presence does not confirm payment
+Beneficiary,Beneficiary
+Bonus,Bonus
+Business Timezone,Business Timezone
+CFE (Electricity),CFE (Electricity)
+Calculation Basis,Calculation Basis
+Categories,Categories
+Clear Subcategory,Clear Subcategory
+Company,Company
+Company Assignment Basis,Company Assignment Basis
+Configuration Version,Configuration Version
+Confirm Expense Period,Confirm Expense Period
+Corporation ID,Corporation ID
+Correct the subsidiary allocation in OA before assigning a company,Correct the subsidiary allocation in OA before assigning a company
+Courier,Courier
+Currency,Currency
+Currency requires review,Currency requires review
+Custom Period,Custom Period
+Data Review,Data Review
+Date Basis,Date Basis
+Department,Department
+Download,Download
+Duplicate source entity mapping,Duplicate source entity mapping
+Each currency is reported separately,Each currency is reported separately
+Enable Mexico Expense Sync,Enable Mexico Expense Sync
+Entity Kind,Entity Kind
+Entity Mapping Key,Entity Mapping Key
+Expense Application Details,Expense Application Details
+Expense Application Register,Expense Application Register
+Expense Category,Expense Category
+Expense Composition,Expense Composition
+Expense Description,Expense Description
+Expense Details,Expense Details
+Expense Entity,Expense Entity
+Expense Overview,Expense Overview
+Expense Period,Expense Period
+Expense Period End,Expense Period End
+Expense Period Start,Expense Period Start
+Expense Period Type,Expense Period Type
+Expense Reports,Expense Reports
+Expense Subcategory,Expense Subcategory
+Expense Trend,Expense Trend
+Expense category requires review,Expense category requires review
+Expense entities are mapped explicitly to ERP subsidiaries,Expense entities are mapped explicitly to ERP subsidiaries
+Expense line confirmed,Expense line confirmed
+Expense line not found,Expense line not found
+Expense period required,Expense period required
+Expense source changed; reload and review again,Expense source changed; reload and review again
+Expenses by Subsidiary,Expenses by Subsidiary
+"Expenses by subsidiary, category and reporting period","Expenses by subsidiary, category and reporting period"
+Export Excel,Export Excel
+Export exceeds 20000 rows; narrow the filters,Export exceeds 20000 rows; narrow the filters
+Federal Taxes,Federal Taxes
+Fonacot,Fonacot
+General Taxes,General Taxes
+Half Monthly,Half Monthly
+Header and detail totals do not match,Header and detail totals do not match
+In Approval,In Approval
+Invalid Mexico expense filters,Invalid Mexico expense filters
+Invalid OA template cursor,Invalid OA template cursor
+Invalid attachment identity,Invalid attachment identity
+Invalid business timezone,Invalid business timezone
+Invalid expense category,Invalid expense category
+Invalid expense period or reporting month,Invalid expense period or reporting month
+Invalid expense report,Invalid expense report
+Invalid pagination,Invalid pagination
+Invalid reporting month,Invalid reporting month
+Invalid review issue,Invalid review issue
+Invalid search text,Invalid search text
+Invalid source line key,Invalid source line key
+Invalid subsidiary mappings,Invalid subsidiary mappings
+Invalid synchronization setting,Invalid synchronization setting
+Key Attachments,Key Attachments
+Last Successful Sync,Last Successful Sync
+Last Sync Error,Last Sync Error
+Load OA Attachments,Load OA Attachments
+Loading,Loading
+Loading Mexico expenses,Loading Mexico expenses
+Mapping Version,Mapping Version
+Mappings use the exact source entity label and kind; department names never imply a company,Mappings use the exact source entity label and kind; department names never imply a company
+Mexico Expense Company Map,Mexico Expense Company Map
+Mexico Expense Line,Mexico Expense Line
+Mexico Expense Settings,Mexico Expense Settings
+Mexico Expense Source,Mexico Expense Source
+Mexico Expense Sync Failed,Mexico Expense Sync Failed
+Mexico Expense Synchronization,Mexico Expense Synchronization
+Mexico Expense Trend,Mexico Expense Trend
+Mexico Expenses,Expenses (MX)
+Mexico Personnel Expenses,Mexico Personnel Expenses
+Mexico Subsidiary Expenses,Mexico Subsidiary Expenses
+Mexico approval scan exceeds the configured page limit,Mexico approval scan exceeds the configured page limit
+Mexico expense records can only be changed through the workbench,Mexico expense records can only be changed through the workbench
+Mexico expense synchronization failed; retry or contact an administrator,Mexico expense synchronization failed; retry or contact an administrator
+Mexico expenses could not be loaded,Mexico expenses could not be loaded
+Missing expense periods are listed by application month for review only,Missing expense periods are listed by application month for review only
+Monthly,Monthly
+Next,Next
+No approval timeline available,No approval timeline available
+No archived attachments,No archived attachments
+No expenses match the current filters,No expenses match the current filters
+Not Archived,Not Archived
+Not Confirmed,Not Confirmed
+Not Mapped,Not Mapped
+Not Synchronized,Not Synchronized
+Not permitted to access this subsidiary,Not permitted to access this subsidiary
+Not permitted to export Mexico expenses,Not permitted to export Mexico expenses
+Not permitted to read Mexico expenses,Not permitted to read Mexico expenses
+OA approvals do not prove actual payment,OA approvals do not prove actual payment
+OA synchronization snapshot changed; restart the scan,OA synchronization snapshot changed; restart the scan
+OA template cursor did not advance,OA template cursor did not advance
+OA template response identity mismatch,OA template response identity mismatch
+Ocean Freight,Ocean Freight
+Only a System Manager can configure Mexico expense synchronization,Only a System Manager can configure Mexico expense synchronization
+Only an Accounts Manager can confirm expense periods,Only an Accounts Manager can confirm expense periods
+Only authorized subsidiary lines are shown; the full approval and attachments require access to all subsidiaries,Only authorized subsidiary lines are shown; the full approval and attachments require access to all subsidiaries
+Only confirmed expense lines are included,Only confirmed expense lines are included
+Open Data Review,Open Data Review
+Open Native Report,Open Native Report
+Original Amount,Original Amount
+Payment Terms,Payment Terms
+"Payroll is summarized by subsidiary, category and period; no employee details","Payroll is summarized by subsidiary, category and period; no employee details"
+Personnel Expenses,Personnel Expenses
+Personnel Share,Personnel Share
+Planned Payment Date,Planned Payment Date
+Previous,Previous
+Process Code,Process Code
+Professional Services,Professional Services
+Raw Source JSON,Raw Source JSON
+Refresh,Refresh
+Rejected,Rejected
+Remunerations and Personnel,Remunerations and Personnel
+Rent,Rent
+Reporting Month,Reporting Month
+Reporting periods are confirmed independently from planned payment dates,Reporting periods are confirmed independently from planned payment dates
+Reports include confirmed expense lines in the selected approval status,Reports include confirmed expense lines in the selected approval status
+Requires Review,Requires Review
+Reset,Reset
+Retry,Retry
+Review Issues,Review Issues
+Review Note,Review Note
+Review State,Review State
+Review saved; source issues still require attention,Review saved; source issues still require attention
+Reviewed At,Reviewed At
+Reviewed By,Reviewed By
+Reviewed Source Fingerprint,Reviewed Source Fingerprint
+Salary,Salary
+Save Review,Save Review
+Save Settings,Save Settings
+"Search approval number, entity or description","Search approval number, entity or description"
+Search expenses,Search expenses
+Select a category to view its details,Select a category to view its details
+Settings changed; reload and try again,Settings changed; reload and try again
+Settings saved; cached records will be rechecked,Settings saved; cached records will be rechecked
+Shared approvals are summed by line and counted once,Shared approvals are summed by line and counted once
+Six months of confirmed expense lines,Six months of confirmed expense lines
+Social Contributions,Social Contributions
+Source Entity,Source Entity
+Source Issues,Source Issues
+Source Key,Source Key
+Source Line Key,Source Line Key
+Source Row Fingerprint,Source Row Fingerprint
+Source Row ID,Source Row ID
+Source Table ID,Source Table ID
+Source Version,Source Version
+"Source amount, currency and allocation errors must be corrected in OA and synchronized again","Source amount, currency and allocation errors must be corrected in OA and synchronized again"
+Source changed; review again,Source changed; review again
+Source form requires review,Source form requires review
+Source row identity requires review,Source row identity requires review
+Subsidiary,Subsidiary
+Subsidiary Mappings,Subsidiary Mappings
+Subsidiary mapping required,Subsidiary mapping required
+Sync Cursor,Sync Cursor
+Sync Page Count,Sync Page Count
+Sync Snapshot,Sync Snapshot
+Synchronization Settings,Synchronization Settings
+Synchronization queued; refresh after the background job finishes,Synchronization queued; refresh after the background job finishes
+Synchronize Now,Synchronize Now
+Taxes and Contributions,Taxes and Contributions
+Terminated,Terminated
+The Mexico approval corporation is not enabled in the OA connection,The Mexico approval corporation is not enabled in the OA connection
+This expense line was removed from the source; refresh the page,This expense line was removed from the source; refresh the page
+Too many source lines; use the filtered expense list,Too many source lines; use the filtered expense list
+Total,Total
+Transport and Logistics,Transport and Logistics
+Unclassified,Unclassified
+Unconfirmed records are excluded from subsidiary charts and reports,Unconfirmed records are excluded from subsidiary charts and reports
+Unknown,Unknown
+Utilities and Operations,Utilities and Operations
+View Expense Details,View Expense Details
+Visible Expense Amount,Visible Expense Amount
+Water,Water
+Weekly,Weekly
+Withdrawn,Withdrawn
+{0} applications,{0} applications
+{0} applications · {1} expense lines,{0} applications · {1} expense lines
+pending,In Approval
+approved,Approved
+rejected,Rejected
+terminated,Terminated
+withdrawn,Withdrawn
+unknown,Unknown
+personnel,Remunerations and Personnel
+tax,Taxes and Contributions
+utilities,Utilities and Operations
+logistics,Transport and Logistics
+services,Professional Services
+entity,Expense Entity
+department,Department
+mapping,Configured Mapping
+manual,Manual Confirmation
+month,Monthly
+half_month,Half Monthly
+week,Weekly
+custom,Custom Period
+confirmed,Confirmed
+needs_review,Requires Review
+Amount incomplete,Amount incomplete
+Application Timestamp (UTC),Application Timestamp (UTC)
+Access to all mapped subsidiaries is required to manage synchronization,Access to all mapped subsidiaries is required to manage synchronization
+MX Finance Approval Time,MX Finance Approval Time
+MX Finance Approval Date,MX Finance Approval Date
+Awaiting MX Finance approval,Awaiting MX Finance approval
+Finance approval evidence requires review,Finance approval evidence requires review
+Finance Approved,Finance Approved
+Reporting months follow MX Finance approval in the business timezone,Reporting months follow MX Finance approval in the business timezone
+Expenses require MX Finance approval and valid subsidiary allocation before reporting,Expenses require MX Finance approval and valid subsidiary allocation before reporting
+Review Expense Line,Review Expense Line
+Only an Accounts Manager can review expense lines,Only an Accounts Manager can review expense lines
+Expense periods follow MX Finance approval and cannot be entered manually,Expense periods follow MX Finance approval and cannot be entered manually
+Expense Period Version,Expense Period Version
+Expense period recalculation pending,Expense period recalculation pending
+Expense periods are being recalculated; view Data Review and retry after recalculation,Expense periods are being recalculated; view Data Review and retry after recalculation
+Start Date,Start Date
+End Date,End Date
+Date Range,Date Range
+Enter a valid start and end date; the start date must not be after the end date,Enter a valid start and end date; the start date must not be after the end date
+Confirmed expenses within the selected date range by month,Confirmed expenses within the selected date range by month
+Expenses awaiting period assignment are listed by application date for review only,Expenses awaiting period assignment are listed by application date for review only
+Approval Form,Approval Form
+All Approval Forms,All Approval Forms
+Operating Expenses,Operating Expenses
+Expense Requests,Expense Requests
+Purchase Expenses,Purchase Expenses
+Invalid approval form,Invalid approval form
+This approval form is not connected yet; no data is available,This approval form is not connected yet; no data is available
+Clear Expense Category,Clear Expense Category
+Administrative Expenses,Administrative Expenses
+Selling Expenses,Selling Expenses
+Employee Benefits,Employee Benefits
+MRO Purchases,MRO Purchases
+Order Purchases,Order Purchases
+Investment Purchases,Investment Purchases
+Service Purchases,Service Purchases
+Project Purchases,Project Purchases
+Approval Details,Approval Details
+Approval Templates,Approval Templates
+Business Category,Business Category
+Salary Type,Salary Type
+Templates Initialized,Templates Initialized
+Zero amount requires review,Zero amount requires review
+Mexico Expense Template,Mexico Expense Template
+Template Name,Template Name
+Finance Node Names,Finance Node Names
+Finance Activity IDs,Finance Activity IDs
+Field Mapping JSON,Field Mapping JSON
+Enabled,Enabled
+Invalid approval template,Invalid approval template
+Invalid template field mapping,Invalid template field mapping
+Finance nodes are required,Finance nodes are required
+Approval template is not configured,Approval template is not configured
+Approval instance identity conflicts with another template,Approval instance identity conflicts with another template
+Duplicate or unauthorized approval template,Duplicate or unauthorized approval template
+An existing template cannot change approval form,An existing template cannot change approval form
+Disable historical templates instead of removing them,Disable historical templates instead of removing them
+No sample approvals found; save this template disabled first,No sample approvals found; save this template disabled first
+Template fields require mapping before synchronization can be enabled,Template fields require mapping before synchronization can be enabled
+Production Type,Production Type
+Execution Region,Execution Region
+Application Type,Application Type
+Source Department,Source Department
+Delivery Date,Delivery Date
+Budget Snapshot,Budget Snapshot
+Used Budget Snapshot,Used Budget Snapshot
+Finance Status,Finance Status
+Supporting item details; amounts are not added again,Supporting item details; amounts are not added again
+Select one template to preview. Disable historical templates instead of deleting them. Field mappings use logical names and component ID arrays.,Select one template to preview. Disable historical templates instead of deleting them. Field mappings use logical names and component ID arrays.
+Preview Selected Template,Preview Selected Template
+Select exactly one template,Select exactly one template
+operating,Operating Expenses
+expense,Expense Requests
+purchase,Purchase Expenses
+administration,Administrative Expenses
+selling,Selling Expenses
+procurement,Purchase Expenses

@@ -1,0 +1,114 @@
+{
+ "doctype": "DocType",
+ "name": "Mexico Expense Settings",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "issingle": 1,
+ "istable": 0,
+ "allow_rename": 0,
+ "track_changes": 1,
+ "autoname": "",
+ "field_order": [
+  "enabled",
+  "business_timezone",
+  "company_mappings",
+  "config_version",
+  "mapping_version",
+  "cursor",
+  "sync_until",
+  "page_count",
+  "last_sync_at",
+  "last_error",
+  "templates",
+  "templates_initialized"
+ ],
+ "fields": [
+  {
+   "fieldname": "enabled",
+   "label": "Enable Mexico Expense Sync",
+   "fieldtype": "Check",
+   "default": "0",
+   "read_only": 1
+  },
+  {
+   "fieldname": "business_timezone",
+   "label": "Business Timezone",
+   "fieldtype": "Data",
+   "default": "America/Mexico_City",
+   "read_only": 1
+  },
+  {
+   "fieldname": "company_mappings",
+   "label": "Subsidiary Mappings",
+   "fieldtype": "Table",
+   "options": "Mexico Expense Company Map",
+   "read_only": 1
+  },
+  {
+   "fieldname": "config_version",
+   "label": "Configuration Version",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mapping_version",
+   "label": "Mapping Version",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "cursor",
+   "label": "Sync Cursor",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sync_until",
+   "label": "Sync Snapshot",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "page_count",
+   "label": "Sync Page Count",
+   "fieldtype": "Int",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_sync_at",
+   "label": "Last Successful Sync",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "label": "Last Sync Error",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "templates",
+   "label": "Approval Templates",
+   "fieldtype": "Table",
+   "options": "Mexico Expense Template",
+   "read_only": 1
+  },
+  {
+   "fieldname": "templates_initialized",
+   "label": "Templates Initialized",
+   "fieldtype": "Check",
+   "read_only": 1,
+   "hidden": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "export": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

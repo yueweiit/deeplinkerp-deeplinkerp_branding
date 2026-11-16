@@ -1,0 +1,347 @@
+{
+ "doctype": "DocType",
+ "name": "Mexico Expense Line",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "issingle": 0,
+ "istable": 0,
+ "allow_rename": 0,
+ "track_changes": 1,
+ "autoname": "field:line_key",
+ "field_order": [
+  "line_key",
+  "source",
+  "source_version",
+  "row_fingerprint",
+  "is_active",
+  "approval_no",
+  "applicant",
+  "approval_status",
+  "company",
+  "company_basis",
+  "source_entity",
+  "entity_kind",
+  "entity_key",
+  "mapping_version",
+  "category",
+  "subcategory",
+  "description",
+  "amount",
+  "amount_raw",
+  "currency",
+  "request_date",
+  "planned_payment_date",
+  "finance_approved_date",
+  "finance_approved_at",
+  "period_version",
+  "period_month",
+  "period_start",
+  "period_end",
+  "period_kind",
+  "review_state",
+  "issues",
+  "base_issues",
+  "reviewed_fingerprint",
+  "reviewed_by",
+  "reviewed_at",
+  "review_note",
+  "table_id",
+  "source_row_id",
+  "approval_type",
+  "business_category",
+  "salary_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "line_key",
+   "label": "Source Line Key",
+   "fieldtype": "Data",
+   "unique": 1,
+   "reqd": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "source",
+   "label": "Approval Source",
+   "fieldtype": "Link",
+   "options": "Mexico Expense Source",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_version",
+   "label": "Source Version",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "row_fingerprint",
+   "label": "Source Row Fingerprint",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "is_active",
+   "label": "Active",
+   "fieldtype": "Check",
+   "default": "1",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approval_no",
+   "label": "Approval Number",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "applicant",
+   "label": "Applicant",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approval_status",
+   "label": "Approval Status",
+   "fieldtype": "Select",
+   "options": "pending\napproved\nrejected\nterminated\nwithdrawn\nunknown",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "company",
+   "label": "Subsidiary",
+   "fieldtype": "Link",
+   "options": "Company",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "company_basis",
+   "label": "Company Assignment Basis",
+   "fieldtype": "Select",
+   "options": "\nmapping\nmanual",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_entity",
+   "label": "Source Entity",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "entity_kind",
+   "label": "Entity Kind",
+   "fieldtype": "Select",
+   "options": "entity\ndepartment",
+   "read_only": 1
+  },
+  {
+   "fieldname": "entity_key",
+   "label": "Entity Mapping Key",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "mapping_version",
+   "label": "Mapping Version",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "category",
+   "label": "Expense Category",
+   "fieldtype": "Select",
+   "options": "\npersonnel\ntax\nutilities\nlogistics\nservices\nadministration\nselling\nprocurement",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "subcategory",
+   "label": "Expense Subcategory",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "description",
+   "label": "Expense Description",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "label": "Amount",
+   "fieldtype": "Currency",
+   "options": "currency",
+   "precision": "2",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount_raw",
+   "label": "Original Amount",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "label": "Currency",
+   "fieldtype": "Link",
+   "options": "Currency",
+   "read_only": 1
+  },
+  {
+   "fieldname": "request_date",
+   "label": "Application Date",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "planned_payment_date",
+   "label": "Planned Payment Date",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_month",
+   "label": "Reporting Month",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_start",
+   "label": "Expense Period Start",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_end",
+   "label": "Expense Period End",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_kind",
+   "label": "Expense Period Type",
+   "fieldtype": "Select",
+   "options": "\nmonth\nhalf_month\nweek\ncustom",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_state",
+   "label": "Review State",
+   "fieldtype": "Select",
+   "options": "needs_review\nconfirmed",
+   "in_list_view": 1,
+   "read_only": 1
+  },
+  {
+   "fieldname": "issues",
+   "label": "Review Issues",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "base_issues",
+   "label": "Source Issues",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_fingerprint",
+   "label": "Reviewed Source Fingerprint",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_by",
+   "label": "Reviewed By",
+   "fieldtype": "Link",
+   "options": "User",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_at",
+   "label": "Reviewed At",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_note",
+   "label": "Review Note",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "table_id",
+   "label": "Source Table ID",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "source_row_id",
+   "label": "Source Row ID",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "finance_approved_at",
+   "label": "MX Finance Approval Time",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "finance_approved_date",
+   "label": "MX Finance Approval Date",
+   "fieldtype": "Date",
+   "read_only": 1
+  },
+  {
+   "fieldname": "period_version",
+   "label": "Expense Period Version",
+   "fieldtype": "Data",
+   "read_only": 1,
+   "hidden": 1
+  },
+  {
+   "fieldname": "approval_type",
+   "label": "Approval Form",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "business_category",
+   "label": "Business Category",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "salary_type",
+   "label": "Salary Type",
+   "fieldtype": "Data",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "System Manager",
+   "read": 1,
+   "export": 1,
+   "report": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "export": 1,
+   "report": 1
+  },
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "export": 1,
+   "report": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

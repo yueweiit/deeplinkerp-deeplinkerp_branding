@@ -300,3 +300,19 @@ def download_attachment(url, identity, expected_size):
     return _get(url, "/api/v1/attachment-content", {
         "corpId": identity["corp_id"], "processInstanceId": identity["process_instance_id"],
         "fileId": identity["file_id"]}, max_bytes=MAX_DOWNLOAD_BYTES)
+
+
+def read_template_page(url, corp, process_code, *, cursor=None, limit=100):
+    """Bounded single-template reader; the caller owns its independent cursor."""
+    params = {"corpId": corp, "processCode": process_code, "limit": min(max(int(limit), 1), 100)}
+    if cursor:
+        if not isinstance(cursor, str) or len(cursor) > 8000:
+            frappe.throw(_("Invalid OA template cursor"))
+        params["cursor"] = cursor
+    data, pagination = _page(url, "approvals", params)
+    rows = [approval_row(item) for item in data]
+    if any(row["corp_id"] != corp or row["process_code"] != process_code for row in rows):
+        frappe.throw(_("OA template response identity mismatch"))
+    if pagination["hasMore"] and pagination["nextCursor"] == cursor:
+        frappe.throw(_("OA template cursor did not advance"))
+    return rows, pagination

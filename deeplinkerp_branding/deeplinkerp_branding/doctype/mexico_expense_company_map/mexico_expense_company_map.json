@@ -1,0 +1,46 @@
+{
+ "doctype": "DocType",
+ "name": "Mexico Expense Company Map",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "issingle": 0,
+ "istable": 1,
+ "allow_rename": 0,
+ "track_changes": 0,
+ "autoname": "",
+ "field_order": [
+  "source_entity",
+  "entity_kind",
+  "company"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_entity",
+   "label": "Source Entity",
+   "fieldtype": "Small Text",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "entity_kind",
+   "label": "Entity Kind",
+   "fieldtype": "Select",
+   "options": "entity\ndepartment",
+   "default": "entity",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "company",
+   "label": "Subsidiary",
+   "fieldtype": "Link",
+   "options": "Company",
+   "reqd": 1,
+   "in_list_view": 1
+  }
+ ],
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC"
+}

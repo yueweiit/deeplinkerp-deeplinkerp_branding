@@ -1,0 +1,108 @@
+{
+ "doctype": "DocType",
+ "name": "Mexico Expense Template",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "istable": 1,
+ "issingle": 0,
+ "field_order": [
+  "enabled",
+  "approval_type",
+  "template_name",
+  "corp_id",
+  "process_code",
+  "finance_node_names",
+  "finance_activity_ids",
+  "field_mapping",
+  "cursor",
+  "sync_until",
+  "page_count",
+  "last_sync_at",
+  "last_error"
+ ],
+ "fields": [
+  {
+   "fieldname": "enabled",
+   "label": "Enabled",
+   "fieldtype": "Check",
+   "default": "1",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "approval_type",
+   "label": "Approval Form",
+   "fieldtype": "Select",
+   "options": "operating\nexpense\npurchase",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "template_name",
+   "label": "Template Name",
+   "fieldtype": "Data",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "corp_id",
+   "label": "Corporation ID",
+   "fieldtype": "Data",
+   "reqd": 1
+  },
+  {
+   "fieldname": "process_code",
+   "label": "Process Code",
+   "fieldtype": "Data",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "finance_node_names",
+   "label": "Finance Node Names",
+   "fieldtype": "Small Text",
+   "default": "MX财务Finanzas"
+  },
+  {
+   "fieldname": "finance_activity_ids",
+   "label": "Finance Activity IDs",
+   "fieldtype": "Small Text"
+  },
+  {
+   "fieldname": "field_mapping",
+   "label": "Field Mapping JSON",
+   "fieldtype": "Code",
+   "options": "JSON"
+  },
+  {
+   "fieldname": "cursor",
+   "label": "Sync Cursor",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sync_until",
+   "label": "Sync Snapshot",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "page_count",
+   "label": "Sync Page Count",
+   "fieldtype": "Int",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_sync_at",
+   "label": "Last Successful Sync",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "last_error",
+   "label": "Last Sync Error",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  }
+ ],
+ "permissions": []
+}
