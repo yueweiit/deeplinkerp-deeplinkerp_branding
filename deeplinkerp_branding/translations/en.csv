@@ -2408,3 +2408,13 @@ purchase,Purchase Expenses
 administration,Administrative Expenses
 selling,Selling Expenses
 procurement,Purchase Expenses
+This Month,This Month
+Reset Filters,Reset Filters
+Today,Today
+Last 3 Months,Last 3 Months
+Last 180 Days,Last 180 Days
+"Select a start date, then an end date","Select a start date, then an end date"
+Select an end date,Select an end date
+Could not update the date range. Please try again.,Could not update the date range. Please try again.
+Restore this month and reset all filters,Restore this month and reset all filters
+Cancel,Cancel

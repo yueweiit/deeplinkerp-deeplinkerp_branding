@@ -1008,3 +1008,13 @@ purchase,采购支出
 administration,管理费用
 selling,销售费用
 procurement,采购支出
+This Month,本月
+Reset Filters,重置筛选
+Today,今天
+Last 3 Months,近三个月
+Last 180 Days,近180天
+"Select a start date, then an end date",先选择开始日期，再选择结束日期
+Select an end date,请选择结束日期
+Could not update the date range. Please try again.,无法更新时间范围，请重试。
+Restore this month and reset all filters,恢复本月日期，并重置全部筛选
+Cancel,取消

@@ -262,3 +262,112 @@ test("monthly report drilldown keeps the intersection with the selected exact ra
     assert.equal(target.filters.company,'A');
     assert.equal(target.filters.category,'personnel');
 });
+
+function preferenceWorkbench(storage = new Map()) {
+ const root = {
+  location: { href: 'http://erp.test/desk/mexico-expenses?other=keep', search: '' },
+  history: { state: { marker: 1 }, replaceState(state, title, url) { this.last = { state, url }; } },
+  localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, value) },
+  frappe: { session: { user: 'user-a' }, get_route: () => ['mexico-expenses'] },
+ };
+ const local = factory(root), page = Object.create(local.Workbench.prototype);
+ Object.assign(page, { view: 'overview', context: { today: '2026-11-17', approval_forms: [{id:'operating'},{id:'expense'},{id:'purchase'}] },
+  filters: { from_date:'2026-11-01', to_date:'2026-11-30', approval_type:'', company:'', category:'', currency:'MXN', status:'active', basis:'period' }, start:0 });
+ return {root, page, storage};
+}
+
+test('first opening keeps current month; saved dates and form survive a fresh page', () => {
+ const {page, storage} = preferenceWorkbench();
+ page.restorePreferences();
+ assert.equal(page.filters.from_date,'2026-11-01');
+ Object.assign(page.filters,{from_date:'2026-09-12',to_date:'2026-10-04',approval_type:'purchase',company:'Private Company'});
+ page.rememberFilters();
+ const next=preferenceWorkbench(storage).page;
+ next.restorePreferences();
+ assert.equal(next.filters.from_date,'2026-09-12');
+ assert.equal(next.filters.to_date,'2026-10-04');
+ assert.equal(next.filters.approval_type,'purchase');
+ assert.equal(next.filters.company,'');
+ assert(![...storage.values()][0].includes('Private Company'));
+});
+
+test('saved preferences are isolated by login user', () => {
+ const {page,root}=preferenceWorkbench();
+ Object.assign(page.filters,{from_date:'2026-09-01',to_date:'2026-09-30'});
+ page.rememberFilters();
+ root.frappe.session.user='user-b';
+ Object.assign(page.filters,api.monthRange('2026-11'));
+ page.restorePreferences();
+ assert.equal(page.filters.from_date,'2026-11-01');
+});
+
+test('invalid or incomplete ranges never overwrite the previous valid preference', () => {
+ const {page,storage}=preferenceWorkbench();page.rememberFilters();
+ const saved=storage.get(page.preferenceKey());
+ for(const range of [
+  {from_date:'',to_date:'2026-11-30'}, {from_date:'2026-11-20',to_date:'2026-11-01'},
+  {from_date:'2026-02-30',to_date:'2026-03-01'}, {from_date:'1899-01-01',to_date:'2026-11-30'},
+ ]) { Object.assign(page.filters,range); page.rememberFilters(); assert.equal(storage.get(page.preferenceKey()),saved); }
+ assert(api.validDateRange({from_date:'2024-02-29',to_date:'2024-02-29'}));
+});
+
+test('corrupt or disabled browser storage does not block defaults or URL updates', () => {
+ const {page,root,storage}=preferenceWorkbench();
+ storage.set(page.preferenceKey(),'{bad');
+ assert.doesNotThrow(()=>page.restorePreferences());
+ Object.defineProperty(root,'localStorage',{get(){throw new Error('denied');}});
+ assert.doesNotThrow(()=>page.restorePreferences());
+ assert.doesNotThrow(()=>page.rememberFilters());
+ assert(root.history.last.url.includes('mx_filters='));
+});
+
+test('explicit legacy month URL overrides remembered dates; edits replace stale URL', () => {
+ const {page,root}=preferenceWorkbench();
+ page.rememberFilters();
+ root.location.search='?mx_filters='+encodeURIComponent(JSON.stringify({month:'2026-09',approval_type:'expense'}));
+ page.restorePreferences();page.applyRouteFilters();
+ assert.equal(page.filters.from_date,'2026-09-01');
+ assert.equal(page.filters.to_date,'2026-09-30');
+ Object.assign(page.filters,{from_date:'2026-10-02',to_date:'2026-10-02'});
+ page.rememberFilters();
+ const url=new URL(root.history.last.url,'http://erp.test');
+ assert.equal(url.searchParams.get('other'),'keep');
+ assert.equal(JSON.parse(url.searchParams.get('mx_filters')).from_date,'2026-10-02');
+ assert.deepEqual(root.history.last.state,{marker:1});
+ root.location.search=url.search;
+ page.applyRouteFilters();
+ assert.equal(page.filters.from_date,'2026-10-02');
+});
+
+test('inactive page cannot overwrite preferences or the active page URL', () => {
+ const {page,root,storage}=preferenceWorkbench();
+ root.frappe.get_route=()=>['mexico-expense-trend'];
+ page.rememberFilters();
+ assert.equal(storage.size,0);assert.equal(root.history.last,undefined);
+});
+
+test('reset filters restores the current month, all forms and view defaults', async () => {
+ const {page,root}=preferenceWorkbench();
+ root.frappe.call=async()=>({message:page.context});
+ root.frappe.get_route=()=>['mexico-expense-reports'];let refreshed=0;
+ page.refresh=()=>{refreshed++;};page.view='reports';page.start=50;
+ Object.assign(page.filters,{from_date:'2026-09-12',to_date:'2026-10-04',approval_type:'operating',company:'A',currency:'USD',status:'rejected',keyword:'x',issue:'amount_pending'});
+ await page.click({target:{closest:()=>({dataset:{action:'reset'}})}});
+ assert.equal(page.filters.from_date,'2026-11-01');assert.equal(page.filters.to_date,'2026-11-30');
+ assert.equal(page.filters.approval_type,'');assert.equal(page.filters.company,'');
+ assert.equal(page.filters.status,'finance_approved');assert.equal(page.filters.currency,'MXN');
+ assert.equal(page.filters.keyword,'');assert.equal(page.filters.issue,'');assert.equal(page.start,0);assert.equal(refreshed,1);
+});
+
+test('reset fetches the latest business date even after a year boundary', async () => {
+ const {page,root}=preferenceWorkbench();
+ root.frappe.call=async()=>({message:{...page.context,today:'2027-01-01'}});
+ page.refresh=()=>{};page.start=50;
+ Object.assign(page.filters,{company:'A',approval_type:'expense',currency:'USD',status:'rejected'});
+ await page.click({target:{closest:()=>({dataset:{action:'reset'}})}});
+ assert.equal(page.filters.from_date,'2027-01-01');
+ assert.equal(page.filters.to_date,'2027-01-31');
+ assert.equal(page.filters.approval_type,'');
+ assert.equal(page.filters.currency,'MXN');
+ assert.equal(page.start,0);
+});

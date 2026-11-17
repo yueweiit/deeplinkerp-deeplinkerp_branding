@@ -2680,3 +2680,13 @@ purchase,Gastos de compra
 administration,Gastos administrativos
 selling,Gastos de venta
 procurement,Gastos de compra
+This Month,Este mes
+Reset Filters,Restablecer filtros
+Today,Hoy
+Last 3 Months,Últimos 3 meses
+Last 180 Days,Últimos 180 días
+"Select a start date, then an end date",Seleccione la fecha de inicio y después la fecha de fin
+Select an end date,Seleccione una fecha de fin
+Could not update the date range. Please try again.,No se pudo actualizar el rango de fechas. Inténtelo de nuevo.
+Restore this month and reset all filters,Restaurar este mes y restablecer todos los filtros
+Cancel,Cancelar

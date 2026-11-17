@@ -165,6 +165,15 @@
 		}
 		return result;
 	}
+	function validDateRange(filters) {
+		const valid = (value) => {
+			if (!/^\d{4}-\d{2}-\d{2}$/.test(value || "")) return false;
+			const parsed = new Date(value + "T00:00:00Z");
+			return value >= "1900-01-01" && value <= "2200-12-31" &&
+				!Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
+		};
+		return valid(filters.from_date) && valid(filters.to_date) && filters.from_date <= filters.to_date;
+	}
 	class Workbench {
 		constructor(wrapper) {
 			this.wrapper = wrapper;
@@ -179,7 +188,10 @@
 			this.el = root.document.createElement("div");
 			this.el.className = "mx-expenses";
 			this.page.main.append(this.el);
-			root.$(wrapper).on("hide.mx-expenses", () => this.disposeFilterControls());
+			root.$(wrapper).on("hide.mx-expenses", () => {
+				this.disposeFilterControls();
+				this.disposeApprovalSidebar();
+			});
 			this.start = 0;
 			this.epoch = 0;
 			this.filters = {
@@ -229,6 +241,7 @@
 			this.el.innerHTML = `<div class="mx-empty">${esc(t("Loading Mexico expenses"))}</div>`;
 			this.context = await call("get_context");
 			Object.assign(this.filters, monthRange(this.context.today.slice(0, 7)));
+			this.restorePreferences();
 			this.page.add_inner_button(t("Refresh"), () => this.reload());
 			this.page.add_inner_button(t("Export Excel"), () => this.export());
 			this.page.add_menu_item(t("Calculation Basis"), () => this.showCriteria());
@@ -242,6 +255,81 @@
 		}
 		form(id) {
 			return this.context.approval_forms.find((f) => f.id === id)?.label || t("Unclassified");
+		}
+		preferenceKey() {
+			// localStorage is origin-scoped; additionally isolate users sharing a browser.
+			const user = root.frappe.session?.user;
+			return user && user !== "Guest" ? `mx-expenses:preferences:v1:${user}` : null;
+		}
+		restorePreferences() {
+			try {
+				const key = this.preferenceKey();
+				const saved = key && JSON.parse(root.localStorage?.getItem(key) || "null");
+				if (!saved || typeof saved !== "object") return;
+				if (validDateRange(saved)) Object.assign(this.filters, { from_date: saved.from_date, to_date: saved.to_date });
+				if (saved.approval_type === "" || this.context.approval_forms.some((f) => f.id === saved.approval_type)) {
+					if (saved.approval_type !== this.filters.approval_type)
+						Object.assign(this.filters, { category: "", subcategory: "", keyword: "", issue: "" });
+					this.filters.approval_type = saved.approval_type;
+				}
+			} catch (_) {
+				// Disabled browser storage or stale preferences must not block queries.
+			}
+		}
+		rememberFilters() {
+			if (!this.isCurrentRoute() || !validDateRange(this.filters)) return;
+			try {
+				const key = this.preferenceKey();
+				const { from_date, to_date, approval_type } = this.filters;
+				if (key) root.localStorage?.setItem(key, JSON.stringify({ from_date, to_date, approval_type }));
+			} catch (_) { /* Browser storage is optional. */ }
+			// Replace the current entry so an old drilldown URL cannot undo a new selection on refresh.
+			if (root.history?.replaceState && root.location?.href) {
+				const url = new URL(root.location.href);
+				url.searchParams.set("mx_filters", JSON.stringify(this.filters));
+				root.history.replaceState(root.history.state, "", url.pathname + url.search + url.hash);
+			}
+		}
+		disposeApprovalSidebar() {
+			clearTimeout(this.sidebarTimer);
+			if (this.sidebarSetupHandler) root.$(root.document).off("sidebar_setup.mx-expenses", this.sidebarSetupHandler);
+			this.sidebarSetupHandler = null;
+			this.approvalSidebar?.remove();
+			this.approvalSidebar = null;
+		}
+		mountApprovalSidebar() {
+			if (!this.isCurrentRoute()) return;
+			if (!this.sidebarSetupHandler) {
+				this.sidebarSetupHandler = () => {
+					clearTimeout(this.sidebarTimer);
+					// Native sidebar_setup fires before its synchronous DOM rebuild.
+					this.sidebarTimer = setTimeout(() => this.mountApprovalSidebar(), 0);
+				};
+				root.$(root.document).on("sidebar_setup.mx-expenses", this.sidebarSetupHandler);
+			}
+			// Keep outside the native item node, which the optional DL navigation reparents.
+			const top = root.document.querySelector(".body-sidebar-top");
+			if (!top) return;
+			if (!this.approvalSidebar?.isConnected) {
+				top.querySelector(".mx-approval-sidebar")?.remove();
+				const group = root.document.createElement("div");
+				group.className = "mx-approval-sidebar";
+				group.setAttribute("role", "group");
+				group.setAttribute("aria-label", t("Approval Form"));
+				top.prepend(group);
+				this.approvalSidebar = group;
+				group.addEventListener("click", (event) => {
+					const item = event.target.closest("[data-approval-type]");
+					if (!item || !this.isCurrentRoute()) return;
+					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", issue: "", keyword: "" });
+					this.start = 0;
+					this.refresh();
+					this.approvalSidebar?.querySelector('[aria-pressed="true"]')?.focus();
+				});
+			}
+			this.approvalSidebar.innerHTML = `<div class="mx-approval-heading">${esc(t("Approval Form"))}</div>${[
+				{ id: "", label: t("All Approval Forms") }, ...this.context.approval_forms,
+			].map((form) => `<button type="button" class="mx-approval-item" data-approval-type="${esc(form.id)}" aria-pressed="${this.filters.approval_type === form.id}"><span>${esc(form.label)}</span><span class="mx-approval-check" aria-hidden="true">✓</span></button>`).join("")}`;
 		}
 		cat(id) {
 			return this.context.categories.find((c) => c.id === id);
@@ -305,48 +393,25 @@
 			});
 		}
 		disposeDateControls() {
-			clearTimeout(this.dateRefreshTimer);
-			const controls = this.dateControls || {};
-			this.dateControls = {};
-			Object.values(controls).forEach((control) => control.datepicker?.destroy());
+			this.rangePicker?.destroy();
+			this.rangePicker = null;
 		}
 		mountDateControls() {
-			for (const [fieldname, label] of [["from_date", "Start Date"], ["to_date", "End Date"]]) {
-				const parent = this.el.querySelector(`[data-date-field="${fieldname}"]`);
-				const control = root.frappe.ui.form.make_control({
-					parent,
-					only_input: true,
-					render_input: true,
-					df: {
-						fieldtype: "Date", fieldname, label: t(label),
-						options: { classes: "mx-expense-datepicker" },
-						min_date: new Date(1900, 0, 1), max_date: new Date(2200, 11, 31),
-						change: () => {
-							if (this.dateControls[fieldname] !== control || !this.isCurrentRoute()) return;
-							const value = control.get_value() || "";
-							if (value === this.filters[fieldname]) return;
-							this.filters[fieldname] = value;
-							this.start = 0;
-							// Finish the native picker event before rebuilding and destroying it.
-							clearTimeout(this.dateRefreshTimer);
-							this.dateRefreshTimer = setTimeout(() => this.refresh(), 0);
-						},
-					},
-				});
-				control.set_input(this.filters[fieldname]);
-				this.dateControls[fieldname] = control;
-				control.$input.attr("aria-label", t(label));
-				const trigger = root.document.createElement("button");
-				trigger.type = "button";
-				trigger.className = "mx-date-trigger";
-				trigger.setAttribute("aria-label", t(label));
-				trigger.innerHTML = root.frappe.utils.icon("calendar", "sm");
-				trigger.addEventListener("click", () => {
-					control.$input.trigger("focus");
-					control.datepicker.show();
-				});
-				parent.appendChild(trigger);
-			}
+			this.rangePicker = new root.DeepLinkERPMexicoExpenseDateRange.RangePicker({
+				parent: this.el.querySelector(".mx-date-range-control"),
+				value: validDateRange(this.filters)
+					? { from_date: this.filters.from_date, to_date: this.filters.to_date }
+					: monthRange(this.context.today.slice(0, 7)),
+				today: this.context.today,
+				getToday: async () => (await call("get_context")).today,
+				onChange: (range) => {
+					if (!this.isCurrentRoute()) return;
+					Object.assign(this.filters, range);
+					this.start = 0;
+					this.refresh();
+					this.el.querySelector(".mx-range-trigger")?.focus();
+				},
+			});
 		}
 		shell() {
 			this.disposeFilterControls();
@@ -365,15 +430,10 @@
 					],
 					payroll
 				)}
-                <div class="mx-filter mx-date-filter"><span>${esc(t("Start Date"))}</span><div class="mx-date-control" data-date-field="from_date"></div></div>
-                <div class="mx-filter mx-date-filter"><span>${esc(t("End Date"))}</span><div class="mx-date-control" data-date-field="to_date"></div></div>
+                <div class="mx-filter mx-date-range-filter"><span>${esc(t("Date Range"))}</span><div class="mx-date-range-control"></div></div>
                 ${this.filter("company", "Subsidiary", [
 					["", t("All Subsidiaries")],
 					...this.context.companies.map((c) => [c, c]),
-				])}
-                ${this.filter("approval_type", "Approval Form", [
-					["", t("All Approval Forms")],
-					...this.context.approval_forms.map((form) => [form.id, form.label]),
 				])}
                 ${this.filter("currency", "Currency", [
 					["MXN", "MXN"],
@@ -385,7 +445,7 @@
 					"Approval Status",
 					Object.entries(statuses).map(([v, l]) => [v, t(l)])
 				)}
-                ${button("Reset", "reset", "mx-reset")}</div>
+                <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset", `title="${esc(t("Restore this month and reset all filters"))}"`)}</div></div>
                 <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(
 				t(
 					{
@@ -394,7 +454,7 @@
 						planned: "Planned Payment Date",
 					}[f.basis]
 				)
-			)} · ${esc(t(statuses[f.status]))} · ${esc(f.currency)}</span><span>${esc(
+			)} · ${esc(f.approval_type ? this.form(f.approval_type) : t("All Approval Forms"))} · ${esc(t(statuses[f.status]))} · ${esc(f.currency)}</span><span>${esc(
 				t("OA approvals do not prove actual payment")
 			)}</span></div>
                 ${this.context.approval_forms.find((form) => form.id === f.approval_type)?.connected === false
@@ -461,6 +521,7 @@
 		}
 		show() {
 			if (!this.context) return;
+			this.restorePreferences();
 			this.applyRouteFilters();
 			this.setBreadcrumbs();
 			return this.reload();
@@ -482,10 +543,12 @@
 			const searchFocus =
 				keepSearch && this.el.querySelector("#mx-search") === root.document.activeElement;
 			this.shell();
-			if (!filters.from_date || !filters.to_date || filters.from_date > filters.to_date) {
+			this.mountApprovalSidebar();
+			if (!validDateRange(filters)) {
 				this.el.querySelector(".mx-body").innerHTML = `<div class="mx-notice mx-warning">${esc(t("Enter a valid start and end date; the start date must not be after the end date"))}</div>`;
 				return;
 			}
+			this.rememberFilters();
 			try {
 				let html;
 				if (this.view === "overview") {
@@ -868,11 +931,14 @@
 				if (d.action === "retry" && !this.context) return this.initialize();
 				if (d.action === "criteria") return this.showCriteria();
 				if (d.action === "reset") {
+					const context = await call("get_context");
+					if (!this.isCurrentRoute()) return;
+					this.context = context;
 					Object.assign(this.filters, {
-						...monthRange(this.context.today.slice(0, 7)),
+						...monthRange(context.today.slice(0, 7)),
+						approval_type: "",
 						basis: "period",
 						company: "",
-						approval_type: "",
 						category: "",
 						subcategory: "",
 						currency: "MXN",
@@ -1292,5 +1358,5 @@
 			root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
 		}
 	}
-	return { Workbench, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
+	return { Workbench, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, validDateRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
 });

@@ -4,6 +4,7 @@
 			frappe.pages[route].on_page_load = function (wrapper) {
 				frappe.require([
 					"/assets/deeplinkerp_branding/css/mexico_expenses.css",
+					"/assets/deeplinkerp_branding/js/mexico_expense_date_range.js",
 					"/assets/deeplinkerp_branding/js/mexico_expenses.js",
 				], () => {
 					if (!wrapper.mx_expenses) {

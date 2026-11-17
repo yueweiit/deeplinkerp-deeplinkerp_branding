@@ -19,7 +19,9 @@
 
 ### 审批表筛选
 
-顶部筛选“审批表”提供运营支出（`operating`）、费用支出（`expense`）、采购支出（`purchase`）和全部审批表，与薪酬、税费等 `category/subcategory` 独立。Source、Line 都保存只读 `approval_type`；查询仍通过配置的 corpId + processCode 与 Source 关联校验所属审批表。旧请求和分类链接兼容。
+左侧原生导航上方的“审批表”选择区提供运营支出（`operating`）、费用支出（`expense`）、采购支出（`purchase`）和全部审批表，与薪酬、税费等 `category/subcategory` 独立。Source、Line 都保存只读 `approval_type`；查询仍通过配置的 corpId + processCode 与 Source 关联校验所属审批表。旧请求和分类链接兼容。
+
+审批表选择区支持选中高亮及键盘操作，切换时保留当前页面、日期、子公司、币种和状态，清除类别、搜索及核对问题；不新增重复页面或修改权限。离开工作台时移除该选择区，原生侧栏重建后自动恢复。
 
 全部审批表下，概览构成及子公司汇总按三张审批表分列；选择单一审批表后，构成及统计报表按业务分类展开。明细新增审批表、财务通过日期；详情展示业务分类路径、工资类型、生产属性、执行地区和预算快照（有值时）。采购物品、加工商明细只作支撑信息展示，不再次加入费用金额。
 
@@ -41,11 +43,15 @@
 
 ### 日期范围筛选
 
-工作台起止日期复用 Frappe `ControlDate`，沿用站点日期格式、日历语言及手工输入校验；输入框与弹层采用仅限本模块的样式，刷新和离开页面时销毁本页日期弹层。日期口径、子公司、审批表、币种和状态使用 Desk 已加载的 Bootstrap 下拉菜单，保留内部筛选编码、原有选项和禁用规则；弹层样式仅限本页，支持选中标记、方向键、Enter/空格选择、Escape 关闭及选择后恢复焦点。
+工作台使用统一的时间范围选择框，由 `public/js/mexico_expense_date_range.js` 封装 Desk 已加载的 Air Datepicker，桌面并排显示起止日期所在月份，窄屏改为上下排列；同月范围显示前月及当月，右侧始终包含结束日期（1900 年 1 月下界两侧均显示该月），不再固定显示开始月及下一月；沿用站点日期格式、日历语言和每周起始日，不增加依赖。点击两次选定起止日期后一次更新查询，可反向选择或两次选择同日；只选开始日期时不更新结果，点击外部、取消或 Escape 放弃本次未完成选择。支持键盘选日、日期区间高亮，刷新和离开页面销毁弹层与事件。日期口径、子公司、币种和状态使用 Desk 已加载的 Bootstrap 下拉菜单，保留内部筛选编码、原有选项和禁用规则；弹层样式仅限本页，支持选中标记、方向键、Enter/空格选择、Escape 关闭及选择后恢复焦点。
 
-页面使用开始日期、结束日期，默认当月首日至末日，包含两端日期；同一天起止即可查询单日，支持跨月、跨年。费用所属期间口径按业务时区下的 `finance_approved_date` 筛选，而非月初 `period_month`；另两个口径分别使用 `request_date`、`planned_payment_date`。后台拒绝无效日期、缺少任一端、起始晚于结束及超出现有 1900—2200 年边界的范围。
+页面使用开始日期、结束日期，首次打开默认业务时区的当月首日至末日，包含两端日期；同一天起止即可查询单日，支持跨月、跨年。费用所属期间口径按业务时区下的 `finance_approved_date` 筛选，而非月初 `period_month`；另两个口径分别使用 `request_date`、`planned_payment_date`。后台拒绝无效日期、缺少任一端、起始晚于结束及超出现有 1900—2200 年边界的范围。
 
 概览、列表、薪酬、三个子报表、原生报表和 Excel 使用同一范围。趋势图和月度趋势报表仅汇总范围内数据，仍按月展示，不再额外包含前五个月；薪酬跨月仍分子公司及月份。点击趋势月份或薪酬月份行，下钻取该月与当前日期范围的交集，避免把区间外的日期带入明细。Excel 筛选说明和文件名包含起止日期。
+
+工作台在同一浏览器、同一站点内按登录用户保存最近一次有效日期范围及审批表（`localStorage`，不保存审批内容），七个页面共用；换设备或浏览器不会同步。恢复优先级为显式 `mx_filters` 链接参数 → 上次选择 → 当月默认值；旧月份链接仍优先。无效日期或存储不可用不覆盖有效偏好，切换账号不共用偏好。有效筛选变动会替换当前 URL 的筛选参数，防止刷新时旧链接恢复之前日期，不新增历史记录。其他筛选仍按页面保留，并随下钻链接传递。
+
+日历底部提供“今天、本月、近三个月、近180天”：今天为单日，本月为首末日，近三个月从三个月前同日到今天（月末不足该日时取月末），近180天包含今天共180天；快捷选择重新读取墨西哥业务日期，仅修改日期。右侧“重置筛选”按最新需求恢复全部默认值：日期回当月、审批表回全部，日期口径、公司、币种、状态、类别、搜索和核对问题恢复为各页面默认值；不再保留旧日期和审批表。操作均重置分页、更新 URL 及保存偏好。
 
 新 API 和 URL 筛选使用 `from_date/to_date`；旧 `month=YYYY-MM` 请求及旧月份链接兼容转换为整月，显式日期范围优先。原生报表保留隐藏月份参数用于旧链接转换。该修改不改变历史费用归期字段，无需新增数据库字段。
 
@@ -85,7 +91,7 @@
 | --- | --- |
 | 纯解析、分类、金额、期间、确认失效 | `services/mexico_expense_contract.py`；多模板适配 `mexico_expense_projection.py`、配置及布局 `mexico_expense_templates.py` |
 | 同步、权限、查询、报表、核对和附件 | `services/mexico_expenses.py` |
-| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js` 和 `public/css/mexico_expenses.css` |
+| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js` 和 `public/css/mexico_expenses.css` |
 | 标准报表 | `deeplinkerp_branding/report/mexico_subsidiary_expenses/`、`mexico_personnel_expenses/`、`mexico_expense_trend/`；通过原生 include 共用 `public/js/mexico_expense_reports.js` 筛选定义 |
 | 一级导航与首页图标 | `desktop_icon/mexico_expenses.json`、`workspace_sidebar/mexico_expenses.json`、`public/icons/desktop_icons/solid/mexico_expenses.svg`；排序和首页兼容复用 `public/js/deeplinkerp_navigation.js` 与 `deeplinkerp_branding.js` |
 | 安装、索引与 hooks | `mexico_expense_install.py`、`hooks.py` |
@@ -139,10 +145,16 @@
 
 ## 既有验证及边界
 
+2026-11-17 结束月份定位修复：先在隔离 Chromium 复现 8—11 月范围误显示 8/9 月，再验证四个快捷范围的右侧结束月份和末日选中态、刷新、跨年、同日、移动端及已移除提示。92 项 Node 回归通过（新增 5 项月份定位边界测试），本地已构建、清缓存并比对实际 HTTP 组件与修复源码一致。查询起止日期及统计口径未改变。
+
+2026-11-17 双月范围选择更新：87 项 Node 回归、4 项页面导航/权限元数据测试及新增中英西翻译检查通过。隔离 Chromium 使用原生 Air Datepicker 及语言包验证双月选日、跨月/反向/同日范围、未完成选择取消、键盘操作、四个快捷范围、刷新记忆、全部重置、西文及 390px 浮层布局和销毁。已构建本地资源并清理 `dev.localhost` 缓存；新组件、工作台、加载器及 CSS 的 HTTP 响应与源码一致。该次验证未使用真实登录站点的浏览器会话，不涉及数据库迁移。
+
+2026-11-17 导航及日期偏好调整：80 项 Node 回归通过（含 8 项新回归），中英西新增翻译键检查通过。隔离 Chromium 验证侧栏选择与键盘操作、侧栏重建及销毁、日期刷新/直接入口/跨页面恢复、本月和重置筛选、390px 无横向溢出；模拟 DL 导航移动原生菜单节点后仍可选择审批表。已构建本地 App 资源、清理 `dev.localhost` 缓存，并通过 HTTP 比对实际提供的 JS/CSS 与源码一致；无数据库变更，未迁移、未做登录站点整体验收。
+
 - 97 项 Python 隔离测试：解析、历史结构、Decimal、指纹、权限、POST、乐观并发、事务检查点、SQL 查询表达式、元数据和三语资源。补充覆盖原生角色权限计算、报表 include 加载、同步开关切换与分页重算、旧任务失效及批量输出的设置读取次数；新增覆盖重复同步的核对状态保留、时区变更前后的跨月查询、部分重算、手工公司归属、核对页定位、归期字段隐藏及不同公司/币种的隔离。查询用内存 SQLite 执行表达式，并以测试替身提供原生权限条件；它不替代 Frappe 在目标 MariaDB 站点上的权限和索引验收。
 - 25 项 Node 费用测试：分金额精度、大额字符串、分组、跨年月份、HTML 转义、报表筛选及显式币种格式化；新增 4 项使用本地 Frappe 原生 QueryReport 路由和取值方法验证三张报表的筛选保留及薪酬口径（脱离 Bench、无 Frappe 源码时会跳过这 4 项）。加上 47 项导航回归，本轮共 72 项通过，另覆盖五个路由映射、面包屑当前项语义、下钻筛选恢复及无重复标题布局。共享 OA HTTP 原有 14 项测试在前期验证中通过。
 - Chromium 使用页面实际 JS/CSS 和模拟 Frappe/API，验证五个页签、筛选、下钻、抽屉、附件入口、核对提交、标准报表路由、搜索、分页、异步旧响应抑制、西文切换、390px 手机无横向页面溢出。不是已安装站点的浏览器验收，原生 Dialog/Grid、真实导出下载与服务端权限仍需发布后联调。
 - 导航补充验证：47 项 Node 导航回归、3 项新增入口/权限/标签测试及原有 13 项 boot/界面元数据测试通过；首页生命周期检查验证新增入口仅触发一次原生重绘、不递归、不保存用户布局，编辑模式和非首页路由保持不动，权限撤回后移除过期入口。新增五个页面及侧栏路由已通过隔离 Chromium 检查：使用当前页面代码、Frappe 原生侧栏选中和面包屑方法，模拟 API 与站点容器，验证直接打开、刷新、前进后退、上级跳转、下钻恢复、西文标题和 390px 无横向溢出。本地站点已同步页面、侧栏元数据和资源；折叠菜单补充隔离 Chromium 验证使用原生 Section Break 开合、状态保存、路由高亮和父级自动展开方法，覆盖三个报表路由、刷新、前进后退、面包屑、移除横向栏、西文及 390px 页面宽度；本地站点已验证分组结构、七个 Page 及财务角色。真实用户角色及完整站点浏览器端到端验收仍待执行。
 - 本地现有缓存为 166 张审批、331 条明细。迁移前保存受限权限的明细快照；重算后 126 张审批、239 条明细取得财务通过日期及月份，其中 176 条满足公司等核对条件进入已确认统计。全部来源归期与原始证据重新解析结果一致，9 月和 10 月公司报表均返回 5 家公司；此为本地 MariaDB 实际服务查询验证，不能替代真实角色权限及浏览器验收。归期版本修复后再次迁移并重算，331 条明细的版本全部有效，已确认数量仍为 176；在实际 MariaDB 查询中临时替换设置对象（不写入站点配置），验证时区切换拦截旧报表、核对页仍可访问且隐藏过期归期字段。日期范围另以实际数据库验证单日、跨月、整月三个范围乘三种日期口径的申请数、明细数及金额，并核对导出范围说明。隔离 Chromium 验证日期控件、单日、跨月图表、精确下钻、刷新、旧月份链接、日期校验、西文及移动端。原始记录不写入代码仓库。
 
-隔离回归命令：在本 App 根目录使用开发容器 Python 运行 `-m unittest discover -s tests -p 'test_mexico_expense*.py'`；Node 运行 `node --test tests/mexico-expenses.test.js tests/mexico-expense-reports.test.js tests/navigation-model.test.js`。测试不迁移业务站点。
+隔离回归命令：在本 App 根目录使用开发容器 Python 运行 `-m unittest discover -s tests -p 'test_mexico_expense*.py'`；Node 运行 `node --test tests/mexico-expenses.test.js tests/mexico-expense-date-range.test.js tests/mexico-expense-reports.test.js tests/navigation-model.test.js`。测试不迁移业务站点。
