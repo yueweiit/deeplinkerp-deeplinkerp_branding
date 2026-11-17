@@ -2690,3 +2690,19 @@ Select an end date,Seleccione una fecha de fin
 Could not update the date range. Please try again.,No se pudo actualizar el rango de fechas. Inténtelo de nuevo.
 Restore this month and reset all filters,Restaurar este mes y restablecer todos los filtros
 Cancel,Cancelar
+Yes,Sí
+No,No
+Reporting Currency,Moneda de conversión
+Original Currency,Moneda original
+Converted Amount,Importe convertido
+Exchange Rate,Tipo de cambio
+Exchange Rate Date,Fecha del tipo de cambio
+Exchange Rate Basis,Criterio del tipo de cambio
+Estimated Conversion,Conversión estimada
+Finance Approval Month,Mes de aprobación financiera
+Application Month,Mes de solicitud
+Month-start rates by finance approval month; pending approvals use application month estimates,Tipos de cambio al inicio del mes de aprobación financiera; solicitudes pendientes estimadas según el mes de solicitud
+Pending approvals are converted using application-month opening rates (estimated),Las solicitudes pendientes de aprobación financiera se convierten al tipo de cambio inicial del mes de solicitud (estimado)
+Invalid reporting currency,Moneda de conversión no válida
+The exchange rate service is unavailable; install Overseas Costing or contact the administrator,El servicio de tipos de cambio no está disponible; instale Overseas Costing o contacte al administrador
+Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,No está disponible el tipo de cambio de {0} a CNY al inicio del mes ({1}). Se ha detenido la conversión; vuelva a intentarlo cuando esté disponible.

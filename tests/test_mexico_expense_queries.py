@@ -188,3 +188,48 @@ class MexicoQueryTests(unittest.TestCase):
         with patch.object(s,'_finance'):
             _, rows=s.report_data(filters,'trend')
         self.assertEqual([(r['month'],r['total']) for r in rows],[('2026-10',7),('2026-11',10)])
+
+    def test_conversion_includes_all_source_currencies_and_preserves_permissions(self):
+        from decimal import Decimal
+        filters={**self.filters,'reporting_currency':'CNY','currency':'CNY'}
+        with patch.object(s.fx,'load_month_rate',side_effect=lambda code,day:Decimal('7') if code=='USD' else Decimal('.35')) as loader:
+            result=s._aggregates(filters,confirmed=True)[0]
+            self.assertEqual(Decimal(str(result['amount'])),Decimal('3510.50'))
+            self.assertEqual(result['applications'],2)
+            self.assertEqual(result['lines'],3)
+            self.assertEqual(loader.call_count,2)
+            with patch.object(s,'_finance'):
+                _,rows=s.report_data(filters,'company')
+                self.assertEqual(sum(r['total'] for r in rows),Decimal('3510.50'))
+                self.assertTrue(all(r['currency']=='CNY' for r in rows))
+
+    def test_cross_month_conversion_uses_finance_date_despite_request_filter(self):
+        from decimal import Decimal
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=? WHERE name=?',('2026-10-15','a1'))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=NULL WHERE name=?',('running',))
+        filters={**self.filters,'basis':'request','status':'active','reporting_currency':'CNY','currency':'CNY'}
+        def rate(code,day):
+            return Decimal('7') if code=='USD' else Decimal('.3') if day=='2026-10-01' else Decimal('.35')
+        with patch.object(s.fx,'load_month_rate',side_effect=rate):
+            converter=s.fx.Conversion('CNY')
+            result=s._aggregates(filters,conversion=converter,confirmed=True)[0]
+            self.assertEqual(Decimal(str(result['amount'])),Decimal('3531'))
+            self.assertEqual(result['estimated_lines'],1)
+            raw=s._query(filters,['name','currency','amount','finance_approved_date','request_date'],confirmed=True).run(as_dict=True)
+            lines=[converter.line(row) for row in raw]
+            self.assertEqual(sum(Decimal(row['converted_amount']) for row in lines),Decimal(str(result['amount'])))
+            pending=next(row for row in lines if row['name']=='running')
+            self.assertEqual(pending['exchange_rate_date'],'2026-11-01')
+            self.assertTrue(pending['fx_estimated'])
+
+    def test_conversion_rounds_each_line_before_grouping_and_fails_on_rate_error(self):
+        from decimal import Decimal
+        self.db.execute('UPDATE "tabMexico Expense Line" SET amount=.10 WHERE name IN (\'a1\',\'a2\')')
+        filters={**self.filters,'reporting_currency':'CNY','currency':'CNY','category':'personnel'}
+        with patch.object(s.fx,'load_month_rate',return_value=Decimal('1.05')):
+            # a1 and USD row; a2 is excluded by category.
+            result=s._aggregates(filters,confirmed=True)[0]
+            self.assertEqual(Decimal(str(result['amount'])),Decimal('525.11'))
+        with patch.object(s.fx,'load_month_rate',side_effect=ValueError('rate unavailable')):
+            with self.assertRaisesRegex(ValueError,'rate unavailable'):
+                s._aggregates(filters,confirmed=True)

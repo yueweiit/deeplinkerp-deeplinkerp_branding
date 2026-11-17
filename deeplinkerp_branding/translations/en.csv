@@ -2418,3 +2418,19 @@ Select an end date,Select an end date
 Could not update the date range. Please try again.,Could not update the date range. Please try again.
 Restore this month and reset all filters,Restore this month and reset all filters
 Cancel,Cancel
+Yes,Yes
+No,No
+Reporting Currency,Reporting Currency
+Original Currency,Original Currency
+Converted Amount,Converted Amount
+Exchange Rate,Exchange Rate
+Exchange Rate Date,Exchange Rate Date
+Exchange Rate Basis,Exchange Rate Basis
+Estimated Conversion,Estimated Conversion
+Finance Approval Month,Finance Approval Month
+Application Month,Application Month
+Month-start rates by finance approval month; pending approvals use application month estimates,Month-start rates by finance approval month; pending approvals use application month estimates
+Pending approvals are converted using application-month opening rates (estimated),Pending approvals are converted using application-month opening rates (estimated)
+Invalid reporting currency,Invalid reporting currency
+The exchange rate service is unavailable; install Overseas Costing or contact the administrator,The exchange rate service is unavailable; install Overseas Costing or contact the administrator
+Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.

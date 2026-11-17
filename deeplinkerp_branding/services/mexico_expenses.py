@@ -19,6 +19,7 @@ from . import mexico_expense_contract as contract
 from . import operating_oa_http as http
 from . import mexico_expense_templates as templates
 from . import mexico_expense_projection as projection
+from . import mexico_expense_fx as fx
 from .operating_expense_contract import digest
 from .purchase_payment_service import _require_fields
 
@@ -455,12 +456,14 @@ def preview_template(template, business_timezone="America/Mexico_City"):
 
 def _filters(filters):
     values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "status", "keyword", "issue"}
+    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue"}
     if not isinstance(values, dict) or set(values) - allowed:
         frappe.throw(_("Invalid Mexico expense filters"))
     if any(not isinstance(v, str) or len(v) > 200 for v in values.values() if v is not None):
         frappe.throw(_("Invalid Mexico expense filters"))
     values = {"month": datetime.now(ZoneInfo(_settings().business_timezone or "America/Mexico_City")).strftime("%Y-%m"), "basis": "period", "currency": "MXN", "status": "finance_approved", **values}
+    if values.get("reporting_currency"):
+        values["currency"] = values["reporting_currency"]
     try:
         if "from_date" in values or "to_date" in values:
             first, last = date.fromisoformat(values.get("from_date") or ""), date.fromisoformat(values.get("to_date") or "")
@@ -518,7 +521,9 @@ def _query(values, fields, *, confirmed=False, review=False):
     if review:
         currency_scope |= table.currency.isnull() | (table.currency == "")
     def scoped_query(selected):
-        query = frappe.qb.get_query(LINE, fields=selected, filters=filters, ignore_permissions=False).where(currency_scope)
+        query = frappe.qb.get_query(LINE, fields=selected, filters=filters, ignore_permissions=False)
+        if not values.get("reporting_currency"):
+            query = query.where(currency_scope)
         if approval_scope is not None:
             query = query.where(approval_scope)
         if values.get("keyword"):
@@ -560,13 +565,45 @@ def _query(values, fields, *, confirmed=False, review=False):
     return query
 
 
-def _aggregates(values, groups=(), **kwargs):
-    from pypika.functions import Count, Sum
+def _conversion_expression(values, conversion, **scope):
+    from pypika.functions import Cast, Coalesce, Substring
+    from pypika.terms import Case, Function
+    table = frappe.qb.DocType(LINE)
+    month = Substring(Cast(Coalesce(table.finance_approved_date, table.request_date), "CHAR(10)"), 1, 7)
+    pairs = _query(values, [table.currency, month.as_("fx_month")], **scope).distinct().run(as_dict=True)
+    factor = Case().when(table.currency == conversion.target, 1)
+    for row in pairs:
+        if row["currency"] == conversion.target or row["currency"] not in fx.CURRENCIES or not row["fx_month"]:
+            continue
+        rate_date = str(row["fx_month"]) + "-01"
+        rate = conversion.rate(row["currency"], rate_date)
+        factor = factor.when((table.currency == row["currency"]) & (month == row["fx_month"]), rate)
+    # Round each line before summation, matching detail rows and Excel exactly.
+    return Function("ROUND", table.amount * factor.else_(None), 2)
+
+
+def _counts(values, **scope):
+    from pypika.functions import Count
+    table = frappe.qb.DocType(LINE)
+    return _query(values, [Count(table.source).distinct().as_("applications"), Count(table.name).as_("lines")], **scope).run(as_dict=True)[0]
+
+
+def _aggregates(values, groups=(), conversion=None, **kwargs):
+    from pypika.functions import Cast, Count, Sum
     from pypika.terms import Case
     table = frappe.qb.DocType(LINE)
-    fields = [getattr(table, field) for field in groups] + [Sum(table.amount).as_("amount"), Count(table.source).distinct().as_("applications"), Count(table.name).as_("lines"),
+    amount = table.amount
+    if values.get("reporting_currency"):
+        conversion = conversion or fx.Conversion(values["reporting_currency"])
+        amount = _conversion_expression(values, conversion, **kwargs)
+    # Frappe MariaDB decoders return DECIMAL as float; transfer totals as text
+    # so large cross-currency aggregates retain every cent.
+    total_amount = Cast(Sum(amount), "CHAR(65)") if values.get("reporting_currency") else Sum(amount)
+    fields = [getattr(table, field) for field in groups] + [total_amount.as_("amount"), Count(table.source).distinct().as_("applications"), Count(table.name).as_("lines"),
         Sum(Case().when(table.base_issues.like('%"amount"%') | table.base_issues.like('%"amount_pending"%') | table.base_issues.like('%"total"%') |
-            table.base_issues.like('%"structure"%') | table.base_issues.like('%"identity"%'), 1).else_(0)).as_("invalid_amounts")]
+            table.base_issues.like('%"structure"%') | table.base_issues.like('%"identity"%') | amount.isnull(), 1).else_(0)).as_("invalid_amounts")]
+    if values.get("reporting_currency"):
+        fields.append(Sum(Case().when(table.finance_approved_date.isnull(), 1).else_(0)).as_("estimated_lines"))
     query = _query(values, fields, **kwargs)
     if groups:
         query = query.groupby(*(getattr(table, field) for field in groups))
@@ -608,28 +645,35 @@ def get_lines(filters=None, start=0, page_length=25, review=False):
     except (ValueError, TypeError):
         frappe.throw(_("Invalid pagination"))
     table = frappe.qb.DocType(LINE)
-    total = _aggregates(values, review=review)[0]
+    total = _counts(values, review=review)
     data = _query(values, list(FIELDS), review=review).orderby(table.request_date, order=Order.desc).orderby(table.name).limit(page_length).offset(start).run(as_dict=True)
-    return {"rows": _public_lines(data), "total": int(total.get("lines") or 0), "applications": int(total.get("applications") or 0)}
+    rows = _public_lines(data)
+    if values.get("reporting_currency"):
+        conversion = fx.Conversion(values["reporting_currency"])
+        rows = [conversion.line(row) for row in rows]
+    return {"rows": rows, "total": int(total.get("lines") or 0), "applications": int(total.get("applications") or 0)}
 
 
 @frappe.whitelist()
 def get_overview(filters=None):
     _finance()
     values = _filters(filters)
+    conversion = fx.Conversion(values["reporting_currency"]) if values.get("reporting_currency") else None
+    def aggregate(groups=(), **scope):
+        return _aggregates(values, groups, conversion=conversion, **scope)
     def clean(rows):
         return [{**r, "amount": str(r.get("amount") or 0)} for r in rows]
-    return {"metrics": clean(_aggregates(values, ("approval_status",))),
-        "forms": clean(_aggregates(values, ("approval_type",), confirmed=True)),
-        "company_forms": clean(_aggregates(values, ("company", "approval_type"), confirmed=True)),
-        "categories": clean(_aggregates(values, ("category",), confirmed=True)),
-        "companies": clean(_aggregates(values, ("company", "category"), confirmed=True)),
-        "company_totals": clean(_aggregates(values, ("company",), confirmed=True)),
-        "trend": clean(_aggregates(values, ({"period": "period_month", "request": "request_date", "planned": "planned_payment_date"}[values["basis"]], "category"), confirmed=True)),
-        "review_count": int((_aggregates(values, review=True)[0].get("applications") or 0))}
+    return {"metrics": clean(aggregate(("approval_status",))),
+        "forms": clean(aggregate(("approval_type",), confirmed=True)),
+        "company_forms": clean(aggregate(("company", "approval_type"), confirmed=True)),
+        "categories": clean(aggregate(("category",), confirmed=True)),
+        "companies": clean(aggregate(("company", "category"), confirmed=True)),
+        "company_totals": clean(aggregate(("company",), confirmed=True)),
+        "trend": clean(aggregate(({"period": "period_month", "request": "request_date", "planned": "planned_payment_date"}[values["basis"]], "category"), confirmed=True)),
+        "review_count": int((_counts(values, review=True).get("applications") or 0))}
 
 
-def report_data(filters=None, kind="company"):
+def report_data(filters=None, kind="company", *, serialize=False):
     _finance()
     values = _filters(filters)
     if not isinstance(kind, str) or kind not in {"company", "payroll", "trend"}:
@@ -652,7 +696,7 @@ def report_data(filters=None, kind="company"):
         columns.append({"fieldname": "month", "label": "Reporting Month", "fieldtype": "Data", "width": 100})
     columns += [{"fieldname": key, "label": labels[key], "fieldtype": "Currency", "options": "currency", "width": 140} for key in keys]
     columns += [{"fieldname": "total", "label": "Total", "fieldtype": "Currency", "options": "currency", "width": 155},
-                {"fieldname": "currency", "label": "Currency", "fieldtype": "Data", "width": 70}]
+                {"fieldname": "currency", "label": "Reporting Currency" if values.get("reporting_currency") else "Currency", "fieldtype": "Data", "width": 100}]
     result = {}
     for row in data:
         month = str(row.get(groups[0] if kind == "trend" else "period_month") or "")[:7]
@@ -663,12 +707,17 @@ def report_data(filters=None, kind="company"):
             amount = Decimal(str(row["amount"] or 0))
             out[category] += amount
             out["total"] += amount
-    return columns, sorted(result.values(), key=lambda r: str(r[first]))
+    rows = sorted(result.values(), key=lambda r: str(r[first]))
+    if serialize and values.get("reporting_currency"):
+        # Frappe serializes Decimal as float. Keep exact cents on both HTTP paths.
+        rows = [{key: format(value, ".2f") if isinstance(value, Decimal) else value
+                 for key, value in row.items()} for row in rows]
+    return columns, rows
 
 
 @frappe.whitelist()
 def get_report(filters=None, kind="company"):
-    columns, data = report_data(filters, kind)
+    columns, data = report_data(filters, kind, serialize=True)
     return {"columns": [{**c, "label": _(c["label"])} for c in columns], "rows": data}
 
 
@@ -688,7 +737,22 @@ def export_report(filters=None, kind="company"):
             frappe.throw(_("Export exceeds 20000 rows; narrow the filters"))
         columns = [{"fieldname": k, "label": label} for k, label in (("approval_no", "Approval Number"), ("company", "Subsidiary"), ("source_entity", "Source Entity"), ("category", "Expense Category"), ("subcategory", "Expense Subcategory"), ("description", "Expense Description"), ("finance_approved_date", "MX Finance Approval Date"), ("period_month", "Reporting Month"), ("period_start", "Expense Period Start"), ("period_end", "Expense Period End"), ("amount", "Amount"), ("currency", "Currency"), ("approval_status", "Approval Status"), ("issues", "Review Issues"), ("approval_type", "Approval Form"), ("business_category", "Business Category"), ("salary_type", "Salary Type"))]
         data = _public_lines(data)
+        if values.get("reporting_currency"):
+            conversion = fx.Conversion(values["reporting_currency"])
+            data = [conversion.line(row) for row in data]
+            for column in columns:
+                if column["fieldname"] in {"amount", "currency"}:
+                    column["label"] = "Original Amount" if column["fieldname"] == "amount" else "Original Currency"
+            columns += [{"fieldname": key, "label": label} for key, label in (
+                ("converted_amount", "Converted Amount"), ("reporting_currency", "Reporting Currency"),
+                ("exchange_rate", "Exchange Rate"), ("exchange_rate_date", "Exchange Rate Date"),
+                ("fx_date_basis", "Exchange Rate Basis"), ("fx_estimated", "Estimated Conversion"))]
         for row in data:
+            if values.get("reporting_currency"):
+                row["converted_amount"] = Decimal(row["converted_amount"]) if row["converted_amount"] is not None else None
+                row["exchange_rate"] = Decimal(row["exchange_rate"]) if row["exchange_rate"] is not None else None
+                row["fx_date_basis"] = _("Finance Approval Month") if row["fx_date_basis"] == "finance" else _("Application Month")
+                row["fx_estimated"] = _("Yes") if row["fx_estimated"] else _("No")
             if row["amount"] is not None:
                 row["amount"] = Decimal(row["amount"])
             row["approval_type"] = _(contract.APPROVAL_FORMS.get(row.get("approval_type"), ("Unclassified",))[0])
@@ -700,13 +764,19 @@ def export_report(filters=None, kind="company"):
         columns, data = report_data(values, kind)
     from frappe.utils.xlsxutils import build_xlsx_response
     def cell(value):
+        # Excel numeric cells retain only 15 significant digits. Preserve larger
+        # exact amounts as text while leaving ordinary monetary cells numeric.
+        if isinstance(value, Decimal) and len(value.normalize().as_tuple().digits) > 15:
+            return format(value, "f")
         if isinstance(value, str) and value.startswith(("=", "+", "-", "@", "\t", "\r")):
             return "'" + value
         return value
     metadata = [[_("Mexico Expenses"), _("OA approvals do not prove actual payment")],
         [_("Date Range"), values["from_date"] + " ~ " + values["to_date"]], [_("Date Basis"), _(BASIS_LABELS[values["basis"]])],
         [_("Approval Status"), _(STATUS_LABELS.get(values["status"], values["status"])),
-            _("Approval Form"), _(contract.APPROVAL_FORMS[values["approval_type"]][0]) if values.get("approval_type") else _("All Approval Forms")], [_("Currency"), values["currency"]], []]
+            _("Approval Form"), _(contract.APPROVAL_FORMS[values["approval_type"]][0]) if values.get("approval_type") else _("All Approval Forms")], [_("Reporting Currency") if values.get("reporting_currency") else _("Currency"), values["currency"]], []]
+    if values.get("reporting_currency"):
+        metadata.insert(-1, [_("Exchange Rate Basis"), _("Month-start rates by finance approval month; pending approvals use application month estimates")])
     matrix = metadata + [[_(c["label"]) for c in columns]] + [[cell(row.get(c["fieldname"])) for c in columns] for row in data]
     build_xlsx_response(matrix, "Mexico-Expenses-" + values["from_date"] + "_" + values["to_date"])
 
@@ -742,8 +812,10 @@ def _whole_source_allowed(source):
 
 
 @frappe.whitelist()
-def get_detail(line_key):
+def get_detail(line_key, reporting_currency=None):
     _finance()
+    if reporting_currency is not None and (not isinstance(reporting_currency, str) or reporting_currency not in fx.CURRENCIES):
+        frappe.throw(_("Invalid reporting currency"))
     doc = _line(line_key)
     source = frappe.get_doc(SOURCE, doc.source)
     whole = _whole_source_allowed(doc.source)
@@ -758,6 +830,12 @@ def get_detail(line_key):
         {"amount", "amount_pending", "total", "structure", "identity"} for row in visible)
     result = {"line": _public_line({field: doc.get(field) for field in FIELDS}, mapping_version, period_version), "lines": visible,
         "whole_source": whole, "visible_amount": None if incomplete else str(sum((Decimal(row["amount"]) for row in visible), Decimal(0)))}
+    if reporting_currency:
+        conversion = fx.Conversion(reporting_currency)
+        result["line"] = conversion.line(result["line"])
+        result["lines"] = [conversion.line(row) for row in visible]
+        result["visible_currency"] = reporting_currency
+        result["visible_amount"] = None if incomplete or any(row["converted_amount"] is None for row in result["lines"]) else str(sum((Decimal(row["converted_amount"]) for row in result["lines"]), Decimal(0)))
     if whole:
         from .operating_oa_workflow import workflow
         result.update(workflow=workflow(json.loads(source.raw_json)), payee=source.payee, payment_terms=source.payment_terms, details=json.loads(source.get("details_json") or "{}"))

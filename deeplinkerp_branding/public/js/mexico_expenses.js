@@ -74,19 +74,12 @@
 		payroll: "Mexico Personnel Expenses",
 		trend: "Mexico Expense Trend",
 	};
+	const nodeMoneyFormatter = typeof module === "object" && module.exports
+		? require("./mexico_expense_money.js")(root) : null;
+	// frappe.require may fetch these scripts concurrently; resolve the browser
+	// formatter when rendering, after the page loader has awaited all assets.
 	const money = (value, currency) =>
-		value == null
-			? "—"
-			: root.frappe.format(
-					value,
-					{
-						fieldtype: currency ? "Currency" : "Float",
-						options: currency ? "currency" : undefined,
-						precision: 2,
-					},
-					{ inline: true, only_value: true },
-					{ currency }
-			  );
+		(nodeMoneyFormatter || root.DeepLinkERPMexicoExpenseMoney).format(value, currency);
 	const number = (value) =>
 		root.frappe.format(value || 0, { fieldtype: "Int" }, { inline: true, only_value: true });
 	const date = (value) =>
@@ -252,6 +245,10 @@
 			this.applyRouteFilters();
 			this.setBreadcrumbs();
 			await this.refresh();
+		}
+		lineAmount(row) {
+			if (!row.reporting_currency) return money(row.amount, row.currency);
+			return `${money(row.converted_amount, row.reporting_currency)}<small>${esc(t("Original Amount"))}: ${money(row.amount, row.currency)} · ${esc(row.currency || "—")}</small><small>${esc(t("Exchange Rate"))}: ${esc(row.exchange_rate || "—")} · ${date(row.exchange_rate_date)}${row.fx_estimated ? " · " + esc(t("Estimated Conversion")) : ""}</small>`;
 		}
 		form(id) {
 			return this.context.approval_forms.find((f) => f.id === id)?.label || t("Unclassified");
@@ -435,7 +432,7 @@
 					["", t("All Subsidiaries")],
 					...this.context.companies.map((c) => [c, c]),
 				])}
-                ${this.filter("currency", "Currency", [
+                ${this.filter("currency", "Reporting Currency", [
 					["MXN", "MXN"],
 					["USD", "USD"],
 					["CNY", "CNY"],
@@ -476,7 +473,7 @@
                 <footer class="mx-footer"><span>${esc(
 					t("Last Successful Sync")
 				)}: <span class="mx-last-sync">—</span></span><span>${esc(
-				t("Each currency is reported separately")
+				t("Month-start rates by finance approval month; pending approvals use application month estimates")
 			)}</span></footer>`;
 			this.mountDateControls();
 			this.mountSelectControls();
@@ -491,6 +488,7 @@
 		}
 		effectiveFilters() {
 			const f = { ...this.filters };
+			if (f.currency) f.reporting_currency = f.currency;
 			if (this.view === "payroll" || (this.view === "reports" && this.report === "payroll"))
 				Object.assign(f, { category: "personnel", basis: "period" });
 			return f;
@@ -616,7 +614,7 @@
 				["Applications in Approval", amount("pending"), count("pending"), "pending"],
 				["Applications to Review", null, data.review_count, "review"],
 			];
-			return `<div class="mx-cards">${cards
+			return `${metrics.some((r) => r.estimated_lines > 0) ? `<div class="mx-notice">${esc(t("Pending approvals are converted using application-month opening rates (estimated)"))}</div>` : ""}<div class="mx-cards">${cards
 				.map(
 					([title, value, n, kind], i) =>
 						`<section class="mx-card ${i === 0 ? "first" : ""}"><span>${esc(
@@ -756,7 +754,7 @@
 								"Expense Category",
 								"Expense Period",
 								"Expense Description",
-								"Amount",
+								"Converted Amount",
 								"Approval Status",
 								"Finance Status",
 								review ? "Review Issues" : "Planned Payment Date",
@@ -796,10 +794,7 @@
 											r.description
 										)}">${esc(
 											r.description || "—"
-										)}</td><td class="num mx-strong">${money(
-											r.amount,
-											r.currency
-										)}</td><td>${pill(r.approval_status)}</td><td>${esc(t(r.finance_approved_date ? "Finance Approved" : "Awaiting MX Finance approval"))}<small>${date(r.finance_approved_date)}</small></td><td>${
+										)}</td><td class="num mx-strong">${this.lineAmount(r)}</td><td>${pill(r.approval_status)}</td><td>${esc(t(r.finance_approved_date ? "Finance Approved" : "Awaiting MX Finance approval"))}<small>${date(r.finance_approved_date)}</small></td><td>${
 											review
 												? `<span class="mx-pill mx-warning">${esc(
 														this.context.issue_labels[r.issues[0]] ||
@@ -914,7 +909,7 @@
 					"OA approvals do not prove actual payment",
 					"Expenses require MX Finance approval and valid subsidiary allocation before reporting",
 					"Reporting months follow MX Finance approval in the business timezone",
-					"Each currency is reported separately",
+					"Month-start rates by finance approval month; pending approvals use application month estimates",
 				]
 					.map((s) => `<p>${esc(t(s))}</p>`)
 					.join(""),
@@ -992,7 +987,7 @@
 		}
 		async detail(lineKey) {
 			const request = (this.detailEpoch = (this.detailEpoch || 0) + 1);
-			const data = await call("get_detail", { line_key: lineKey });
+			const data = await call("get_detail", { line_key: lineKey, reporting_currency: this.filters.currency });
 			if (request !== this.detailEpoch || !this.isCurrentRoute()) return;
 			const r = data.line,
 				canReview = this.context.can_review;
@@ -1005,14 +1000,14 @@
 			const detail = (label, value) =>
 				`<div><dt>${esc(t(label))}</dt><dd>${value}</dd></div>`;
 			dialog
-				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(r.currency || "—")}</span><strong>${money(data.visible_amount, r.currency)}</strong></div><dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.company || t("Not Mapped")))}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
+				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(data.visible_currency || r.currency || "—")}</span><strong>${money(data.visible_amount, data.visible_currency || r.currency)}</strong></div><dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.company || t("Not Mapped")))}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
                 ${data.whole_source ? `<dl class="mx-detail-grid">${Object.entries(data.details?.fields || {}).filter(([, value]) => value).map(([label, value]) => detail(label, esc(value))).join("")}</dl>${(data.details?.tables || []).map((table) => {
                     const labels = [...new Set(table.rows.flatMap((row) => row.cells.map((cell) => cell.label)))];
                     return `<h3>${esc(table.label)}</h3><p class="mx-help">${esc(t("Supporting item details; amounts are not added again"))}</p><div class="mx-scroll"><table><thead><tr>${labels.map((label) => `<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${table.rows.map((row) => `<tr>${labels.map((label) => `<td>${esc(row.cells.find((cell) => cell.label === label)?.value || "—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
                 }).join("")}` : ""}
                 <h3>${esc(
 					t("Expense Details")
-				)}</h3><div class="mx-scroll"><table><thead><tr><th>${esc(t("Subsidiary"))}</th><th>${esc(t("Expense Description"))}</th><th class="num">${esc(t("Amount"))}</th></tr></thead><tbody>${data.lines.map((l) => `<tr><td>${esc(l.company || l.source_entity)}</td><td>${esc(l.description)}</td><td class="num">${money(l.amount, l.currency)}</td></tr>`).join("")}</tbody></table></div>
+				)}</h3><div class="mx-scroll"><table><thead><tr><th>${esc(t("Subsidiary"))}</th><th>${esc(t("Expense Description"))}</th><th class="num">${esc(t("Converted Amount"))}</th></tr></thead><tbody>${data.lines.map((l) => `<tr><td>${esc(l.company || l.source_entity)}</td><td>${esc(l.description)}</td><td class="num">${this.lineAmount(l)}</td></tr>`).join("")}</tbody></table></div>
                 ${
 					!data.whole_source
 						? `<div class="mx-notice mx-warning">${esc(

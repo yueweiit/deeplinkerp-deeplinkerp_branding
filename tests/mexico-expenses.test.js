@@ -371,3 +371,18 @@ test('reset fetches the latest business date even after a year boundary', async 
  assert.equal(page.filters.currency,'MXN');
  assert.equal(page.start,0);
 });
+
+test("all workbench views request explicit reporting currency without altering stored source facts", () => {
+    for (const view of ['overview','details','payroll','reports','review']) {
+        const workbench={filters:{currency:'CNY'},view,report:'company'};
+        assert.equal(api.Workbench.prototype.effectiveFilters.call(workbench).reporting_currency,'CNY');
+        assert.deepEqual(workbench.filters,{currency:'CNY'});
+    }
+});
+
+test("converted line rendering retains original amounts and estimated rate evidence", () => {
+    const html=api.Workbench.prototype.lineAmount({currency:'USD',amount:'10.00',reporting_currency:'CNY',converted_amount:'70.00',exchange_rate:'7.000000000000',exchange_rate_date:'2026-11-01',fx_estimated:true});
+    for (const text of ['70.00','Original Amount','10.00','USD','7.000000000000','2026-11-01','Estimated Conversion']) assert(html.includes(text),text);
+    const incomplete=api.Workbench.prototype.lineAmount({currency:null,amount:'10.00',reporting_currency:'CNY',converted_amount:null});
+    assert(incomplete.startsWith('—'));
+});

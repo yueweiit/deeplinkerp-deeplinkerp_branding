@@ -72,6 +72,7 @@ class MexicoMetadataTests(unittest.TestCase):
     def test_all_new_field_and_enum_labels_exist_in_three_languages(self):
         keys={label for _,label,_ in contract.CATEGORIES}|{v[1] for v in contract.SUBCATEGORIES.values()}|set(contract.ISSUES.values())
         keys.update(label for label, _ in contract.APPROVAL_FORMS.values())
+        keys.update(re.findall(r'_\("([^"\n]+)"\)', (PACKAGE / "services/mexico_expense_fx.py").read_text()))
         keys.update(re.findall(r'__\("([^"\n]+)"\)', (PACKAGE / "public/js/mexico_expense_reports.js").read_text()))
         for slug in ['mexico_expense_source','mexico_expense_line','mexico_expense_settings','mexico_expense_company_map','mexico_expense_template']:
             doc=meta(slug);keys.add(doc['name'])

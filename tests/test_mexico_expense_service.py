@@ -107,7 +107,7 @@ class MexicoServiceTests(unittest.TestCase):
         query.offset.return_value = query
         query.run.return_value = rows
         with patch.object(s, "_finance"), patch.object(s, "_filters", return_value=self.filters()), \
-                patch.object(s, "_aggregates", return_value=[{"lines":100,"applications":1}]), \
+                patch.object(s, "_counts", return_value={"lines":100,"applications":1}), \
                 patch.object(s, "_query", return_value=query), \
                 patch.object(frappe, "qb", SimpleNamespace(DocType=lambda name: Table("tab" + name))), \
                 patch.object(s, "_settings", return_value=Doc(mapping_version="v1")) as settings:
@@ -342,6 +342,81 @@ class MexicoServiceTests(unittest.TestCase):
             with self.assertRaises(frappe.ValidationError):http.read_template_page("http://test","corp","template")
         with patch.object(http,"_page",return_value=([],{"hasMore":True,"nextCursor":"same"})),patch.object(http,"_",side_effect=lambda text:text):
             with self.assertRaises(frappe.ValidationError):http.read_template_page("http://test","corp","template",cursor="same")
+
+
+    def test_converted_detail_retains_only_visible_company_rows_and_source_money(self):
+        row=Doc(name='a'*64,source='source',amount='10',amount_raw='10',currency='USD',request_date='2026-10-05',finance_approved_date='2026-11-01',issues='[]',base_issues='[]',mapping_version='v1',company_basis='mapping')
+        settings=Doc(mapping_version='v1')
+        row.period_version=s._period_version(settings)
+        with patch.object(s,'_finance'),patch.object(s,'_line',return_value=row),patch.object(frappe,'get_doc'),patch.object(s,'_whole_source_allowed',return_value=False),patch.object(frappe,'get_list',return_value=[row]),patch.object(s,'_settings',return_value=settings),patch.object(s.fx,'load_month_rate',return_value=Decimal('7')):
+            result=s.get_detail(row.name,reporting_currency='CNY')
+        self.assertFalse(result['whole_source'])
+        self.assertNotIn('workflow',result)
+        self.assertEqual(result['visible_amount'],'70.00')
+        self.assertEqual(result['visible_currency'],'CNY')
+        self.assertEqual(result['line']['amount'],'10')
+        self.assertEqual(result['line']['currency'],'USD')
+        self.assertEqual(result['line']['converted_amount'],'70.00')
+        self.assertEqual(result['line']['exchange_rate_date'],'2026-11-01')
+
+    def test_converted_excel_has_original_and_converted_money_and_rate_evidence(self):
+        from frappe.utils import xlsxutils
+        captured=[]
+        row=Doc(name='a'*64,amount='10',amount_raw='10',currency='USD',request_date='2026-10-05',approval_status='pending',issues='[]',mapping_version='v1',category='personnel',subcategory='salary',approval_type='expense')
+        query=MagicMock();query.limit.return_value=query;query.run.return_value=[row]
+        with patch.object(s,'_finance'),patch.object(s,'_query',return_value=query),patch.object(frappe.permissions,'can_export',return_value=True),patch.object(xlsxutils,'build_xlsx_response',side_effect=lambda matrix,name:captured.append(matrix)),patch.object(s,'_settings',return_value=Doc(mapping_version='v1')),patch.object(s.fx,'load_month_rate',return_value=Decimal('7')):
+            s.export_report({'month':'2026-11','reporting_currency':'CNY'},'details')
+        matrix=captured[0]
+        data=dict(zip(matrix[-2],matrix[-1]))
+        self.assertEqual(data['Original Amount'],Decimal('10'))
+        self.assertEqual(data['Original Currency'],'USD')
+        self.assertEqual(data['Converted Amount'],Decimal('70.00'))
+        self.assertEqual(data['Reporting Currency'],'CNY')
+        self.assertEqual(data['Exchange Rate'],Decimal('7'))
+        self.assertEqual(data['Exchange Rate Date'],'2026-10-01')
+        self.assertEqual(data['Exchange Rate Basis'],'Application Month')
+        self.assertEqual(data['Estimated Conversion'],'Yes')
+
+    def test_report_http_serialization_and_native_reports_preserve_converted_cents(self):
+        import importlib
+        import orjson
+        from frappe.utils.response import json_handler
+        expected=s.fx.converted_amount('999999999999.99','19.1')*4
+        fixtures={
+            'company':dict(company='A',category='personnel',amount=str(expected)),
+            'payroll':dict(company='A',period_month='2026-11-01',subcategory='salary',amount=str(expected)),
+            'trend':dict(period_month='2026-11-01',category='personnel',amount=str(expected)),
+        }
+        slugs={'company':'mexico_subsidiary_expenses','payroll':'mexico_personnel_expenses','trend':'mexico_expense_trend'}
+        filters={**self.filters(),'approval_type':'expense','reporting_currency':'MXN'}
+        for kind,row in fixtures.items():
+            with self.subTest(kind=kind),patch.object(s,'_finance'),patch.object(s,'_aggregates',return_value=[row]):
+                result=s.get_report(filters,kind)
+                wire=orjson.loads(orjson.dumps(result,default=json_handler))
+                self.assertEqual(wire['rows'][0]['total'],str(expected))
+                native=importlib.import_module('deeplinkerp_branding.deeplinkerp_branding.report.'+slugs[kind]+'.'+slugs[kind])
+                _,rows=native.execute(filters)
+                self.assertEqual(orjson.loads(orjson.dumps(rows,default=json_handler))[0]['total'],str(expected))
+                # Existing Python / Excel consumers and legacy source-currency calls retain Decimal.
+                self.assertIsInstance(s.report_data(filters,kind)[1][0]['total'],Decimal)
+                legacy={k:v for k,v in filters.items() if k!='reporting_currency'}
+                self.assertIsInstance(s.get_report(legacy,kind)['rows'][0]['total'],Decimal)
+
+    def test_excel_keeps_large_exact_amounts_as_text_and_ordinary_amounts_numeric(self):
+        from io import BytesIO
+        from openpyxl import load_workbook
+        from frappe.utils import xlsxutils
+        rows=[dict(company='A',category='personnel',amount='12.30'),dict(company='B',category='personnel',amount='76399999999999.24')]
+        captured=[]
+        with patch.object(s,'_finance'),patch.object(s,'_aggregates',return_value=rows),patch.object(frappe.permissions,'can_export',return_value=True),patch.object(xlsxutils,'build_xlsx_response',side_effect=lambda matrix,name:captured.append(matrix)),patch.object(xlsxutils.XLSXStyleBuilder,'get_datetime_format',return_value='yyyy-mm-dd'):
+            s.export_report({**self.filters(),'approval_type':'expense','reporting_currency':'MXN'},'company')
+            matrix=captured[0]
+            workbook=load_workbook(BytesIO(xlsxutils.make_xlsx(matrix,'QA').getvalue()))
+        column=matrix[-3].index('Total')+1
+        ordinary=workbook.active.cell(len(matrix)-1,column)
+        large=workbook.active.cell(len(matrix),column)
+        self.assertEqual((ordinary.data_type,ordinary.value),('n',12.3))
+        self.assertEqual((large.data_type,large.value),('s','76399999999999.24'))
 
 
 class MexicoPeriodCacheTests(unittest.TestCase):

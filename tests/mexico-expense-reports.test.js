@@ -67,7 +67,7 @@ for (const [slug, name] of reports) {
 			const route = {
 				from_date: "2026-09-28", to_date: "2026-10-02", basis: payroll ? "period" : "planned", company: "Subsidiary A",
 				category: payroll ? "personnel" : "tax", subcategory: payroll ? "salary" : "tax_general",
-				approval_type: "expense", keyword: "reference 123", issue: "stale", currency: "USD", status,
+				approval_type: "expense", keyword: "reference 123", issue: "stale", reporting_currency: "USD", status,
 			};
 			frappe.route_options = route;
 			await report.set_route_filters();
@@ -104,4 +104,26 @@ test("legacy native month links become exact full-month date ranges", {skip: !fs
     assert.equal(report.get_filter_value('from_date'),'2024-02-01');
     assert.equal(report.get_filter_value('to_date'),'2024-02-29');
     assert(!report.get_filter_values().month);
+});
+
+test("native reports migrate legacy currency links and prefer explicit reporting currency", {skip: !fs.existsSync(nativePath)}, async () => {
+    for (const [route, expected] of [[{currency:'USD'},'USD'],[{currency:'USD',reporting_currency:'CNY'},'CNY'],[{},'MXN']]) {
+        const frappe=harness(), settings=frappe.query_reports['Mexico Expense Trend'];
+        const report=Object.create(frappe.views.QueryReport.prototype);
+        report.filters=settings.filters.map(control);
+        await report.set_route_filters(route);
+        await settings.onload(report);
+        assert.equal(report.get_filter_value('reporting_currency'),expected);
+        assert(!report.get_filter_values().currency);
+    }
+});
+
+test('all native reports format exact currency strings without coercing them to Number', {skip: !fs.existsSync(nativePath)}, () => {
+    const frappe = harness();
+    for (const [,name] of reports) {
+        const settings = frappe.query_reports[name];
+        const result = settings.formatter('76399999999999.24',0,{fieldtype:'Currency'},{currency:'MXN'},()=>{throw new Error('float formatter invoked');});
+        assert.equal(result,'MXN 76,399,999,999,999.24');
+        assert.equal(settings.formatter('A',0,{fieldtype:'Data'},{currency:'MXN'},value=>value),'A');
+    }
 });

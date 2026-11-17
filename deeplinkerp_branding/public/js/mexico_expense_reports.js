@@ -3,6 +3,12 @@ frappe.provide("frappe.deeplinkerp");
 frappe.deeplinkerp.mexico_expense_report = function (kind) {
 	const payroll = kind === "payroll";
 	return {
+		formatter(value, row, column, data, defaultFormatter) {
+			if (column.fieldtype === "Currency" && data?.currency) {
+				return DeepLinkERPMexicoExpenseMoney.format(value, data.currency);
+			}
+			return defaultFormatter(value, row, column, data);
+		},
 		filters: [
 			{
                 fieldname: "from_date", label: __("Start Date"), fieldtype: "Date", reqd: 1,
@@ -46,9 +52,10 @@ frappe.deeplinkerp.mexico_expense_report = function (kind) {
 				fieldname: "issue", label: __("Review Issues"), fieldtype: "Data", hidden: 1,
 			},
 			{
-				fieldname: "currency", label: __("Currency"), fieldtype: "Select",
-				options: "MXN\nUSD\nCNY", default: "MXN", reqd: 1,
+				fieldname: "reporting_currency", label: __("Reporting Currency"), fieldtype: "Select",
+				options: "\nMXN\nUSD\nCNY", reqd: 1,
 			},
+			{ fieldname: "currency", label: __("Original Currency"), fieldtype: "Data", hidden: 1 },
 			{
 				fieldname: "status", label: __("Approval Status"), fieldtype: "Select",
 				options: [
@@ -67,6 +74,9 @@ frappe.deeplinkerp.mexico_expense_report = function (kind) {
 		],
 		async onload(report) {
 			const context = await frappe.xcall("deeplinkerp_branding.services.mexico_expenses.get_context");
+			const target = report.get_filter("reporting_currency");
+			await target.set_value(target.get_value() || report.get_filter_value("currency") || "MXN");
+			await report.get_filter("currency").set_value("");
 			const from = report.get_filter("from_date"), to = report.get_filter("to_date");
             if (!from.get_value() && !to.get_value()) {
                 const month = report.get_filter_value("month") || (context.today || frappe.datetime.get_today()).slice(0, 7);

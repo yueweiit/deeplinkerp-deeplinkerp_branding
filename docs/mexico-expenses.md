@@ -11,7 +11,7 @@
 - 申请金额卡片展示所选口径下的来源明细金额；待核对数据与已确认统计分开。子公司图表、趋势、薪酬和汇总报表仅采用无来源问题且归属、期间已确认的明细。
 - 审批状态独立保留 `pending`、`approved`、`rejected`、`terminated`、`withdrawn`、`unknown`。有效申请是审批中及已审批；薪酬及报表默认筛选 `finance_approved`（财务已通过），包含财务通过但整个流程仍在审批中的有效申请。概览、明细及核对默认有效申请。OA 审批通过或存在附件不能证明实际付款。
 - 一张审批可以有多家公司和多行费用，金额按行相加，申请数按来源身份去重；不能将整单金额重复计入每家公司，也不能相加各类别的去重申请数作为公司申请数。
-- MXN、USD、CNY 分开筛选、汇总和导出，不换算汇率、不跨币种合计。金额使用两位精确十进制；不可解析、负数、超精度或超过 Frappe DECIMAL(21,9) 存储范围的来源金额留待核对；金额不完整时申请金额卡片显示待核对，不以部分金额冒充完整合计。保留 `amount_raw`，不把无效金额显示为 0。
+- 工作台以“折算币种”选择 MXN、USD 或 CNY，不再按原始币种排除审批；逐笔折算后汇总，原始金额和币种保持不变。每条明细先按两位十进制四舍五入，再汇总；不可解析、负数、超精度或超过 Frappe DECIMAL(21,9) 存储范围的来源金额留待核对；金额不完整时申请金额卡片显示待核对，不以部分金额冒充完整合计。保留 `amount_raw`，不把无效金额显示为 0。
 - 费用归属月份自动取模板配置的 MX 财务节点通过时间所在的业务月份；支持精确节点名称及 activityId，默认节点名 `MX财务Finanzas`，旧费用模板额外保留 `f1e6_b1c7`。不使用模糊“财务”匹配认定通过。仅接受 `COMPLETED + AGREE` 的任务；存在相应审批操作时，以唯一匹配、位于任务创建及完成时间之间的 `EXECUTE_TASK_NORMAL + AGREE` 操作时间为准（操作可能早于任务关闭一分钟），没有审批操作时使用任务完成时间。多个有效任务须全部通过，取最后通过时刻。仅转交的任务不代表通过，替代任务仍须完成；未通过、重新审批中、撤回或拒绝的申请不归期，冲突证据进入核对。
 - 使用配置的业务时区（默认 `America/Mexico_City`）。例如 9 月申请、10 月财务通过，归入 10 月；不使用申请日、计划付款日或自由文本。所有费用（含工资）按月归期，起止日期为该月首末日，不需逐条填写月份。薪酬报表合并运营与费用两类审批，按子公司、薪酬类别和月份汇总，不涉及员工个人工资。
 - 等待财务通过的记录可在核对页按申请日期查找。未分摊的历史多主体整单不能通过单纯选择公司变成已确认费用，需在 OA 修正后同步；金额、币种、分类、结构等来源问题同样不能由人工核对消除。
@@ -55,6 +55,16 @@
 
 新 API 和 URL 筛选使用 `from_date/to_date`；旧 `month=YYYY-MM` 请求及旧月份链接兼容转换为整月，显式日期范围优先。原生报表保留隐藏月份参数用于旧链接转换。该修改不改变历史费用归期字段，无需新增数据库字段。
 
+## 折算币种与月初汇率
+
+实现入口为 `services/mexico_expense_fx.py`。每笔费用取业务时区下 `finance_approved_date` 所在月份的 1 日汇率；尚未取得财务审批通过日期的按 `request_date` 所在月份 1 日暂估，并在概览、明细及导出标记。日期筛选口径（申请、费用归期、计划付款）只影响选中记录，不改变汇率归期；跨月区间逐笔选取对应月份，不能统一用查询起始月份汇率。缺少财务通过日期的记录仍遵循既有日期筛选及已确认报表准入规则，暂估不会使其进入正式费用报表。
+
+汇率沿用 `overseas_costing.services.fx_rate_service.fetch_cny_rate()` 的服务端接口配置，获取源币种和目标币种同一天的人民币报价，以“源币兑 CNY / 目标币兑 CNY”计算交叉汇率，保留 12 位汇率小数；同币种为 1。仅接收有限、正数且返回日期恰为月初的成功结果。若接口不可用或缺少当日汇率则中止折算并明确报错，不用其他日期、当前汇率或 1 补齐。正向报价按站点、月初日期及币种在 Redis 缓存 24 小时，同一请求按币种和月份复用，不逐明细调用外部接口。复用的是现有读取接口，不使用海外成本模块的历史回退规则，不改写 Currency Exchange 或审批来源。
+
+概览、图表、薪酬、工作台/原生报表、明细与 Excel 共用计算口径。折算模式的工作台及三个原生报表在 HTTP 返回边界将金额转为两位十进制字符串，避免 Frappe 将 Decimal 序列化为浮点数；Python 汇总及导出调用仍保留 Decimal，旧原币 API 契约保持不变。`public/js/mexico_expense_money.js` 供工作台及原生报表共用，大额使用字符串和 BigInt 生成显示值，并沿用 Desk 数字分隔符、币种符号和符号位置配置。工作台 Excel 中超过 15 位有效数字的金额以精确文本保存，其余金额保留数值单元格，避免 Excel 数字精度限制吞掉分位。明细/详情新增 `converted_amount`、`reporting_currency`、`exchange_rate`、`exchange_rate_date`、`fx_date_basis`、`fx_estimated`、`fx_status`，原 `amount/currency` 保持来源事实。明细 Excel 同时导出原币金额、折算金额、汇率、汇率日期、取值口径及暂估标记；汇总导出注明折算规则。未知原币或金额无效时不伪造折算值，概览提示金额不完整，仍需数据核对。
+
+新调用必须显式传 `reporting_currency`，服务端按此跳过原币过滤；已有仅传 `currency` 的 API 调用保留原币筛选契约。工作台 URL 内 `currency` 作为所选展示币种，在请求时补入 `reporting_currency`；原生报表旧币种链接迁移到折算币种，显式新参数优先。未增加数据库字段，无需数据库迁移，原有公司权限、财务角色及导出权限继续适用。
+
 ## 来源、同步与附件
 
 来源由服务端已保存的模板配置决定。服务器复用 `operating_oa_http.configuration()` 的 OA 地址和企业允许范围。普通查询/附件请求不能指定任意源地址、企业或模板；管理员仅可通过同步设置及预览接口维护授权模板。
@@ -91,7 +101,7 @@
 | --- | --- |
 | 纯解析、分类、金额、期间、确认失效 | `services/mexico_expense_contract.py`；多模板适配 `mexico_expense_projection.py`、配置及布局 `mexico_expense_templates.py` |
 | 同步、权限、查询、报表、核对和附件 | `services/mexico_expenses.py` |
-| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js` 和 `public/css/mexico_expenses.css` |
+| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js`、`public/js/mexico_expense_money.js` 和 `public/css/mexico_expenses.css` |
 | 标准报表 | `deeplinkerp_branding/report/mexico_subsidiary_expenses/`、`mexico_personnel_expenses/`、`mexico_expense_trend/`；通过原生 include 共用 `public/js/mexico_expense_reports.js` 筛选定义 |
 | 一级导航与首页图标 | `desktop_icon/mexico_expenses.json`、`workspace_sidebar/mexico_expenses.json`、`public/icons/desktop_icons/solid/mexico_expenses.svg`；排序和首页兼容复用 `public/js/deeplinkerp_navigation.js` 与 `deeplinkerp_branding.js` |
 | 安装、索引与 hooks | `mexico_expense_install.py`、`hooks.py` |
@@ -117,7 +127,7 @@
 
 方法均位于 `deeplinkerp_branding.services.mexico_expenses`，要求登录。`get_context`、`get_lines`、`get_overview`、`get_report`、`get_detail`、`get_attachments` 提供受权限约束的读取；`export_report` 返回 XLSX，`download_attachment` 返回经校验的文件。`save_settings`、`enqueue_sync`、`review_line` 仅接受 POST。
 
-筛选字段为 `from_date/to_date`（YYYY-MM-DD，含起止日期；兼容旧 `month`）、`basis`（`period/request/planned`）、`company`、`approval_type`（`operating/expense/purchase`）、`category`、`subcategory`、`currency`、`status`、`keyword`、`issue`。列表每页最多 100 行；明细导出最多 20000 行。全部汇总、列表、标准报表和导出共用 `_query()`，启用原生查询权限并检查字段读取范围；金额和去重计数在数据库聚合，避免浏览器分页后的局部数据被当成全量。明细列表、详情和导出在序列化时每批读取一次当前映射版本，避免逐行读取设置及映射子表。
+筛选字段为 `from_date/to_date`（YYYY-MM-DD，含起止日期；兼容旧 `month`）、`basis`（`period/request/planned`）、`company`、`approval_type`（`operating/expense/purchase`）、`category`、`subcategory`、`reporting_currency`（折算币种）、`currency`（兼容旧原币筛选）、`status`、`keyword`、`issue`。列表每页最多 100 行；明细导出最多 20000 行。全部汇总、列表、标准报表和导出共用 `_query()`，启用原生查询权限并检查字段读取范围；金额和去重计数在数据库聚合，避免浏览器分页后的局部数据被当成全量。明细列表、详情和导出在序列化时每批读取一次当前映射版本，避免逐行读取设置及映射子表。
 
 三张标准报表保留工作台的分类、子类、搜索词及全部审批状态；分类选项由 `get_context` 的现有字典提供，展示翻译标签、传递稳定编码。薪酬报表固定按费用期间统计人事类别，核对问题筛选与工作台汇总报表一样不参与已确认数据查询。
 
@@ -157,4 +167,4 @@
 - 导航补充验证：47 项 Node 导航回归、3 项新增入口/权限/标签测试及原有 13 项 boot/界面元数据测试通过；首页生命周期检查验证新增入口仅触发一次原生重绘、不递归、不保存用户布局，编辑模式和非首页路由保持不动，权限撤回后移除过期入口。新增五个页面及侧栏路由已通过隔离 Chromium 检查：使用当前页面代码、Frappe 原生侧栏选中和面包屑方法，模拟 API 与站点容器，验证直接打开、刷新、前进后退、上级跳转、下钻恢复、西文标题和 390px 无横向溢出。本地站点已同步页面、侧栏元数据和资源；折叠菜单补充隔离 Chromium 验证使用原生 Section Break 开合、状态保存、路由高亮和父级自动展开方法，覆盖三个报表路由、刷新、前进后退、面包屑、移除横向栏、西文及 390px 页面宽度；本地站点已验证分组结构、七个 Page 及财务角色。真实用户角色及完整站点浏览器端到端验收仍待执行。
 - 本地现有缓存为 166 张审批、331 条明细。迁移前保存受限权限的明细快照；重算后 126 张审批、239 条明细取得财务通过日期及月份，其中 176 条满足公司等核对条件进入已确认统计。全部来源归期与原始证据重新解析结果一致，9 月和 10 月公司报表均返回 5 家公司；此为本地 MariaDB 实际服务查询验证，不能替代真实角色权限及浏览器验收。归期版本修复后再次迁移并重算，331 条明细的版本全部有效，已确认数量仍为 176；在实际 MariaDB 查询中临时替换设置对象（不写入站点配置），验证时区切换拦截旧报表、核对页仍可访问且隐藏过期归期字段。日期范围另以实际数据库验证单日、跨月、整月三个范围乘三种日期口径的申请数、明细数及金额，并核对导出范围说明。隔离 Chromium 验证日期控件、单日、跨月图表、精确下钻、刷新、旧月份链接、日期校验、西文及移动端。原始记录不写入代码仓库。
 
-隔离回归命令：在本 App 根目录使用开发容器 Python 运行 `-m unittest discover -s tests -p 'test_mexico_expense*.py'`；Node 运行 `node --test tests/mexico-expenses.test.js tests/mexico-expense-date-range.test.js tests/mexico-expense-reports.test.js tests/navigation-model.test.js`。测试不迁移业务站点。
+隔离回归命令：在本 App 根目录使用开发容器 Python 运行 `-m unittest discover -s tests -p 'test_mexico_expense*.py'`；Node 运行 `node --test tests/mexico-expenses.test.js tests/mexico-expense-date-range.test.js tests/mexico-expense-money.test.js tests/mexico-expense-reports.test.js tests/navigation-model.test.js`。测试不迁移业务站点。

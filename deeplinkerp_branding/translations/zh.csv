@@ -1018,3 +1018,19 @@ Select an end date,请选择结束日期
 Could not update the date range. Please try again.,无法更新时间范围，请重试。
 Restore this month and reset all filters,恢复本月日期，并重置全部筛选
 Cancel,取消
+Yes,是
+No,否
+Reporting Currency,折算币种
+Original Currency,原始币种
+Converted Amount,折算金额
+Exchange Rate,汇率
+Exchange Rate Date,汇率日期
+Exchange Rate Basis,汇率口径
+Estimated Conversion,暂估折算
+Finance Approval Month,财务审批月份
+Application Month,申请月份
+Month-start rates by finance approval month; pending approvals use application month estimates,按财务审批月份月初汇率折算；未通过财务审批的按申请月份暂估
+Pending approvals are converted using application-month opening rates (estimated),未通过财务审批的申请按申请月份月初汇率暂估折算
+Invalid reporting currency,折算币种无效
+The exchange rate service is unavailable; install Overseas Costing or contact the administrator,汇率服务不可用，请安装海外成本模块或联系管理员
+Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,无法获取 {1} 的 {0} 兑人民币月初汇率，已暂停折算，请在汇率可用后重试。
