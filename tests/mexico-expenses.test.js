@@ -441,3 +441,19 @@ test("composition legend follows filtered amounts and retains form/category dril
     for(const f of forms) assert(all.includes(`data-form="${f.id}"`));
     assert(!all.includes('data-category='));
 });
+
+test("template grid uses approval labels in both editing and static cells without changing stored codes", async () => {
+    for (const label of ['费用支出', 'Expense Requests', 'Solicitudes de gastos']) {
+        let options;
+        const local = factory({frappe: {
+            call: async () => ({message: {can_manage: true, approval_forms: [{id:'expense',label}],
+                settings: {templates: [],company_mappings: []}}}),
+            ui: {Dialog: class {constructor(value) {options=value;} show() {}}},
+        }});
+        const page = Object.create(local.Workbench.prototype);
+        await page.settings();
+        const field=options.fields.find(f=>f.fieldname==='approval_templates').fields.find(f=>f.fieldname==='approval_type');
+        assert.deepEqual(field.options,[{value:'expense',label}]);
+        assert.equal(field.formatter('expense'),label);
+    }
+});

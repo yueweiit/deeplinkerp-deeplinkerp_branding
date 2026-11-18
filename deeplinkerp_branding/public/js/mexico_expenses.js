@@ -1210,7 +1210,7 @@
 						cannot_delete_rows: true, data: saved.templates || [],
 						fields: [
 							{fieldname: "enabled", label: t("Enabled"), fieldtype: "Check", default: 0, in_list_view: 1, columns: 1},
-							{fieldname: "approval_type", label: t("Approval Form"), fieldtype: "Select", options: this.context.approval_forms.map((f) => ({value:f.id,label:f.label})), reqd:1, in_list_view:1, columns:2},
+							{fieldname: "approval_type", label: t("Approval Form"), fieldtype: "Select", options: this.context.approval_forms.map((f) => ({value:f.id,label:f.label})), formatter: (value) => esc(this.form(value)), reqd:1, in_list_view:1, columns:2},
 							{fieldname: "template_name", label: t("Template Name"), fieldtype:"Data", in_list_view:1, columns:3},
 							{fieldname: "corp_id", label: t("Corporation ID"), fieldtype:"Data", reqd:1},
 							{fieldname: "process_code", label: t("Process Code"), fieldtype:"Data", reqd:1, in_list_view:1, columns:4},
