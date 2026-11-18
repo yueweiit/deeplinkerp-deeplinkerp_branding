@@ -2502,3 +2502,20 @@ Expenditure Analysis,Expenditure Analysis
 Analysis Dimension,Analysis Dimension
 By Subsidiary,By Subsidiary
 By Month,By Month
+Expense Scope,Expense Scope
+Scope Reason,Scope Reason
+Non-Mexico Expenses,Non-Mexico Expenses
+mx,Mexico
+non_mx,Non-Mexico
+excluded,Excluded
+Invalid expense scope,Invalid expense scope
+A reason is required for non-Mexico expenses; leave the subsidiary empty,A reason is required for non-Mexico expenses; leave the subsidiary empty
+Remove Rule,Remove Rule
+No rules configured,No rules configured
+Use source rules only for names with a stable expense scope. Review mixed-use departments line by line.,Use source rules only for names with a stable expense scope. Review mixed-use departments line by line.
+Back to MX Expenses,Back to MX Expenses
+View Non-Mexico Expenses,View Non-Mexico Expenses
+Excluded from MX totals and pending reviews. Original approval details are retained.,Excluded from MX totals and pending reviews. Original approval details are retained.
+Excluded from MX statistics,Excluded from MX statistics
+MX Scope Amount,MX Scope Amount
+Non-Mexico Amount,Non-Mexico Amount

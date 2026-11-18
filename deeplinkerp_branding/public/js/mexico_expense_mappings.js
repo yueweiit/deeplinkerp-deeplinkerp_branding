@@ -5,12 +5,13 @@
 	"use strict";
 	const t = (text, args = []) => root.__ ? root.__(text, args) : text.replace(/\{(\d+)\}/g, (_, i) => args[i] ?? "");
 	const esc = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c]));
+	const NON_MX = "__non_mx__";
 	const aliasKey = (row) => JSON.stringify([row.entity_kind, String(row.source_entity || "").trim().replace(/\s+/g, " ")]);
 	function replaceAliases(mappings, company, aliases) {
 		const result = mappings.filter((row) => row.company !== company).map((row) => ({...row}));
 		const seen = new Set(result.map(aliasKey));
 		for (const row of aliases) {
-			const clean = {company, source_entity: String(row.source_entity || "").trim(), entity_kind: row.entity_kind};
+			const clean = {company, expense_scope:"mx", source_entity: String(row.source_entity || "").trim(), entity_kind: row.entity_kind};
 			if (!clean.source_entity || clean.source_entity.length > 500 || !["entity", "department"].includes(clean.entity_kind)) throw new Error(t("Invalid subsidiary mappings"));
 			if (seen.has(aliasKey(clean))) throw new Error(t("Duplicate source entity mapping"));
 			seen.add(aliasKey(clean));
@@ -31,16 +32,24 @@
 			this.wrapper.addClass("mx-company-mappings").html('<div class="mx-alias-groups"></div><div class="mx-unmapped-entities"></div>');
 			this.renderGroups();
 			this.wrapper.on("click", "[data-alias-company]", (event) => this.editCompany(this.companies[Number(event.currentTarget.dataset.aliasCompany)]));
-			this.wrapper.on("click", "[data-add-alias]", (event) => this.addAlias(Number(event.currentTarget.dataset.addAlias)));
+			this.wrapper.on("click", "[data-remove-scope]", (event) => {
+                this.mappings.splice(Number(event.currentTarget.dataset.removeScope), 1);
+                this.renderGroups(); this.renderUnmapped();
+            });
+            this.wrapper.on("click", "[data-add-alias]", (event) => this.addAlias(Number(event.currentTarget.dataset.addAlias)));
 			this.wrapper.on("click", "[data-alias-page]", (event) => this.loadPage(Number(event.currentTarget.dataset.aliasPage)));
 		}
 		renderGroups() {
 			this.wrapper.find(".mx-alias-groups").html(`<h5>${esc(t("Subsidiary Aliases"))}</h5><p class="text-muted">${esc(t("Maintain historical names under each subsidiary. Entity and department aliases are separate. Changes take effect after Save Settings."))}</p>${this.companies.map((company, i) => {
 				const rows = this.mappings.filter((row) => row.company === company);
 				return `<details class="mx-alias-group"><summary>${esc(company)} <span class="text-muted">${esc(t("{0} aliases", [rows.length]))}</span></summary><div class="mx-alias-body">${["entity", "department"].map((kind) => `<div><strong>${esc(t(kind === "entity" ? "Expense Entity" : "Department"))}</strong><ul>${rows.filter((row) => row.entity_kind === kind).map((row) => `<li>${esc(row.source_entity)}</li>`).join("") || `<li class="text-muted">${esc(t("No aliases configured"))}</li>`}</ul></div>`).join("")}<button type="button" class="btn btn-default btn-sm" data-alias-company="${i}">${esc(t("Edit Aliases"))}</button></div></details>`;
-			}).join("")}`);
-		}
-		editCompany(company) {
+			}).join("")}${this.renderExclusions()}`);
+        }
+        renderExclusions() {
+            const rows = this.mappings.map((row, i) => row.expense_scope === "non_mx" ? `<li>${esc(row.source_entity)} · ${esc(t(row.entity_kind === "department" ? "Department" : "Expense Entity"))}<small>${esc(row.scope_reason)}</small><button type="button" class="btn btn-default btn-xs" data-remove-scope="${i}">${esc(t("Remove Rule"))}</button></li>` : "").join("");
+            return `<details class="mx-alias-group"><summary>${esc(t("Non-Mexico Expenses"))}</summary><div class="mx-alias-body"><p>${esc(t("Use source rules only for names with a stable expense scope. Review mixed-use departments line by line."))}</p><ul>${rows || `<li>${esc(t("No rules configured"))}</li>`}</ul></div></details>`;
+        }
+        editCompany(company) {
 			const dialog = new root.frappe.ui.Dialog({
 				title: t("Edit Aliases"), size: "large",
 				fields: [
@@ -93,13 +102,26 @@
 				const mapped = this.mappings.find((mapping) => aliasKey(mapping) === aliasKey(row));
 				const empty = !String(row.source_entity || "").trim();
 				const suggestions = (row.suggestions || []).map((s) => s.company);
-				return `<tr><td>${esc(row.source_entity || t("Missing Source Entity"))}<small>${esc(t(row.entity_kind === "department" ? "Department" : "Expense Entity"))}</small></td><td>${esc(row.line_count)}</td><td>${esc(suggestions.join(" / ") || "—")}</td><td>${mapped ? `<span>${esc(mapped.company)}</span><small>${esc(t("Included in Settings"))}</small>` : empty ? esc(t("Complete the source information first")) : `<select class="form-control input-sm" aria-label="${esc(t("Subsidiary"))}" data-alias-target="${i}"><option value="">${esc(t("Select Subsidiary"))}</option>${this.companies.map((company) => `<option value="${esc(company)}">${esc(company)}</option>`).join("")}</select><button type="button" class="btn btn-default btn-sm" data-add-alias="${i}">${esc(t("Add Alias"))}</button>`}</td></tr>`;
+				return `<tr><td>${esc(row.source_entity || t("Missing Source Entity"))}<small>${esc(t(row.entity_kind === "department" ? "Department" : "Expense Entity"))}</small></td><td>${esc(row.line_count)}</td><td>${esc(suggestions.join(" / ") || "—")}</td><td>${mapped ? `<span>${esc(mapped.expense_scope === "non_mx" ? t("Non-Mexico Expenses") : mapped.company)}</span><small>${esc(t("Included in Settings"))}</small>` : empty ? esc(t("Complete the source information first")) : `<select class="form-control input-sm" aria-label="${esc(t("Subsidiary"))}" data-alias-target="${i}"><option value="">${esc(t("Select Subsidiary"))}</option><option value="${NON_MX}">${esc(t("Non-Mexico Expenses"))}</option>${this.companies.map((company) => `<option value="${esc(company)}">${esc(company)}</option>`).join("")}</select><button type="button" class="btn btn-default btn-sm" data-add-alias="${i}">${esc(t("Add Alias"))}</button>`}</td></tr>`;
 			}).join("");
 			this.wrapper.find(".mx-unmapped-entities").html(`${header}<div class="mx-alias-scroll"><table class="table"><thead><tr><th>${esc(t("Source Entity"))}</th><th>${esc(t("Expense Lines"))}</th><th>${esc(t("Suggested Subsidiaries"))}</th><th>${esc(t("Subsidiary"))}</th></tr></thead><tbody>${rows || `<tr><td colspan="4">${esc(t("No unmapped names"))}</td></tr>`}</tbody></table></div><div class="mx-alias-pages"><button type="button" class="btn btn-default btn-sm" data-alias-page="${this.start - 50}" ${this.start === 0 ? "disabled" : ""}>${esc(t("Previous"))}</button><button type="button" class="btn btn-default btn-sm" data-alias-page="${this.start + 50}" ${this.hasMore ? "" : "disabled"}>${esc(t("Next"))}</button></div>`);
 		}
 		addAlias(index) {
 			const row = this.rows[index];
 			const company = this.wrapper.find(`[data-alias-target="${index}"]`).val();
+            if (company === NON_MX) {
+                const dialog = new root.frappe.ui.Dialog({title:t("Non-Mexico Expenses"), fields:[
+                    {fieldname:"hint",fieldtype:"HTML",options:`<p>${esc(row.source_entity)}</p><p>${esc(t("Use source rules only for names with a stable expense scope. Review mixed-use departments line by line."))}</p>`},
+                    {fieldname:"reason",fieldtype:"Small Text",label:t("Scope Reason"),reqd:1},
+                ], primary_action_label:t("Apply to Settings"), primary_action:(values) => {
+                    const reason = String(values.reason || "").trim();
+                    if (!reason || reason.length > 1000) return root.frappe.msgprint(t("A review note is required"));
+                    if (this.mappings.some((r) => aliasKey(r) === aliasKey(row))) return root.frappe.msgprint(t("Duplicate source entity mapping"));
+                    this.mappings.push({source_entity:row.source_entity,entity_kind:row.entity_kind,company:"",expense_scope:"non_mx",scope_reason:reason});
+                    dialog.hide(); this.renderGroups(); this.renderUnmapped();
+                }});
+                dialog.show(); return;
+            }
 			if (!this.companies.includes(company)) return root.frappe.msgprint(t("Select Subsidiary"));
 			try {
 				this.mappings = replaceAliases(this.mappings, company, [...this.mappings.filter((r) => r.company === company), row]);

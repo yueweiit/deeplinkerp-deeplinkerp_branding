@@ -209,7 +209,7 @@
 				currency: "MXN",
 				status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 				keyword: "",
-				issue: "",
+				issue: "", expense_scope: "",
 			};
 			this.el.addEventListener("click", (e) => this.click(e));
 			this.el.addEventListener("change", (e) => {
@@ -504,6 +504,7 @@
 		}
 		effectiveFilters() {
 			const f = { ...this.filters };
+            if (!["details", "review"].includes(this.view)) delete f.expense_scope;
 			if (f.currency) f.reporting_currency = f.currency;
 			if (this.view === "payroll" || (this.view === "reports" && this.report === "payroll"))
 				Object.assign(f, { category: "personnel", basis: "period" });
@@ -785,8 +786,8 @@
 		}
 		details(data, review) {
 			const f = this.filters;
-			return `${
-				review
+            return `${this.context.can_assign_company ? `<div class="mx-issue-filters">${button(f.expense_scope === "non_mx" ? "Back to MX Expenses" : "View Non-Mexico Expenses", "toggle-scope")}</div>` : ""}${f.expense_scope === "non_mx" ? `<div class="mx-notice">${esc(t("Excluded from MX totals and pending reviews. Original approval details are retained."))}</div>` : ""}${
+				review && f.expense_scope !== "non_mx"
 					? `<div class="mx-notice mx-warning">${esc(
 							t(
 								"Expenses awaiting period assignment are listed by application date for review only"
@@ -806,7 +807,7 @@
 					: ""
 			}
                 <section class="mx-panel"><div class="mx-panel-head"><div><h3>${esc(
-					t(review ? "Data Review" : "Expense Application Register")
+					t(f.expense_scope === "non_mx" ? "Non-Mexico Expenses" : (review ? "Data Review" : "Expense Application Register"))
 				)}</h3><p>${esc(t("{0} applications · {1} expense lines", [number(data.applications), number(data.total)]))}</p></div><input class="mx-search" type="search" id="mx-search" value="${esc(f.keyword)}" placeholder="${esc(t("Search approval number, entity or description"))}" aria-label="${esc(t("Search expenses"))}"></div>
                 ${
 					data.rows.length
@@ -836,7 +837,7 @@
 										)}"><td class="mx-source-number">${esc(
 											r.approval_no || "—"
 										)}</td><td>${esc(this.form(r.approval_type))}</td><td>${esc(
-											r.company || t("Not Mapped")
+											r.expense_scope === "non_mx" ? t("Non-Mexico Expenses") : (r.company || t("Not Mapped"))
 										)}<small>${esc(r.source_entity)}</small></td><td>${esc(
 											this.cat(r.category)?.label || t("Unclassified")
 										)}<small>${esc(
@@ -844,7 +845,7 @@
 										)}</small></td><td>${
 											r.period_month
 												? esc(String(r.period_month).slice(0, 7))
-												: `<span class="mx-pill mx-warning">${esc(
+												: r.expense_scope === "non_mx" ? "—" : `<span class="mx-pill mx-warning">${esc(
 														t("Not Confirmed")
 												  )}</span>`
 										}${
@@ -857,10 +858,10 @@
 											r.description
 										)}">${esc(
 											r.description || "—"
-										)}</td><td class="num mx-strong">${this.lineAmount(r)}</td><td>${pill(r.approval_status)}</td><td>${esc(t(r.finance_approved_date ? "Finance Approved" : "Awaiting MX Finance approval"))}<small>${date(r.finance_approved_date)}</small></td><td>${
+										)}</td><td class="num mx-strong">${this.lineAmount(r)}</td><td>${pill(r.approval_status)}</td><td>${esc(r.expense_scope === "non_mx" && !r.finance_approved_date ? "—" : t(r.finance_approved_date ? "Finance Approved" : "Awaiting MX Finance approval"))}<small>${date(r.finance_approved_date)}</small></td><td>${
 											review
 												? `<span class="mx-pill mx-warning">${esc(
-														this.context.issue_labels[r.issues[0]] ||
+														r.expense_scope === "non_mx" ? t("Excluded from MX statistics") : this.context.issue_labels[r.issues[0]] ||
 															t("Requires Review")
 												  )}</span>`
 												: esc(date(r.planned_payment_date))
@@ -1043,13 +1044,13 @@
 						currency: "MXN",
 						status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 						keyword: "",
-						issue: "",
+						issue: "", expense_scope:"",
 					});
 					this.start = 0;
 				}
 				if (d.action === "review" || d.action === "details") {
 					return this.navigate(d.action, {
-						...this.filters, keyword: "", issue: "",
+						...this.filters, keyword: "", issue: "", expense_scope:"",
 						status: d.action === "review" ? "active" : this.filters.status,
 					});
 				}
@@ -1059,7 +1060,11 @@
                 if (d.action === "clear-sub") this.filters.subcategory = "";
 				if (d.action === "previous") this.start = Math.max(0, this.start - 25);
 				if (d.action === "next") this.start += 25;
-				if (d.action === "all-issues") {
+				if (d.action === "toggle-scope") {
+                    Object.assign(this.filters, {expense_scope:this.filters.expense_scope === "non_mx" ? "" : "non_mx", company:"", issue:"", confirmed_only:"", classification_key:"", classification_exact:"", basis:"request", status:"all"});
+                    this.start = 0;
+                }
+                if (d.action === "all-issues") {
 					this.filters.issue = "";
 					this.start = 0;
 				}
@@ -1109,14 +1114,14 @@
 				? `<div class="mx-detail-source"><a class="mx-button" href="${esc(data.dingtalk_url)}" rel="noopener noreferrer">${esc(t("Open Original in DingTalk"))}</a></div>`
 				: "";
 			dialog
-				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${sourceLink}${r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(data.visible_currency || r.currency || "—")}</span><strong>${money(data.visible_amount, data.visible_currency || r.currency)}</strong></div><dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.company || t("Not Mapped")))}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
+				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${sourceLink}${r.expense_scope !== "non_mx" && r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(data.visible_currency || r.currency || "—")}</span><strong>${money(data.visible_amount, data.visible_currency || r.currency)}</strong></div>${data.lines.some((l) => l.expense_scope === "non_mx") ? `<div class="mx-notice">${esc(t("MX Scope Amount"))}: ${money(data.mx_amount, data.visible_currency || r.currency)} · ${esc(t("Non-Mexico Amount"))}: ${money(data.excluded_amount, data.visible_currency || r.currency)}</div>` : ""}<dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.expense_scope === "non_mx" ? t("Non-Mexico Expenses") : (r.company || t("Not Mapped"))))}${detail("Expense Scope", esc(t(r.expense_scope === "non_mx" ? "Non-Mexico Expenses" : "Mexico Expenses")))}${r.scope_reason ? detail("Scope Reason",esc(r.scope_reason)) : ""}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
                 ${data.whole_source ? `<dl class="mx-detail-grid">${Object.entries(data.details?.fields || {}).filter(([, value]) => value).map(([label, value]) => detail(label, esc(value))).join("")}</dl>${(data.details?.tables || []).map((table) => {
                     const labels = [...new Set(table.rows.flatMap((row) => row.cells.map((cell) => cell.label)))];
                     return `<h3>${esc(table.label)}</h3><p class="mx-help">${esc(t("Supporting item details; amounts are not added again"))}</p><div class="mx-scroll"><table><thead><tr>${labels.map((label) => `<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${table.rows.map((row) => `<tr>${labels.map((label) => `<td>${esc(row.cells.find((cell) => cell.label === label)?.value || "—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
                 }).join("")}` : ""}
                 <h3>${esc(
 					t("Expense Details")
-				)}</h3><div class="mx-scroll"><table><thead><tr><th>${esc(t("Subsidiary"))}</th><th>${esc(t("Expense Description"))}</th><th class="num">${esc(t("Converted Amount"))}</th></tr></thead><tbody>${data.lines.map((l) => `<tr><td>${esc(l.company || l.source_entity)}</td><td>${esc(l.description)}</td><td class="num">${this.lineAmount(l)}</td></tr>`).join("")}</tbody></table></div>
+				)}</h3><div class="mx-scroll"><table><thead><tr><th>${esc(t("Subsidiary"))}</th><th>${esc(t("Expense Description"))}</th><th class="num">${esc(t("Converted Amount"))}</th></tr></thead><tbody>${data.lines.map((l) => `<tr><td>${esc(l.expense_scope === "non_mx" ? `${l.source_entity} · ${t("Non-Mexico Expenses")}` : (l.company || l.source_entity))}</td><td>${esc(l.description)}</td><td class="num">${this.lineAmount(l)}</td></tr>`).join("")}</tbody></table></div>
                 ${
 					!data.whole_source
 						? `<div class="mx-notice mx-warning">${esc(
@@ -1210,9 +1215,15 @@
 					options: `<p>${esc(row.source_entity)} · ${esc(row.approval_no || "")}</p>`,
 				},
 			];
+            if (this.context.can_assign_company) fields.push({
+                fieldname:"expense_scope", label:t("Expense Scope"), fieldtype:"Select", reqd:1,
+                options:[{value:"mx",label:t("Mexico Expenses")},{value:"non_mx",label:t("Non-Mexico Expenses")}],
+                default:row.expense_scope || "mx",
+            });
 			if (this.context.can_assign_company)
 				fields.push({
 					fieldname: "company",
+                    depends_on:"eval:doc.expense_scope !== 'non_mx'",
 					label: t("Subsidiary"),
 					fieldtype: "Select",
 					options: ["", ...this.context.companies],
@@ -1250,6 +1261,8 @@
 					try {
 						const result = await call("review_line", {
 							company: values.company,
+                            // A displayed default (including a stale projection) is not a scope override.
+                            expense_scope: values.expense_scope !== (row.expense_scope || "mx") ? values.expense_scope : undefined,
 							note: values.note,
 							line_key: row.name,
 							expected_source_version: row.source_version,
@@ -1259,7 +1272,7 @@
 						parent.hide();
 						root.frappe.show_alert({
 							message: t(
-								result.review_state === "confirmed"
+								result.review_state === "excluded" ? "Excluded from MX statistics" : result.review_state === "confirmed"
 									? "Expense line confirmed"
 									: "Review saved; source issues still require attention"
 							),

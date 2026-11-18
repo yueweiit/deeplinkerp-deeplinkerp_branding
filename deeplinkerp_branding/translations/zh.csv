@@ -1101,3 +1101,20 @@ Expenditure Analysis,支出分析
 Analysis Dimension,分析维度
 By Subsidiary,按子公司
 By Month,按月份
+Expense Scope,支出归属范围
+Scope Reason,归属说明
+Non-Mexico Expenses,非墨西哥支出
+mx,墨西哥
+non_mx,非墨西哥
+excluded,已排除
+Invalid expense scope,支出归属范围无效
+A reason is required for non-Mexico expenses; leave the subsidiary empty,非墨西哥支出必须填写归属说明，子公司留空
+Remove Rule,移除规则
+No rules configured,尚未配置规则
+Use source rules only for names with a stable expense scope. Review mixed-use departments line by line.,来源规则仅用于归属固定的名称；服务多个公司的部门请逐条核对。
+Back to MX Expenses,返回墨西哥支出
+View Non-Mexico Expenses,查看非墨西哥支出
+Excluded from MX totals and pending reviews. Original approval details are retained.,不计入墨西哥汇总及待核对数量，原审批明细完整保留。
+Excluded from MX statistics,已排除墨西哥统计
+MX Scope Amount,墨西哥范围金额
+Non-Mexico Amount,非墨西哥金额

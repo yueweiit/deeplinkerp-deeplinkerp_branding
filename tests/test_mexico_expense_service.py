@@ -31,6 +31,136 @@ class MexicoServiceTests(unittest.TestCase):
         for target in ("deeplinkerp_branding.services.operating_expense_contract._", "deeplinkerp_branding.services.operating_oa_http._"):
             patcher=patch(target,side_effect=lambda text:text);patcher.start();self.addCleanup(patcher.stop)
 
+    def test_only_system_manager_can_view_or_assign_non_mexico_scope(self):
+        with patch.object(s,"_manager",return_value=False):
+            with self.assertRaises(frappe.PermissionError):
+                s._filters({"expense_scope":"non_mx"})
+        line=Doc(period_version=PERIOD_VERSION,source_version="v",modified="v",company="A")
+        with patch.object(s,"_finance"), patch.object(s,"_manager",return_value=False), patch.object(frappe,"get_roles",return_value=["Accounts Manager"]), patch.object(s,"_line",return_value=line), patch.object(frappe,"db",SimpleNamespace(get_value=lambda *a:"source")), patch.object(frappe,"get_doc"):
+            with self.assertRaises(frappe.PermissionError):
+                s.review_line("a"*64,"v","v",expense_scope="non_mx",note="Domestic")
+
+    def test_manual_exclusion_audits_decision_without_finance_approval(self):
+        line=Doc(period_version=PERIOD_VERSION,source_version="v",modified="v",company="A",row_fingerprint="facts",base_issues="[]")
+        source=Doc(corp_id=s.contract.CORP_ID,process_code=s.contract.PROCESS_CODE,raw_json='{"status":"RUNNING","raw_payload":{}}')
+        with patch.object(s,"_finance"), patch.object(s,"_manager",return_value=True), patch.object(s,"_line",return_value=line), patch.object(frappe,"db",SimpleNamespace(get_value=lambda *a:"source")), patch.object(frappe,"get_doc",return_value=source), patch.object(s,"_save"), patch.object(s,"now_datetime",return_value="now"), patch.object(frappe,"session",SimpleNamespace(user="manager")):
+            result=s.review_line("a"*64,"v","v",expense_scope="non_mx",note="Domestic beneficiary")
+        self.assertEqual(result["review_state"],"excluded")
+        self.assertEqual((line.company,line.company_basis,line.expense_scope),("","manual","non_mx"))
+        self.assertEqual((line.reviewed_fingerprint,line.reviewed_by,line.scope_reason),("facts","manager","Domestic beneficiary"))
+
+    def _review_scope(self, line, scope, company):
+        source = Doc(corp_id=s.contract.CORP_ID, process_code=s.contract.PROCESS_CODE,
+                     raw_json=json.dumps({"status": "RUNNING", "raw_payload": {"tasks": [{
+                         "activityId": s.contract.FINANCE_ACTIVITY_ID, "taskId": "finance-task",
+                         "status": "COMPLETED", "result": "AGREE", "finishTime": "2026-11-16T12:00Z",
+                     }]}}))
+        with patch.object(s, "_finance"), patch.object(s, "_manager", return_value=True), \
+                patch.object(s, "_line", return_value=line), patch.object(s, "_company_access"), \
+                patch.object(frappe, "db", SimpleNamespace(get_value=lambda *a: "source")), \
+                patch.object(frappe, "get_doc", return_value=source), patch.object(s, "_save"), \
+                patch.object(s, "now_datetime", return_value="now"), \
+                patch.object(frappe, "session", SimpleNamespace(user="manager")):
+            return s.review_line("a" * 64, "v", "v", company=company, expense_scope=scope,
+                                 note="Checked source")
+
+    def test_unchanged_scope_review_keeps_automatic_rules_effective(self):
+        for scope, company, basis in (("mx", "A", "mapping"), ("mx", None, ""),
+                                      ("non_mx", None, "mapping")):
+            for submitted_scope in (scope, None):
+                with self.subTest(scope=scope, company=company, submitted_scope=submitted_scope):
+                    line = Doc(period_version=PERIOD_VERSION, source_version="v", modified="v",
+                               company=company, company_basis=basis, mapping_version="v1",
+                               expense_scope=scope, row_fingerprint="facts", base_issues="[]")
+                    self._review_scope(line, submitted_scope, company)
+                    self.assertEqual(line.company_basis, basis)
+                    raw = dict(row_fingerprint="facts", entity_key="entity", base_issues=[],
+                               period_month="2026-11-01", period_start="2026-11-01", period_end="2026-11-30")
+                    for rule in ({"company": "B", "expense_scope": "mx"},
+                                 {"expense_scope": "non_mx", "scope_reason": "Domestic"}):
+                        projected = s.contract.apply_review(raw, line, {"entity": rule}, "v2")
+                        self.assertEqual(projected["company"], rule.get("company"))
+                        self.assertEqual(projected["expense_scope"], rule["expense_scope"])
+
+    def test_unchanged_scope_review_does_not_accept_stale_mapping(self):
+        line = Doc(period_version=PERIOD_VERSION, source_version="v", modified="v", company="A",
+                   company_basis="mapping", mapping_version="old", expense_scope="mx",
+                   row_fingerprint="facts", base_issues="[]")
+        result = self._review_scope(line, "mx", "A")
+        self.assertEqual(result["review_state"], "needs_review")
+        self.assertIn("stale", json.loads(line.issues))
+        self.assertEqual(line.company_basis, "mapping")
+
+    def test_explicit_company_or_scope_change_remains_manual(self):
+        for old_scope, old_company, scope, company in (
+                ("mx", "A", "mx", "B"), ("mx", "A", "non_mx", None),
+                ("non_mx", None, "mx", "A")):
+            with self.subTest(old_scope=old_scope, scope=scope, company=company):
+                line = Doc(period_version=PERIOD_VERSION, source_version="v", modified="v",
+                           company=old_company, company_basis="mapping", mapping_version="v1",
+                           expense_scope=old_scope, row_fingerprint="facts", base_issues="[]")
+                self._review_scope(line, scope, company)
+                self.assertEqual(line.company_basis, "manual")
+                self.assertEqual(line.expense_scope, scope)
+                raw = dict(row_fingerprint="facts", entity_key="entity", base_issues=[],
+                           period_month="2026-11-01", period_start="2026-11-01", period_end="2026-11-30")
+                projected = s.contract.apply_review(raw, line, {"entity": {"company": "C"}}, "v2")
+                self.assertEqual(projected["company"] or None, company)
+                self.assertEqual(projected["expense_scope"], scope)
+                # Saving another note must also preserve an existing manual decision.
+                self._review_scope(line, scope, company)
+                self.assertEqual(line.company_basis, "manual")
+
+    def _scope_detail(self, issues=None, reporting_currency=None, missing_amount=False, missing_date=False,
+                      issue_scope="non_mx"):
+        rows = [Doc(name=key * 64, source="source", company="A" if scope == "mx" else None,
+                    amount=amount, amount_raw=amount, currency="MXN", request_date="2026-11-01",
+                    mapping_version="v1", period_version=PERIOD_VERSION, company_basis="mapping",
+                    expense_scope=scope, review_state="confirmed" if scope == "mx" else "excluded",
+                    issues="[]", base_issues="[]")
+                for key, scope, amount in (("a", "mx", "100"), ("b", "non_mx", "50"))]
+        for row in rows:
+            if row.expense_scope == issue_scope:
+                row.base_issues = json.dumps(issues or [])
+        if missing_amount:
+            rows[1].amount = rows[1].amount_raw = None
+        if missing_date:
+            rows[1].request_date = None
+        with patch.object(s, "_finance"), patch.object(s, "_line", return_value=rows[0]), \
+                patch.object(frappe, "get_doc"), patch.object(s, "_whole_source_allowed", return_value=False), \
+                patch.object(frappe, "get_list", return_value=rows), \
+                patch.object(s.fx, "load_month_rate", return_value=Decimal("2")):
+            return s.get_detail(rows[0].name, reporting_currency=reporting_currency)
+
+    def test_detail_scope_totals_share_source_amount_validation(self):
+        for issue in ("amount", "amount_pending", "total", "structure", "identity"):
+            for currency in (None, "CNY"):
+                for scope in ("mx", "non_mx"):
+                    with self.subTest(issue=issue, currency=currency, scope=scope):
+                        result = self._scope_detail([issue], currency, issue_scope=scope)
+                        self.assertIsNone(result["visible_amount"])
+                        invalid_key = "mx_amount" if scope == "mx" else "excluded_amount"
+                        valid_key = "excluded_amount" if scope == "mx" else "mx_amount"
+                        self.assertIsNone(result[invalid_key])
+                        self.assertEqual(Decimal(result[valid_key]), (50 if scope == "mx" else 100) * (2 if currency else 1))
+
+    def test_detail_scope_totals_preserve_valid_money_and_unknown_amounts(self):
+        for currency in (None, "CNY"):
+            with self.subTest(currency=currency):
+                result = self._scope_detail(reporting_currency=currency)
+                multiplier = 2 if currency else 1
+                for key, amount in (("visible_amount", 150), ("mx_amount", 100), ("excluded_amount", 50)):
+                    self.assertEqual(Decimal(result[key]), amount * multiplier)
+                # Missing source money cannot become a partial or zero total.
+                result = self._scope_detail(reporting_currency=currency, missing_amount=True)
+                self.assertIsNone(result["visible_amount"])
+                self.assertIsNone(result["excluded_amount"])
+                self.assertEqual(Decimal(result["mx_amount"]), 100 * multiplier)
+        result = self._scope_detail(reporting_currency="CNY", missing_date=True)
+        self.assertIsNone(result["visible_amount"])
+        self.assertIsNone(result["excluded_amount"])
+        self.assertEqual(Decimal(result["mx_amount"]), 200)
+
     def filters(self):
         return {"month":"2026-11","basis":"period","currency":"MXN","status":"approved"}
 

@@ -21,6 +21,18 @@
 - 等待财务通过的记录可在核对页按申请日期查找。未分摊的历史多主体整单不能通过单纯选择公司变成已确认费用，需在 OA 修正后同步；金额、币种、分类、结构等来源问题同样不能由人工核对消除。
 - 不创建员工、供应商、公司、科目，不生成或提交会计凭证、付款单和 GL。
 
+### 非墨西哥明细的归属
+
+混合审批按费用行确定范围：`Mexico Expense Line.expense_scope` 使用 `mx/non_mx`，默认兼容旧记录为 MX 待核对范围，不能凭中文名称判断国内支出。`scope_reason` 保存说明；`review_state=excluded` 表示已排除 MX 统计，不代表财务审批通过。原始来源、金额、币种及整单合计校验完整保留。
+
+管理员可在“核对费用明细”中逐条选择范围，并填写核对说明；核对人、时间、指纹和 Frappe Version 保留审计。非 MX 行不计入概览申请金额、已确认报表和待核对数；“支出明细/数据核对 → 查看非墨西哥支出”可查阅、导出及重新归入 MX。该入口默认按申请日期查找，不要求已有 MX 财务通过日期。详情展示完整授权可见金额及 MX/非 MX 拆分；不会把一张审批的其他 MX 明细一起排除。
+
+仅保存核对说明、公司及范围未改变时，保留自动映射（包括尚未映射的空公司），后续新增或调整来源规则仍生效；实际改变范围或公司才记为人工覆盖，已有人工决定保持不变。旧映射尚未重算时，普通核对不能绕过版本校验。详情总额和两种范围的小计共用 `_detail_amount` 校验：金额缺失、待定、表头合计不符、结构或行身份异常时，受影响的小计显示待核对；折算金额缺失也不返回部分合计。有效范围仍可单独显示金额。
+
+稳定来源可在同步设置中选择“非墨西哥支出”并填写归属说明，规则与原别名共用 `Mexico Expense Company Map` 的来源名称/类型唯一键。子公司字段此时必须留空；不明确或同时服务多个公司的部门应逐行核对。更改/删除规则后重算缓存，尚未重算的旧规则回到待核对，不能静默沿用排除结果。人工决定仅在行指纹相同时保留，来源金额/主体等经济事实改变后，持续标为待复核直至重新确认。未拆分多主体行须先在 OA 修正，不能用排除整个行替代分摊。
+
+范围判定仅影响 MX 分析。国内条目不会自动复制到 CN 台账，不自动生成预算、凭证或付款。实现见 `mexico_expense_contract.apply_review`、`mexico_expenses.review_line/_query/get_detail` 和 `public/js/mexico_expense_mappings.js`。迁移新增只读字段并升级缓存规则版本；旧 API 未传范围时仍查询 MX。
+
 ### 审批表筛选
 
 左侧原生导航上方的“审批表”选择区提供运营支出（`operating`）、费用支出（`expense`）、采购支出（`purchase`）和全部审批表，与薪酬、税费等 `category/subcategory` 独立。Source、Line 都保存只读 `approval_type`；查询仍通过配置的 corpId + processCode 与 Source 关联校验所属审批表。旧请求和分类链接兼容。
@@ -127,7 +139,7 @@
 | `Mexico Expense Line` | 独立 DocType；唯一 `line_key`、来源链接、行指纹、Company、主体映射依据、`approval_type`、业务分类路径、工资类型、分类、金额及原文、币种、日期、归属月份、期间、问题、核对人与说明、活动标记 |
 | `Mexico Expense Settings` | Single；同步开关、业务时区、模板及映射子表、配置与映射版本、总体最近成功时间和错误；旧游标字段保留兼容 |
 | `Mexico Expense Template` | 模板子表；启停、审批表、名称、企业/模板、财务节点规则、字段映射及独立同步状态 |
-| `Mexico Expense Company Map` | 设置子表；主体原名、类型 `entity/department` 与 Company，保留人工作出的明确映射 |
+| `Mexico Expense Company Map` | 设置子表；主体原名、类型 `entity/department` 与 Company、支出范围及说明，保留人工作出的明确映射 |
 
 业务时区默认 `America/Mexico_City`，可在设置中更改；原申请时刻及财务通过时刻 `finance_approved_at` 以带 `Z` 的 UTC 字符串保存；来源和明细均保存按业务时区计算的 `finance_approved_date`，避免 Frappe Datetime 的站点时区语义误读；审批进度按 ERP 用户时区展示。金额为 Frappe Currency 字段且精度 2，原文单独保存。复合索引覆盖公司/币种/期间或日期、来源/活动状态和映射版本/核对状态，迁移入口为 `mexico_expense_install.after_migrate()`；导航在左侧主导航及首页提供统一的“运营支出（MX）”入口（英文 Operating Expenses (MX)，西文 Gastos operativos (MX)），左侧固定排在“海外成本核算”之后；Accounting 内的页面链接继续保留。入口采用标准 `Desktop Icon` 和包含七个 Page 链接的 `Workspace Sidebar`；七个页面使用一致的财务角色，由原生 Page 权限逐项过滤，图标不授予额外数据权限。已有首页布局缺少新图标时，仅在内存中补入当前用户已获授权的该图标，保留其他图标、文件夹和隐藏选择，不自动保存或重置用户布局。
 

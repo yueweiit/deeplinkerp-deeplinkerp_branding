@@ -39,6 +39,48 @@ class MexicoContractTests(unittest.TestCase):
         translations.start()
         self.addCleanup(translations.stop)
 
+    def test_non_mexico_mapping_preserves_raw_amount_and_never_confirms_mx_expense(self):
+        _, rows = c.project(approval())
+        raw = rows[0]
+        rule = {raw["entity_key"]: {"expense_scope":"non_mx", "scope_reason":"Domestic beneficiary"}}
+        result = c.apply_review(raw, None, rule, "v2")
+        self.assertEqual(result["review_state"], "excluded")
+        self.assertEqual(result["expense_scope"], "non_mx")
+        self.assertIsNone(result["company"])
+        self.assertEqual(result["amount"], raw["amount"])
+        restored = c.apply_review(raw, result, {}, "v3")
+        self.assertEqual(restored["expense_scope"], "mx")
+        self.assertIn("company", restored["issues"])
+
+    def test_changed_manual_exclusion_requires_review_across_repeated_syncs(self):
+        _, rows = c.project(approval())
+        raw = rows[0]
+        old = {**raw,"expense_scope":"non_mx","company_basis":"manual",
+               "reviewed_fingerprint":"old", "review_note":"Domestic"}
+        rule = {raw["entity_key"]:{"expense_scope":"non_mx"}}
+        result = c.apply_review(raw, old, rule, "v1")
+        self.assertEqual(result["expense_scope"], "mx")
+        self.assertIn("stale", result["issues"])
+        again = c.apply_review(raw, result, rule, "v1")
+        self.assertEqual(again["expense_scope"], "mx")
+        self.assertIn("stale", again["issues"])
+
+    def test_line_override_can_include_mx_under_non_mexico_source_rule(self):
+        _, rows = c.project(approval())
+        raw = rows[0]
+        previous = {**raw, "company":"MX A", "company_basis":"manual", "expense_scope":"mx",
+                    "reviewed_fingerprint":raw["row_fingerprint"], "review_note":"MX beneficiary"}
+        result = c.apply_review(raw, previous, {raw["entity_key"]:{"expense_scope":"non_mx"}}, "v2")
+        self.assertEqual(result["company"], "MX A")
+        self.assertEqual(result["expense_scope"], "mx")
+
+    def test_multi_company_unallocated_line_cannot_be_excluded_by_alias_rule(self):
+        _, rows = c.project(approval())
+        raw = {**rows[0], "base_issues":["allocation"]}
+        result = c.apply_review(raw, None, {raw["entity_key"]:{"expense_scope":"non_mx"}}, "v2")
+        self.assertEqual(result["expense_scope"], "mx")
+        self.assertEqual(result["review_state"], "needs_review")
+
     def test_sample_electricity_is_one_detail_not_paid_and_has_no_guessed_period(self):
         source, lines = c.project(approval())
         self.assertEqual(source["total_amount"], "251739.00")

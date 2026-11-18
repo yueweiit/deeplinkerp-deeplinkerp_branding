@@ -414,16 +414,28 @@ def apply_review(line, previous, mappings, mapping_version):
     problems = list(line["base_issues"])
     same = previous and previous.get("reviewed_fingerprint") == line["row_fingerprint"]
     mapped = mappings.get(line["entity_key"]) if "allocation" not in problems else None
-    result.update(company=mapped, company_basis="mapping" if mapped else "", mapping_version=mapping_version,
+    rule = mapped if isinstance(mapped, dict) else {"company": mapped}
+    scope = rule.get("expense_scope") or "mx"
+    mapped = rule.get("company") if scope == "mx" else None
+    result.update(expense_scope=scope, scope_reason=rule.get("scope_reason") or "")
+    result.update(company=mapped, company_basis="mapping" if mapped or scope == "non_mx" else "", mapping_version=mapping_version,
                   reviewed_fingerprint=None, reviewed_by=None, reviewed_at=None, review_note=None)
     if same:
         for field in ("reviewed_fingerprint", "reviewed_by", "reviewed_at", "review_note"):
             result[field] = previous.get(field)
         if previous.get("company_basis") == "manual":
-            result.update(company=previous.get("company"), company_basis="manual")
+            result.update(company=previous.get("company"), company_basis="manual",
+                          expense_scope=previous.get("expense_scope") or "mx", scope_reason=previous.get("scope_reason") or "")
     elif previous and (previous.get("reviewed_fingerprint") or
                        "stale" in _json(previous.get("issues") or [])):
         problems.append("stale")
+    # A changed manual decision must remain visible until reviewed again, even
+    # if a standing source rule would otherwise exclude this row.
+    if "stale" in problems:
+        result.update(expense_scope="mx", scope_reason="")
+    if result["expense_scope"] == "non_mx":
+        result.update(company=None, issues=sorted(set(problems)), review_state="excluded")
+        return result
     if not result["company"]:
         problems.append("company")
     if not result["period_month"] or not result["period_start"] or not result["period_end"]:

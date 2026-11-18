@@ -52,7 +52,9 @@
   "business_category",
   "salary_type",
   "classification_path",
-  "classification_key"
+  "classification_key",
+  "expense_scope",
+  "scope_reason"
  ],
  "fields": [
   {
@@ -233,7 +235,7 @@
    "fieldname": "review_state",
    "label": "Review State",
    "fieldtype": "Select",
-   "options": "needs_review\nconfirmed",
+   "options": "needs_review\nconfirmed\nexcluded",
    "in_list_view": 1,
    "read_only": 1
   },
@@ -332,6 +334,20 @@
   {
    "fieldname": "classification_key",
    "label": "Source Classification Key",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "expense_scope",
+   "label": "Expense Scope",
+   "fieldtype": "Select",
+   "options": "mx\nnon_mx",
+   "default": "mx",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scope_reason",
+   "label": "Scope Reason",
    "fieldtype": "Small Text",
    "read_only": 1
   }

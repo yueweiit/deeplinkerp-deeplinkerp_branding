@@ -226,6 +226,39 @@ test("expense review displays automatic finance period without editable month co
 	assert(!dialog.fields.some((field) => ["month", "period_start", "period_end", "period_kind"].includes(field.fieldname)));
 });
 
+test("review submits a scope override only after the displayed scope changes", async () => {
+	let dialog;
+	const calls = [];
+	const local = factory({ frappe: {
+		ui: { Dialog: class {
+			constructor(options) { dialog = options; }
+			show() {}
+			hide() {}
+			disable_primary_action() {}
+			enable_primary_action() {}
+		} },
+		call: async (options) => { calls.push(options); return { message: { review_state: "needs_review" } }; },
+		show_alert() {},
+	} });
+	const workbench = Object.create(local.Workbench.prototype);
+	workbench.context = { can_assign_company: true, companies: ["A"] };
+	workbench.refresh = async () => {};
+	for (const [displayed, selected, expected, issues] of [
+		[undefined, "mx", undefined, []],
+		["mx", "mx", undefined, ["stale"]],
+		["non_mx", "non_mx", undefined, []],
+		["mx", "non_mx", "non_mx", []],
+		["non_mx", "mx", "mx", []],
+	]) {
+		workbench.review({ name: "line", company: "A", expense_scope: displayed, issues,
+			source_version: "v", modified: "m" }, { hide() {} });
+		await dialog.primary_action({ company: "A", expense_scope: selected, note: "Checked" });
+		assert.equal(calls.at(-1).args.expense_scope, expected);
+		assert.equal(calls.at(-1).args.company, "A");
+		assert.equal(calls.at(-1).args.expected_source_version, "v");
+	}
+});
+
 
 test("report children have stable routes and the shared reports view", () => {
 	for (const [kind, route] of Object.entries(api.reportRoutes)) {

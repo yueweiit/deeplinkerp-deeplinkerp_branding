@@ -2773,3 +2773,20 @@ Expenditure Analysis,Análisis de gastos
 Analysis Dimension,Dimensión de análisis
 By Subsidiary,Por filial
 By Month,Por mes
+Expense Scope,Ámbito del gasto
+Scope Reason,Motivo de la clasificación
+Non-Mexico Expenses,Gastos fuera de México
+mx,México
+non_mx,Fuera de México
+excluded,Excluido
+Invalid expense scope,Ámbito del gasto no válido
+A reason is required for non-Mexico expenses; leave the subsidiary empty,Indique el motivo para los gastos fuera de México y deje la filial vacía
+Remove Rule,Eliminar regla
+No rules configured,No hay reglas configuradas
+Use source rules only for names with a stable expense scope. Review mixed-use departments line by line.,Use reglas de origen solo para nombres con un ámbito estable. Revise por línea los departamentos que atienden a varias empresas.
+Back to MX Expenses,Volver a los gastos de México
+View Non-Mexico Expenses,Ver gastos fuera de México
+Excluded from MX totals and pending reviews. Original approval details are retained.,No se incluyen en los totales ni en las revisiones pendientes de México. Se conservan los detalles de la aprobación original.
+Excluded from MX statistics,Excluido de las estadísticas de México
+MX Scope Amount,Importe del ámbito de México
+Non-Mexico Amount,Importe fuera de México

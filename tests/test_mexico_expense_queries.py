@@ -59,6 +59,24 @@ class MexicoQueryTests(unittest.TestCase):
             row.setdefault('finance_approved_date', row['period_month'])
             self.db.execute('INSERT INTO "tabMexico Expense Line" ('+','.join('"'+c+'"' for c in row)+') VALUES ('+','.join('?' for _ in row)+')',list(row.values()))
 
+    def test_excluded_line_changes_only_its_share_of_a_mixed_approval(self):
+        self.db.execute("UPDATE \"tabMexico Expense Line\" SET expense_scope='non_mx', review_state='excluded' WHERE name='a2'")
+        values = {**self.filters, "basis":"request"}
+        visible = {r["name"] for r in s._query(values, ["name"]).run(as_dict=True)}
+        self.assertIn("a1", visible)
+        self.assertNotIn("a2", visible)
+        self.assertEqual(s._aggregates(values, confirmed=True)[0]["amount"], 10)
+        excluded = s._query({**values,"expense_scope":"non_mx"}, ["name","amount"], review=True).run(as_dict=True)
+        self.assertEqual([(r["name"],r["amount"]) for r in excluded], [("a2",20)])
+        self.assertNotIn("a2", {r["name"] for r in s._query(values,["name"],review=True).run(as_dict=True)})
+        self.assertEqual(self.db.execute('SELECT SUM(amount) FROM "tabMexico Expense Line" WHERE source=?', ('shared',)).fetchone()[0],30)
+
+    def test_obsolete_exclusion_rule_returns_to_pending_until_reprojected(self):
+        self.db.execute("UPDATE \"tabMexico Expense Line\" SET expense_scope='non_mx',review_state='excluded',mapping_version='old' WHERE name='a2'")
+        pending = s._query(self.filters,["name"],review=True).run(as_dict=True)
+        self.assertIn("a2", {r["name"] for r in pending})
+        self.assertEqual(s._query({**self.filters,"expense_scope":"non_mx"},["name"],review=True).run(as_dict=True), [])
+
     def test_management_totals_match_report_and_preserve_company_permissions(self):
         values = {**self.filters, "status":"active"}
         with patch.object(s, "_finance"):

@@ -12,7 +12,9 @@
  "field_order": [
   "source_entity",
   "entity_kind",
-  "company"
+  "company",
+  "expense_scope",
+  "scope_reason"
  ],
  "fields": [
   {
@@ -36,8 +38,22 @@
    "label": "Subsidiary",
    "fieldtype": "Link",
    "options": "Company",
-   "reqd": 1,
+   "reqd": 0,
    "in_list_view": 1
+  },
+  {
+   "fieldname": "expense_scope",
+   "label": "Expense Scope",
+   "fieldtype": "Select",
+   "options": "mx\nnon_mx",
+   "default": "mx",
+   "read_only": 0
+  },
+  {
+   "fieldname": "scope_reason",
+   "label": "Scope Reason",
+   "fieldtype": "Small Text",
+   "read_only": 0
   }
  ],
  "permissions": [],

@@ -23,3 +23,10 @@ test("removing aliases affects only selected company and empty aliases are rejec
 	assert.throws(() => replaceAliases([], "A", [row(" ")]), /Invalid/);
 	assert.throws(() => replaceAliases([], "A", [row("X", "A", "unknown")]), /Invalid/);
 });
+
+test("editing MX aliases preserves explicit non-MX rules and rejects conflicts", () => {
+    const rule={source_entity:"Domestic",entity_kind:"department",company:"",expense_scope:"non_mx",scope_reason:"CN company"};
+    const result=replaceAliases([rule,row("Old A")],"A",[row("New A")]);
+    assert.deepEqual(result[0],rule);
+    assert.throws(()=>replaceAliases([rule],"A",[row("Domestic","A","department")]), /Duplicate/);
+});

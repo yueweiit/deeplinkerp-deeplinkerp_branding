@@ -32,7 +32,7 @@ LINE = "Mexico Expense Line"
 SETTINGS = "Mexico Expense Settings"
 MAX_EXPORT_ROWS = 20000
 FIELDS = ("name", "source", "source_version", "row_fingerprint", "modified", "approval_no", "applicant",
-    "company", "source_entity", "entity_kind", "approval_type", "business_category", "classification_path", "classification_key", "salary_type", "category", "subcategory", "description", "amount", "amount_raw",
+    "company", "expense_scope", "scope_reason", "source_entity", "entity_kind", "approval_type", "business_category", "classification_path", "classification_key", "salary_type", "category", "subcategory", "description", "amount", "amount_raw",
     "currency", "approval_status", "request_date", "planned_payment_date", "finance_approved_at", "finance_approved_date", "period_month", "period_start",
     "period_end", "period_kind", "period_version", "review_state", "issues", "base_issues", "review_note", "reviewed_by", "reviewed_at", "company_basis", "mapping_version")
 _managed = ContextVar("mexico_expense_managed_write", default=False)
@@ -74,7 +74,7 @@ def _can_manage_settings(settings, user=None):
     if not _manager(user):
         return False
     companies = set(_companies(user))
-    return all(row.company in companies for row in settings.company_mappings or [])
+    return all((row.get("expense_scope") == "non_mx" and not row.company) or row.company in companies for row in settings.company_mappings or [])
 
 
 def _require_settings_access(settings):
@@ -201,7 +201,9 @@ def _store_projection(doc, values):
 
 
 def _maps(settings):
-    return {contract.entity_key(r.entity_kind, r.source_entity): r.company for r in settings.company_mappings or []}
+    return {contract.entity_key(r.entity_kind, r.source_entity): {
+        "company": r.company, "expense_scope": r.get("expense_scope") or "mx", "scope_reason": r.get("scope_reason") or ""
+    } for r in settings.company_mappings or []}
 
 
 def _upsert(row, settings):
@@ -254,7 +256,7 @@ def get_context():
     if result["can_manage"]:
         result["settings"] = {"config_version": settings.config_version or "", "business_timezone": settings.business_timezone or "America/Mexico_City",
             "templates": [{k: t.get(k) for k in (*templates.CONFIG_FIELDS, *templates.STATE_FIELDS)} for t in _templates(settings)],
-            "company_mappings": [{"source_entity": r.source_entity, "entity_kind": r.entity_kind, "company": r.company} for r in settings.company_mappings or []]}
+            "company_mappings": [{"source_entity": r.source_entity, "entity_kind": r.entity_kind, "company": r.company, "expense_scope": r.get("expense_scope") or "mx", "scope_reason": r.get("scope_reason") or ""} for r in settings.company_mappings or []]}
     return result
 
 
@@ -274,7 +276,9 @@ def get_unmapped_entities(start=0):
     table = frappe.qb.DocType(LINE)
     query = frappe.qb.get_query(LINE, fields=[table.source_entity, table.entity_kind,
         Count(table.name).as_("line_count")], filters=[["is_active", "=", 1]], ignore_permissions=False)
-    rows = (query.where(Coalesce(table.company, "") == "")
+    mapping_current = (Coalesce(table.company_basis, "") == "manual") | (Coalesce(table.mapping_version, "") == (settings.mapping_version or ""))
+    excluded = (Coalesce(table.expense_scope, "mx") == "non_mx") & mapping_current & (Coalesce(table.period_version, "") == _period_version(settings))
+    rows = (query.where(Coalesce(table.company, "") == "").where(~excluded)
         .groupby(table.source_entity, table.entity_kind)
         .orderby(Count(table.name), order=Order.desc).orderby(table.source_entity).orderby(table.entity_kind)
         .offset(start).limit(51).run(as_dict=True))
@@ -308,8 +312,17 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
         if key in seen:
             frappe.throw(_("Duplicate source entity mapping"))
         seen.add(key)
-        _company_access(entry.get("company"))
-        clean.append({"source_entity": entry["source_entity"].strip(), "entity_kind": kind, "company": entry["company"]})
+        scope = entry.get("expense_scope") or "mx"
+        reason = entry.get("scope_reason") or ""
+        if scope not in {"mx", "non_mx"} or not isinstance(reason, str) or len(reason) > 1000:
+            frappe.throw(_("Invalid expense scope"))
+        if scope == "non_mx":
+            if entry.get("company") or not reason.strip():
+                frappe.throw(_("A reason is required for non-Mexico expenses; leave the subsidiary empty"))
+        else:
+            _company_access(entry.get("company"))
+        clean.append({"source_entity": entry["source_entity"].strip(), "entity_kind": kind,
+                      "company": entry.get("company") or "", "expense_scope": scope, "scope_reason": reason.strip() if scope == "non_mx" else ""})
     if enabled not in (0, 1, "0", "1", False, True):
         frappe.throw(_("Invalid synchronization setting"))
     settings = _settings(lock=True)
@@ -364,7 +377,7 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
 def _period_version(settings):
     # The shared cache guard also blocks facts projected before the mapping and
     # zero-amount fixes. Reprojection keeps the finance dates themselves unchanged.
-    return digest(["mx-finance-period-v4.2-classification-review", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
+    return digest(["mx-finance-period-v4.3-expense-scope", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
 
 
 def _projection_version(settings):
@@ -491,7 +504,7 @@ def preview_template(template, business_timezone="America/Mexico_City"):
 
 def _filters(filters):
     values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact", "confirmed_only"}
+    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact", "confirmed_only", "expense_scope"}
     if not isinstance(values, dict) or set(values) - allowed:
         frappe.throw(_("Invalid Mexico expense filters"))
     if any(not isinstance(v, str) or len(v) > 200 for v in values.values() if v is not None):
@@ -511,6 +524,10 @@ def _filters(filters):
         frappe.throw(_("Enter a valid start and end date; the start date must not be after the end date"))
     if values["basis"] not in {"period", "request", "planned"} or values["currency"] not in {"MXN", "USD", "CNY"} or values["status"] not in {"all", "active", "finance_approved", "pending", "approved", "rejected", "terminated", "withdrawn", "unknown"}:
         frappe.throw(_("Invalid Mexico expense filters"))
+    if values.get("expense_scope") not in (None, "", "mx", "non_mx"):
+        frappe.throw(_("Invalid expense scope"))
+    if values.get("expense_scope") == "non_mx":
+        _require_manager()
     if values.get("company"):
         _company_access(values["company"])
     if values.get("approval_type") and values["approval_type"] not in contract.APPROVAL_FORMS:
@@ -560,11 +577,15 @@ def _query(values, fields, *, confirmed=False, review=False):
         filters.append(["approval_status", "=", status])
     settings = _settings()
     period_current = Coalesce(table.period_version, "") == _period_version(settings)
+    mapping_current = (table.company_basis == "manual") | (Coalesce(table.mapping_version, "") == (settings.mapping_version or ""))
+    excluded = (Coalesce(table.expense_scope, "mx") == "non_mx") & mapping_current & period_current
+    excluded_view = values.get("expense_scope") == "non_mx" and not confirmed
     currency_scope = table.currency == values["currency"]
     if review:
         currency_scope |= table.currency.isnull() | (table.currency == "")
     def scoped_query(selected):
         query = frappe.qb.get_query(LINE, fields=selected, filters=filters, ignore_permissions=False)
+        query = query.where(excluded if excluded_view else ~excluded)
         if not values.get("reporting_currency"):
             query = query.where(currency_scope)
         if approval_scope is not None:
@@ -586,12 +607,11 @@ def _query(values, fields, *, confirmed=False, review=False):
     query = scoped_query(fields)
     if status == "finance_approved":
         query = query.where(table.finance_approved_date.isnotnull())
-    mapping_current = (table.company_basis == "manual") | (Coalesce(table.mapping_version, "") == (settings.mapping_version or ""))
     if not review:
         query = query.where(period_current)
     if confirmed:
         query = query.where((table.review_state == "confirmed") & mapping_current)
-    if review:
+    if review and not excluded_view:
         query = query.where((table.review_state != "confirmed") | ~mapping_current | ~period_current)
     basis = {"period": table.finance_approved_date, "request": table.request_date, "planned": table.planned_payment_date}[values["basis"]]
     if review and values["basis"] == "period":
@@ -682,6 +702,8 @@ def _public_line(row, mapping_version, period_version):
         item["issues"] = sorted(set(item["issues"] + ["period_stale"]))
         item["review_state"] = "needs_review"
         item.update(dict.fromkeys(contract.PERIOD_FIELDS))
+    if item.get("review_state") == "needs_review" and item.get("expense_scope") == "non_mx":
+        item.update(expense_scope="mx", scope_reason="")
     if contract.exact_amount(item.get("amount_raw")) is None:
         item["amount"] = None
     elif item.get("amount") is not None:
@@ -713,7 +735,7 @@ def get_lines(filters=None, start=0, page_length=25, review=False):
 @frappe.whitelist()
 def get_overview(filters=None):
     _finance()
-    values = _filters(filters)
+    values = {**_filters(filters), "expense_scope": "mx"}
     conversion = fx.Conversion(values["reporting_currency"]) if values.get("reporting_currency") else None
     def aggregate(groups=(), **scope):
         return _aggregates(values, groups, conversion=conversion, **scope)
@@ -785,7 +807,7 @@ def get_report_insights(filters=None, kind="company"):
     _finance()
     if not isinstance(kind, str) or kind not in {"company", "payroll", "trend"}:
         frappe.throw(_("Invalid expense report"))
-    values = _filters(filters)
+    values = {**_filters(filters), "expense_scope": "mx"}
     if kind == "payroll":
         values.update(category="personnel", basis="period")
     today = datetime.now(ZoneInfo(_settings().business_timezone or "America/Mexico_City")).date().isoformat()
@@ -867,6 +889,7 @@ def export_report(filters=None, kind="company"):
                 ("converted_amount", "Converted Amount"), ("reporting_currency", "Reporting Currency"),
                 ("exchange_rate", "Exchange Rate"), ("exchange_rate_date", "Exchange Rate Date"),
                 ("fx_date_basis", "Exchange Rate Basis"), ("fx_estimated", "Estimated Conversion"))]
+        columns += [{"fieldname": k, "label": label} for k, label in (("expense_scope", "Expense Scope"), ("scope_reason", "Scope Reason"), ("reviewed_by", "Reviewed By"), ("reviewed_at", "Reviewed At"))]
         for row in data:
             if values.get("reporting_currency"):
                 row["converted_amount"] = Decimal(row["converted_amount"]) if row["converted_amount"] is not None else None
@@ -875,6 +898,7 @@ def export_report(filters=None, kind="company"):
                 row["fx_estimated"] = _("Yes") if row["fx_estimated"] else _("No")
             if row["amount"] is not None:
                 row["amount"] = Decimal(row["amount"])
+            row["expense_scope"] = _("Non-Mexico Expenses" if row.get("expense_scope") == "non_mx" else "Mexico Expenses")
             row["approval_type"] = _(contract.APPROVAL_FORMS.get(row.get("approval_type"), ("Unclassified",))[0])
             row["category"] = _({c[0]: c[1] for c in contract.CATEGORIES}.get(row["category"], "Unclassified"))
             row["subcategory"] = _(contract.SUBCATEGORIES.get(row["subcategory"], (None, "Unclassified"))[1])
@@ -895,6 +919,8 @@ def export_report(filters=None, kind="company"):
         [_("Date Range"), values["from_date"] + " ~ " + values["to_date"]], [_("Date Basis"), _(BASIS_LABELS[values["basis"]])],
         [_("Approval Status"), _(STATUS_LABELS.get(values["status"], values["status"])),
             _("Approval Form"), _(contract.APPROVAL_FORMS[values["approval_type"]][0]) if values.get("approval_type") else _("All Approval Forms")], [_("Reporting Currency") if values.get("reporting_currency") else _("Currency"), values["currency"]], []]
+    if values.get("expense_scope") == "non_mx":
+        metadata.insert(-1, [_("Expense Scope"), _("Non-Mexico Expenses")])
     if values.get("reporting_currency"):
         metadata.insert(-1, [_("Exchange Rate Basis"), _("Month-start rates by finance approval month; pending approvals use application month estimates")])
     matrix = metadata + [[_(c["label"]) for c in columns]] + [[cell(row.get(c["fieldname"])) for c in columns] for row in data]
@@ -946,6 +972,15 @@ def _dingtalk_url(source):
     return build_desktop_approval_url(instance_id)
 
 
+def _detail_amount(rows, amount_field):
+    """Use the same source-validity rules for the visible total and each scope."""
+    invalid = {"amount", "amount_pending", "total", "structure", "identity"}
+    if any(row.get(amount_field) is None or set(json.loads(row.get("base_issues") or "[]")) & invalid
+           for row in rows):
+        return None
+    return str(sum((Decimal(row[amount_field]) for row in rows), Decimal(0)))
+
+
 @frappe.whitelist()
 def get_detail(line_key, reporting_currency=None):
     _finance()
@@ -961,16 +996,18 @@ def get_detail(line_key, reporting_currency=None):
     settings = _settings()
     mapping_version, period_version = settings.mapping_version or "", _period_version(settings)
     visible = [_public_line(row, mapping_version, period_version) for row in siblings]
-    incomplete = any(row["amount"] is None or set(json.loads(row.get("base_issues") or "[]")) &
-        {"amount", "amount_pending", "total", "structure", "identity"} for row in visible)
     result = {"line": _public_line({field: doc.get(field) for field in FIELDS}, mapping_version, period_version), "lines": visible,
-        "whole_source": whole, "visible_amount": None if incomplete else str(sum((Decimal(row["amount"]) for row in visible), Decimal(0)))}
+        "whole_source": whole}
     if reporting_currency:
         conversion = fx.Conversion(reporting_currency)
         result["line"] = conversion.line(result["line"])
         result["lines"] = [conversion.line(row) for row in visible]
         result["visible_currency"] = reporting_currency
-        result["visible_amount"] = None if incomplete or any(row["converted_amount"] is None for row in result["lines"]) else str(sum((Decimal(row["converted_amount"]) for row in result["lines"]), Decimal(0)))
+    amount_field = "converted_amount" if reporting_currency else "amount"
+    result["visible_amount"] = _detail_amount(result["lines"], amount_field)
+    for key, excluded in (("mx_amount", False), ("excluded_amount", True)):
+        scoped = [row for row in result["lines"] if (row.get("expense_scope") == "non_mx") == excluded]
+        result[key] = _detail_amount(scoped, amount_field)
     if whole:
         from .operating_oa_workflow import workflow
         result.update(workflow=workflow(json.loads(source.raw_json)), payee=source.payee, payment_terms=source.payment_terms, details=json.loads(source.get("details_json") or "{}"))
@@ -980,7 +1017,7 @@ def get_detail(line_key, reporting_currency=None):
 
 @frappe.whitelist(methods=["POST"])
 def review_line(line_key, expected_source_version, expected_modified, month=None, period_start=None, period_end=None,
-                period_kind=None, company=None, note=None):
+                period_kind=None, company=None, note=None, expense_scope=None):
     _finance()
     if not _manager() and "Accounts Manager" not in frappe.get_roles():
         frappe.throw(_("Only an Accounts Manager can review expense lines"), frappe.PermissionError)
@@ -998,6 +1035,24 @@ def review_line(line_key, expected_source_version, expected_modified, month=None
         frappe.throw(_("Expense source changed; reload and review again"))
     if doc.period_version != _period_version(settings):
         frappe.throw(_("Expense periods are being recalculated; view Data Review and retry after recalculation"))
+    if expense_scope not in (None, "", "mx", "non_mx"):
+        frappe.throw(_("Invalid expense scope"))
+    previous_scope = doc.get("expense_scope") or "mx"
+    scope = expense_scope or previous_scope
+    if scope == "non_mx" or scope != previous_scope:
+        _require_manager()
+    if expense_scope:
+        if scope == "non_mx":
+            if "allocation" in json.loads(doc.base_issues or "[]"):
+                frappe.throw(_("Correct the subsidiary allocation in OA before assigning a company"))
+            company = None
+            doc.company = ""
+        doc.expense_scope = scope
+        doc.scope_reason = note.strip() if scope == "non_mx" else ""
+        # The dialog submits the current scope even when only the note changed.
+        # Pin an override only for an actual scope change, not a default value.
+        if scope != previous_scope:
+            doc.company_basis = "manual"
     if company and company != doc.company:
         _require_manager()
         _company_access(company)
@@ -1021,7 +1076,7 @@ def review_line(line_key, expected_source_version, expected_modified, month=None
     if doc.company_basis != "manual" and doc.mapping_version != (settings.mapping_version or ""):
         problems.append("stale")
     doc.issues = json.dumps(sorted(set(problems)))
-    doc.review_state = "confirmed" if not problems else "needs_review"
+    doc.review_state = "excluded" if scope == "non_mx" else ("confirmed" if not problems else "needs_review")
     _save(doc)
     return {"ok": True, "review_state": doc.review_state}
 
