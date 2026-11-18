@@ -23,6 +23,7 @@ from . import mexico_expense_projection as projection
 from . import mexico_expense_fx as fx
 from . import mexico_expense_classification as classification
 from . import mexico_expense_mapping as company_mapping
+from . import mexico_expense_insights as insights
 from .operating_expense_contract import digest
 from .purchase_payment_service import _require_fields
 
@@ -490,7 +491,7 @@ def preview_template(template, business_timezone="America/Mexico_City"):
 
 def _filters(filters):
     values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact"}
+    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact", "confirmed_only"}
     if not isinstance(values, dict) or set(values) - allowed:
         frappe.throw(_("Invalid Mexico expense filters"))
     if any(not isinstance(v, str) or len(v) > 200 for v in values.values() if v is not None):
@@ -520,6 +521,8 @@ def _filters(filters):
         frappe.throw(_("Invalid expense category"))
     if values.get("classification_key") and (not values.get("approval_type") or not re.fullmatch(classification.KEY_PATTERN, values["classification_key"])):
         frappe.throw(_("Invalid expense category"))
+    if values.get("confirmed_only") not in (None, "", "1"):
+        frappe.throw(_("Invalid Mexico expense filters"))
     if values.get("classification_exact") not in (None, "", "1"):
         frappe.throw(_("Invalid expense category"))
     if values.get("issue") and values["issue"] not in contract.ISSUES:
@@ -534,7 +537,7 @@ def _query(values, fields, *, confirmed=False, review=False):
     from pypika.functions import Coalesce
     table = frappe.qb.DocType(LINE)
     # Chart drilldown must reconcile to the confirmed amounts displayed in the chart.
-    confirmed = confirmed or bool(values.get("classification_key") and not review)
+    confirmed = confirmed or bool((values.get("classification_key") or values.get("confirmed_only")) and not review)
     filters = [["is_active", "=", 1]]
     for field in ("company", "category", "subcategory"):
         if values.get(field):
@@ -645,9 +648,13 @@ def _aggregates(values, groups=(), conversion=None, **kwargs):
     # Frappe MariaDB decoders return DECIMAL as float; transfer totals as text
     # so large cross-currency aggregates retain every cent.
     total_amount = Cast(Sum(amount), "CHAR(65)") if values.get("reporting_currency") else Sum(amount)
+    invalid = (table.base_issues.like('%"amount"%') | table.base_issues.like('%"amount_pending"%') |
+               table.base_issues.like('%"total"%') | table.base_issues.like('%"structure"%') |
+               table.base_issues.like('%"identity"%') | table.base_issues.like('%"currency"%') |
+               table.currency.isnull() | table.currency.notin(sorted(fx.CURRENCIES)) | amount.isnull())
+    known_amount = Cast(Sum(Case().when(invalid, 0).else_(amount)), "CHAR(65)")
     fields = [getattr(table, field) for field in groups] + [total_amount.as_("amount"), Count(table.source).distinct().as_("applications"), Count(table.name).as_("lines"),
-        Sum(Case().when(table.base_issues.like('%"amount"%') | table.base_issues.like('%"amount_pending"%') | table.base_issues.like('%"total"%') |
-            table.base_issues.like('%"structure"%') | table.base_issues.like('%"identity"%') | amount.isnull(), 1).else_(0)).as_("invalid_amounts")]
+        Sum(Case().when(invalid, 1).else_(0)).as_("invalid_amounts"), known_amount.as_("known_amount")]
     if values.get("reporting_currency"):
         fields.append(Sum(Case().when(table.finance_approved_date.isnull(), 1).else_(0)).as_("estimated_lines"))
     query = _query(values, fields, **kwargs)
@@ -759,7 +766,7 @@ def report_data(filters=None, kind="company", *, serialize=False):
             amount = Decimal(str(row["amount"] or 0))
             out[category] += amount
             out["total"] += amount
-    rows = sorted(result.values(), key=lambda r: str(r[first]))
+    rows = sorted(result.values(), key=lambda r: (str(r[first]), r.get("month", "")))
     if serialize and values.get("reporting_currency"):
         # Frappe serializes Decimal as float. Keep exact cents on both HTTP paths.
         rows = [{key: format(value, ".2f") if isinstance(value, Decimal) else value
@@ -771,6 +778,67 @@ def report_data(filters=None, kind="company", *, serialize=False):
 def get_report(filters=None, kind="company"):
     columns, data = report_data(filters, kind, serialize=True)
     return {"columns": [{**c, "label": _(c["label"])} for c in columns], "rows": data}
+
+
+@frappe.whitelist()
+def get_report_insights(filters=None, kind="company"):
+    _finance()
+    if not isinstance(kind, str) or kind not in {"company", "payroll", "trend"}:
+        frappe.throw(_("Invalid expense report"))
+    values = _filters(filters)
+    if kind == "payroll":
+        values.update(category="personnel", basis="period")
+    today = datetime.now(ZoneInfo(_settings().business_timezone or "America/Mexico_City")).date().isoformat()
+    window = insights.comparison_period(values["from_date"], values["to_date"], today)
+    conversion = fx.Conversion(values["reporting_currency"]) if values.get("reporting_currency") else None
+    def aggregate(scope, groups=(), **flags):
+        return _aggregates(scope, groups, conversion=conversion, **flags)
+    companies = aggregate(values, ("company",), confirmed=True)
+    included = _counts(values, confirmed=True)
+    review_values = {**values, "status": "active", "issue": ""}
+    pending = aggregate(review_values, review=True)
+    known = sum((insights.amount(r["known_amount"]) for r in pending), Decimal(0))
+    unknown = sum(int(r["invalid_amounts"] or 0) for r in pending)
+    total = sum((insights.amount(r["amount"]) for r in companies), Decimal(0))
+    basis_field = {"period": "period_month", "request": "request_date", "planned": "planned_payment_date"}[values["basis"]]
+    monthly = {}
+    for row in aggregate(values, (basis_field,), confirmed=True):
+        month = str(row[basis_field])[:7]
+        monthly[month] = monthly.get(month, Decimal(0)) + insights.amount(row["amount"])
+    import calendar
+    trend = []
+    cursor = date.fromisoformat(values["from_date"]).replace(day=1)
+    end_month = date.fromisoformat(values["to_date"]).replace(day=1)
+    while cursor <= end_month:
+        monthly.setdefault(cursor.strftime("%Y-%m"), Decimal(0))
+        cursor = insights.shift_month(cursor, 1)
+    for month, value in sorted(monthly.items()):
+        first = date.fromisoformat(month + "-01")
+        last = first.replace(day=calendar.monthrange(first.year, first.month)[1])
+        trend.append({"month": month, "amount": insights.money(value),
+                      "partial": values["from_date"] > first.isoformat() or min(values["to_date"], today) < last.isoformat()})
+    comparison, movers = None, []
+    if window:
+        current_values = {**values, "from_date": window["from_date"], "to_date": window["to_date"]}
+        previous_values = {**values, "from_date": window["previous_from"], "to_date": window["previous_to"]}
+        current = aggregate(current_values, ("company",), confirmed=True)
+        previous = aggregate(previous_values, ("company",), confirmed=True)
+        comparison = {**window, **insights.change(sum((insights.amount(r["amount"]) for r in current), Decimal(0)),
+                                                sum((insights.amount(r["amount"]) for r in previous), Decimal(0)))}
+        comparison["current_applications"] = int(_counts(current_values, confirmed=True)["applications"])
+        comparison["previous_applications"] = int(_counts(previous_values, confirmed=True)["applications"])
+        company_changes = insights.ranking(current, previous, "company")
+        company_changes.sort(key=lambda row: -abs(insights.amount(row["delta"])))
+        field = "subcategory" if kind == "payroll" else "category"
+        movers = insights.ranking(aggregate(current_values, (field,), confirmed=True),
+                                  aggregate(previous_values, (field,), confirmed=True), field)
+        movers.sort(key=lambda row: -abs(insights.amount(row["delta"])))
+    else:
+        company_changes = []
+    return {"total": insights.money(total), "company_count": len(companies), "included": included,
+            "pending": {**_counts(review_values, review=True), "known_amount": insights.money(known), "unknown_lines": unknown},
+            "companies": insights.ranking(companies, [], "company"), "company_changes": company_changes,
+            "comparison": comparison, "movers": movers[:5], "trend": trend, "today": today}
 
 
 @frappe.whitelist()

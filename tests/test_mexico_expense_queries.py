@@ -59,6 +59,58 @@ class MexicoQueryTests(unittest.TestCase):
             row.setdefault('finance_approved_date', row['period_month'])
             self.db.execute('INSERT INTO "tabMexico Expense Line" ('+','.join('"'+c+'"' for c in row)+') VALUES ('+','.join('?' for _ in row)+')',list(row.values()))
 
+    def test_management_totals_match_report_and_preserve_company_permissions(self):
+        values = {**self.filters, "status":"active"}
+        with patch.object(s, "_finance"):
+            result = s.get_report_insights(values, "company")
+            columns, rows = s.report_data(values, "company")
+        self.assertEqual(result["total"], format(sum(r["total"] for r in rows), ".2f"))
+        self.assertEqual(result["company_count"], 1)
+        self.assertEqual(result["companies"][0]["key"], "A")
+        self.assertEqual(result["included"]["applications"], 2)
+        self.assertEqual(result["pending"]["applications"], 2)
+
+    def test_known_review_amounts_exclude_invalid_amounts_and_confirmed_drilldown(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET base_issues=? WHERE name=?', ('["amount"]','missing_period'))
+        result = s._aggregates({**self.filters,"status":"active"}, review=True)[0]
+        self.assertEqual(str(result["known_amount"]), "99")
+        self.assertEqual(result["invalid_amounts"], 1)
+        rows = s._aggregates({**self.filters,"status":"active","basis":"request","confirmed_only":"1"})
+        self.assertEqual(rows[0]["amount"], 90)
+
+    def test_review_known_amount_requires_an_unambiguous_currency_in_both_modes(self):
+        for currency, issues in ((None, '[]'), ('', '[]'), (None, '["currency"]'), ('MXN', '["currency"]')):
+            self.db.execute('UPDATE "tabMexico Expense Line" SET currency=?, base_issues=? WHERE name=?',
+                            (currency, issues, 'missing_period'))
+            for extra in ({}, {"reporting_currency": "MXN"}):
+                with self.subTest(currency=currency, issues=issues, filters=extra):
+                    row = s._aggregates({**self.filters, "status": "active", **extra}, review=True)[0]
+                    self.assertEqual(row["lines"], 2)
+                    self.assertEqual(float(row["known_amount"]), 99)
+                    self.assertEqual(row["invalid_amounts"], 1)
+        self.db.execute('UPDATE "tabMexico Expense Line" SET currency=?, base_issues=? WHERE name=?',
+                        ('MXN', '[]', 'missing_period'))
+        for extra in ({}, {"reporting_currency": "MXN"}):
+            row = s._aggregates({**self.filters, "status": "active", **extra}, review=True)[0]
+            self.assertEqual(float(row["known_amount"]), 299)
+            self.assertEqual(row["invalid_amounts"], 0)
+
+    def test_legacy_management_api_does_not_treat_missing_currency_as_mxn(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET currency=NULL, base_issues=? WHERE name=?',
+                        ('["currency"]', 'missing_period'))
+        with patch.object(s, "_finance"):
+            result = s.get_report_insights({**self.filters, "status": "active"}, "company")
+        self.assertEqual(result["pending"]["known_amount"], "99.00")
+        self.assertEqual(result["pending"]["unknown_lines"], 1)
+        self.assertEqual(result["pending"]["applications"], 2)
+
+    def test_unsupported_currency_remains_unconvertible_in_review(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET currency=?, base_issues=? WHERE name=?',
+                        ('EUR', '[]', 'missing_period'))
+        row = s._aggregates({**self.filters, "status": "active", "reporting_currency": "MXN"}, review=True)[0]
+        self.assertEqual(float(row["known_amount"]), 99)
+        self.assertEqual(row["invalid_amounts"], 1)
+
     def test_source_classification_subtree_and_exact_scope_keep_company_permissions(self):
         parent = 'a' * 32
         child = parent + '/' + 'b' * 32

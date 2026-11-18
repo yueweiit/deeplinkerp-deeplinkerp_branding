@@ -30,6 +30,13 @@
 		payroll: "mexico-personnel-report",
 		trend: "mexico-expense-trend",
 	};
+    function reportDefaultRange(today, report) {
+        if (report !== "trend") return monthRange(today.slice(0,7));
+        const [year,month] = today.slice(0,7).split("-").map(Number);
+        const last = new Date(Date.UTC(year,month-1,0));
+        const first = new Date(Date.UTC(last.getUTCFullYear(),last.getUTCMonth()-5,1));
+        return {from_date:first.toISOString().slice(0,10),to_date:last.toISOString().slice(0,10)};
+    }
 	function reportFromRoute(route) {
 		return Object.keys(reportRoutes).find((kind) => reportRoutes[kind] === route?.[0]) || null;
 	}
@@ -194,7 +201,7 @@
 				company: "",
 				approval_type: "",
 				category: "",
-				subcategory: "", classification_key: "", classification_exact: "",
+				subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "",
 				currency: "MXN",
 				status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 				keyword: "",
@@ -233,7 +240,7 @@
 		async initialize() {
 			this.el.innerHTML = `<div class="mx-empty">${esc(t("Loading Mexico expenses"))}</div>`;
 			this.context = await call("get_context");
-			Object.assign(this.filters, monthRange(this.context.today.slice(0, 7)));
+			Object.assign(this.filters, reportDefaultRange(this.context.today, this.report));
 			this.restorePreferences();
 			this.page.add_inner_button(t("Refresh"), () => this.reload());
 			this.page.add_inner_button(t("Export Excel"), () => this.export());
@@ -256,17 +263,21 @@
 		preferenceKey() {
 			// localStorage is origin-scoped; additionally isolate users sharing a browser.
 			const user = root.frappe.session?.user;
-			return user && user !== "Guest" ? `mx-expenses:preferences:v1:${user}` : null;
+			return user && user !== "Guest" ? `mx-expenses:preferences:v1:${user}${this.report === "payroll" ? ":payroll" : ""}` : null;
 		}
 		restorePreferences() {
 			try {
 				const key = this.preferenceKey();
-				const saved = key && JSON.parse(root.localStorage?.getItem(key) || "null");
+				let saved = key && JSON.parse(root.localStorage?.getItem(key) || "null");
+                if (!saved && this.report === "payroll" && key) {
+                    const shared = JSON.parse(root.localStorage?.getItem(key.replace(/:payroll$/, "")) || "null");
+                    if (shared) saved = {from_date: shared.from_date, to_date: shared.to_date};
+                }
 				if (!saved || typeof saved !== "object") return;
 				if (validDateRange(saved)) Object.assign(this.filters, { from_date: saved.from_date, to_date: saved.to_date });
 				if (saved.approval_type === "" || this.context.approval_forms.some((f) => f.id === saved.approval_type)) {
 					if (saved.approval_type !== this.filters.approval_type)
-						Object.assign(this.filters, { category: "", subcategory: "", classification_key: "", classification_exact: "", keyword: "", issue: "" });
+						Object.assign(this.filters, { category: "", subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "", keyword: "", issue: "" });
 					this.filters.approval_type = saved.approval_type;
 				}
 			} catch (_) {
@@ -318,7 +329,7 @@
 				group.addEventListener("click", (event) => {
 					const item = event.target.closest("[data-approval-type]");
 					if (!item || !this.isCurrentRoute()) return;
-					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", classification_key: "", classification_exact: "", issue: "", keyword: "" });
+					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "", issue: "", keyword: "" });
 					this.start = 0;
 					this.refresh();
 					this.approvalSidebar?.querySelector('[aria-pressed="true"]')?.focus();
@@ -442,7 +453,7 @@
 					"Approval Status",
 					Object.entries(statuses).map(([v, l]) => [v, t(l)])
 				)}
-                <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset", `title="${esc(t("Restore this month and reset all filters"))}"`)}</div></div>
+                <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset", `title="${esc(t(this.report === "trend" ? "Restore six complete months and reset filters" : "Restore this month and reset all filters"))}"`)}</div></div>
                 <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(
 				t(
 					{
@@ -456,6 +467,7 @@
 			)}</span></div>
                 ${this.context.approval_forms.find((form) => form.id === f.approval_type)?.connected === false
                     ? `<div class="mx-notice">${esc(t("This approval form is not connected yet; no data is available"))}</div>` : ""}
+                ${f.confirmed_only ? `<div class="mx-notice">${esc(t("Only confirmed expense lines are included"))} ${button("Show All Matching Details", "clear-confirmed", "mx-link")}</div>` : ""}
                 ${f.classification_key ? `<div class="mx-notice">${esc(t("Filtered by source classification"))} · ${esc(t("Only confirmed expense lines are included"))} ${button("Clear Source Classification", "clear-classification", "mx-link")}</div>` : ""}
                 ${f.category && !payroll
                     ? `<div class="mx-notice">${esc(t("Expense Category"))}: ${esc(this.cat(f.category)?.label || f.category)} ${button("Clear Expense Category", "clear-category", "mx-link")}</div>` : ""}
@@ -565,10 +577,14 @@
 					if (epoch !== this.epoch) return;
 					html = this.details(data, this.view === "review");
 				} else {
-					const data = await call("get_report", {
-						filters,
-						kind: this.view === "payroll" ? "payroll" : this.report,
-					});
+                    const kind = this.view === "payroll" ? "payroll" : this.report;
+                    const [reportResult, insightResult] = await Promise.allSettled([
+                        call("get_report", {filters, kind}), call("get_report_insights", {filters, kind}),
+                    ]);
+                    if (reportResult.status === "rejected") throw reportResult.reason;
+                    const data = reportResult.value;
+                    if (insightResult.status === "fulfilled" && cents(insightResult.value.total) === data.rows.reduce((sum,r)=>sum+cents(r.total),0n)) data.insights = insightResult.value;
+                    else data.insightsUnavailable = true;
 					if (epoch !== this.epoch) return;
 					html = this.reportTable(data);
 				}
@@ -849,8 +865,8 @@
 		reportTable(data) {
 			const payroll = this.view === "payroll",
 				kind = payroll ? "payroll" : this.report;
-			const cards = payroll
-				? `<div class="mx-payroll-cards">${this.context.subcategories
+			const cards = kind === "payroll"
+				? `<div class="mx-payroll-cards mx-personnel-breakdown">${this.context.subcategories
 						.filter((c) => c.category === "personnel")
 						.map((c) => {
 							const total = data.rows.reduce((s, r) => s + cents(r[c.id]), 0n);
@@ -863,9 +879,28 @@
 						})
 						.join("")}</div>`
 				: "";
-			const numeric = (c) => c.fieldtype === "Currency";
-			return (
-				cards +
+            const numeric = (c) => c.fieldtype === "Currency";
+            const summary = data.insights ? root.DeepLinkERPMexicoExpenseInsights.render(data.insights, {
+                currency:this.filters.currency, approval:this.filters.approval_type ? this.form(this.filters.approval_type) : t("All Approval Forms"),
+                company:this.filters.company || t("All Subsidiaries"), basis:t({period:"Expense Period",request:"Application Date",planned:"Planned Payment Date"}[this.filters.basis]),
+                kind, categories:this.context.categories, subcategories:this.context.subcategories,
+            }) : data.insightsUnavailable ? `<div class="mx-notice mx-warning">${esc(t("Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available."))}</div>` : "";
+            const partialMonths = new Set((data.insights?.trend || []).filter(r=>r.partial).map(r=>r.month));
+            const displayRows = [], subtotals = new Map();
+            const amountColumns = data.columns.filter(numeric);
+            if (kind === "payroll") data.rows.forEach(row => {
+                if (!subtotals.has(row.company)) subtotals.set(row.company, Object.fromEntries(amountColumns.map(c=>[c.fieldname,0n])));
+                const total = subtotals.get(row.company);
+                amountColumns.forEach(c=>total[c.fieldname]+=cents(row[c.fieldname]));
+            });
+            data.rows.forEach((row, index) => {
+                displayRows.push(row);
+                if (kind === "payroll" && data.rows[index+1]?.company !== row.company) {
+                    displayRows.push({...row, month:t("Subtotal"), subtotal:true, ...Object.fromEntries(Object.entries(subtotals.get(row.company)).map(([key,value])=>[key,decimal(value)]))});
+                }
+            });
+            return (
+                summary + cards +
 				`<div class="mx-notice">${esc(
 					t("Reports include confirmed expense lines in the selected approval status")
 				)} ${esc(
@@ -887,15 +922,15 @@
 											c.label
 										)}</th>`
 								)
-								.join("")}</tr></thead><tbody>${data.rows
+								.join("")}</tr></thead><tbody>${displayRows
 								.map(
 									(r) =>
-										`<tr tabindex="0" role="button" ${
+										`<tr tabindex="0" role="button" class="${r.subtotal ? "mx-company-subtotal" : ""}" ${
 											kind === "trend"
 												? `data-month="${esc(r.month)}"`
 												: `data-company="${esc(r.company)}"`
 										} ${
-											kind === "payroll" ? `data-personnel="1" data-month="${esc(r.month)}"` : ""
+											kind === "payroll" ? `data-personnel="1" ${r.subtotal ? "" : `data-month="${esc(r.month)}"`}` : ""
 										}>${data.columns
 											.map(
 												(c) =>
@@ -904,7 +939,7 @@
 													}">${
 														numeric(c)
 															? money(r[c.fieldname], r.currency)
-															: esc(r[c.fieldname] || "—")
+															: esc(r[c.fieldname] || "—") + (c.fieldname === "month" && partialMonths.has(r.month) ? `<small>${esc(t("Partial Month"))}</small>` : "")
 													}</td>`
 											)
 											.join("")}</tr>`
@@ -953,11 +988,22 @@
 		}
 		async click(event) {
 			const target = event.target.closest(
-				"[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue],[data-classification-open],[data-classification-details]"
+				"[data-insight],[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue],[data-classification-open],[data-classification-details]"
 			);
 			if (!target || target.disabled) return;
 			const d = target.dataset;
 			if (d.row) return this.detail(d.row);
+            if (d.insight) {
+                const filters = {...this.effectiveFilters(), keyword:"", issue:"", confirmed_only:"1"};
+                if (d.insight === "review") return this.navigate("review", {...filters,status:"active",confirmed_only:""});
+                if (d.from) Object.assign(filters, {from_date:d.from,to_date:d.to});
+                if (d.insight === "company") filters.company = d.key;
+                if (d.insight === "category") {
+                    if (this.report === "payroll") Object.assign(filters, {category:"personnel",subcategory:d.key});
+                    else Object.assign(filters, {category:d.key,subcategory:""});
+                }
+                return this.navigate("details", filters);
+            }
             if (d.classificationOpen !== undefined) {
                 this.compositionSelection = d.classificationOpen;
                 const panel = this.el.querySelector(".mx-source-composition");
@@ -977,12 +1023,12 @@
 					if (!this.isCurrentRoute()) return;
 					this.context = context;
 					Object.assign(this.filters, {
-						...monthRange(context.today.slice(0, 7)),
+						...reportDefaultRange(context.today, this.report),
 						approval_type: "",
 						basis: "period",
 						company: "",
 						category: "",
-						subcategory: "", classification_key: "", classification_exact: "",
+						subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "",
 						currency: "MXN",
 						status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 						keyword: "",
@@ -996,6 +1042,7 @@
 						status: d.action === "review" ? "active" : this.filters.status,
 					});
 				}
+				if (d.action === "clear-confirmed") this.filters.confirmed_only = "";
 				if (d.action === "clear-category") Object.assign(this.filters, { category: "", subcategory: "" });
 				if (d.action === "clear-classification") Object.assign(this.filters, { classification_key: "", classification_exact: "" });
                 if (d.action === "clear-sub") this.filters.subcategory = "";
@@ -1031,7 +1078,7 @@
 				this.filters.from_date = this.filters.from_date > range.from_date ? this.filters.from_date : range.from_date;
 				this.filters.to_date = this.filters.to_date < range.to_date ? this.filters.to_date : range.to_date;
 			}
-			return this.navigate("details", { ...this.filters, keyword: "", issue: "" });
+			return this.navigate("details", { ...this.filters, keyword: "", issue: "", ...(["reports","payroll"].includes(this.view) ? {confirmed_only:"1"} : {}) });
 		}
 		async detail(lineKey) {
 			const request = (this.detailEpoch = (this.detailEpoch || 0) + 1);
@@ -1374,5 +1421,5 @@
 			root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
 		}
 	}
-	return { Workbench, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, validDateRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
+	return { Workbench, reportDefaultRange, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, validDateRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
 });

@@ -31,13 +31,13 @@ class MexicoNavigationTests(unittest.TestCase):
         from frappe.model.utils import render_include
         sidebar = json.loads((PACKAGE / 'workspace_sidebar/mexico_expenses.json').read_text())
         icon = json.loads((PACKAGE / 'desktop_icon/mexico_expenses.json').read_text())
-        self.assertEqual(len(sidebar['items']), 8)
-        section = sidebar['items'][3]
+        self.assertEqual(len(sidebar['items']), 7)
+        section = sidebar['items'][2]
         self.assertEqual(section['type'], 'Section Break')
         self.assertTrue(section['collapsible'])
-        self.assertEqual([item['child'] for item in sidebar['items'][4:]], [1, 1, 1, 0])
+        self.assertEqual([item['child'] for item in sidebar['items'][3:]], [1, 1, 1, 0])
         links = [item for item in sidebar['items'] if item['type'] == 'Link']
-        self.assertEqual(len({item['link_to'] for item in links}), 7)
+        self.assertEqual(len({item['link_to'] for item in links}), 6)
         for item in links:
             slug = item['link_to'].replace('-', '_')
             folder = PACKAGE / 'deeplinkerp_branding/page' / slug

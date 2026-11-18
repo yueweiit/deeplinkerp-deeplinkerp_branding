@@ -2146,9 +2146,9 @@ Expense Application Register,Expense Application Register
 Expense Category,Expense Category
 Expense Composition,Expense Composition
 Expense Description,Expense Description
-Expense Details,Expense Details
+Expense Details,Expenditure Details
 Expense Entity,Expense Entity
-Expense Overview,Expense Overview
+Expense Overview,Expenditure Overview
 Expense Period,Expense Period
 Expense Period End,Expense Period End
 Expense Period Start,Expense Period Start
@@ -2200,10 +2200,10 @@ Mexico Expense Settings,Mexico Expense Settings
 Mexico Expense Source,Mexico Expense Source
 Mexico Expense Sync Failed,Mexico Expense Sync Failed
 Mexico Expense Synchronization,Mexico Expense Synchronization
-Mexico Expense Trend,Mexico Expense Trend
+Mexico Expense Trend,Monthly Expenditure Trend
 Mexico Expenses,Operating Expenses (MX)
-Mexico Personnel Expenses,Mexico Personnel Expenses
-Mexico Subsidiary Expenses,Mexico Subsidiary Expenses
+Mexico Personnel Expenses,Personnel Expense Analysis
+Mexico Subsidiary Expenses,Subsidiary Expenditure Comparison
 Mexico approval scan exceeds the configured page limit,Mexico approval scan exceeds the configured page limit
 Mexico expense records can only be changed through the workbench,Mexico expense records can only be changed through the workbench
 Mexico expense synchronization failed; retry or contact an administrator,Mexico expense synchronization failed; retry or contact an administrator
@@ -2467,3 +2467,34 @@ No unmapped names,No unmapped names
 Invalid mapping page,Invalid mapping page
 Expense Lines,Expense Lines
 Loading...,Loading...
+Confirmed Expenditure,Confirmed Expenditure
+Subsidiaries Included,Subsidiaries Included
+Applications Requiring Review,Applications Requiring Review
+Known Amount Requiring Review,Known Amount Requiring Review
+{0} lines have unconfirmed amounts,{0} lines have unconfirmed amounts
+Report Scope,Report Scope
+Confirmed expense lines only; financial approval is not proof of payment.,Confirmed expense lines only; financial approval is not proof of payment.
+Review items cover active applications. Items without a finance period use application dates; they are not added to confirmed totals. Amounts before finance approval use estimated conversion.,Review items cover active applications. Items without a finance period use application dates; they are not added to confirmed totals. Amounts before finance approval use estimated conversion.
+Period Comparison,Period Comparison
+Previous complete calendar period,Previous complete calendar period
+Same period of previous month,Same period of previous month
+Previous equal-length period,Previous equal-length period
+Comparison Period,Comparison Period
+Previous Period,Previous Period
+Change Amount,Change Amount
+Change Rate,Change Rate
+No prior-period base,No prior-period base
+No comparable elapsed period,No comparable elapsed period
+Subsidiary Ranking,Subsidiary Ranking
+Share,Share
+No confirmed expenses,No confirmed expenses
+Monthly Expenditure,Monthly Expenditure
+Partial Month,Partial Month
+Largest Subsidiary Changes,Largest Subsidiary Changes
+Largest Category Changes,Largest Category Changes
+Current: {0} confirmed applications; previous: {1}. Unsynchronized or unconfirmed records are excluded from comparisons.,Current: {0} confirmed applications; previous: {1}. Unsynchronized or unconfirmed records are excluded from comparisons.
+Restore six complete months and reset filters,Restore six complete months and reset filters
+Show All Matching Details,Show All Matching Details
+Subtotal,Subtotal
+View Review Items,View Review Items
+Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available.,Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available.

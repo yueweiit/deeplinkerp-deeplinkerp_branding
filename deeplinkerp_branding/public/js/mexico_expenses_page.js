@@ -7,6 +7,7 @@
 					"/assets/deeplinkerp_branding/js/mexico_expense_date_range.js",
 					"/assets/deeplinkerp_branding/js/mexico_expense_money.js",
 					"/assets/deeplinkerp_branding/js/mexico_expense_mappings.js",
+                    "/assets/deeplinkerp_branding/js/mexico_expense_insights.js",
 					"/assets/deeplinkerp_branding/js/mexico_expenses.js",
 				], () => {
 					if (!wrapper.mx_expenses) {

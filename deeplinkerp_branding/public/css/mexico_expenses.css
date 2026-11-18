@@ -1066,3 +1066,21 @@
 .mx-company-mappings small { display: block; color: var(--text-muted); margin-top: 4px; }
 .mx-company-mappings select { min-width: 150px; margin-bottom: 6px; }
 .mx-company-mappings .mx-alias-pages { display: flex; justify-content: flex-end; gap: 8px; }
+.mx-expenses .mx-insight-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.mx-expenses .mx-insight-panel { padding: 18px; margin-bottom: 16px; min-width: 0; }
+.mx-expenses .mx-insight-panel h3 { margin-bottom: 12px; }
+.mx-expenses .mx-insight-panel p { margin-bottom: 14px; color: var(--mx-muted); }
+.mx-expenses .mx-insight-cards { margin-bottom: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mx-expenses .mx-insight-panel .mx-payroll-cards { margin-bottom: 0; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.mx-expenses .mx-personnel-breakdown { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.mx-expenses .mx-month-bar { width: 100%; display: grid; grid-template-columns: 80px 1fr 125px; gap: 12px; align-items: center; border: 0; background: transparent; padding: 12px 0; text-align: left; color: inherit; }
+.mx-expenses .mx-month-bar strong { text-align: right; }
+.mx-expenses .mx-month-bar small { display: block; color: var(--mx-muted); }
+.mx-expenses .mx-bar-track { background: var(--mx-blue-light); height: 10px; border-radius: 5px; }
+.mx-expenses .mx-bar-track i { display: block; height: 100%; background: var(--mx-blue); border-radius: inherit; }
+.mx-expenses .mx-company-subtotal { background: var(--mx-blue-light); font-weight: 600; }
+@media (max-width: 1000px) { .mx-expenses .mx-insight-columns { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+	.mx-expenses .mx-insight-cards, .mx-expenses .mx-insight-panel .mx-payroll-cards, .mx-expenses .mx-personnel-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.mx-expenses .mx-month-bar { grid-template-columns: 66px 1fr 100px; gap: 6px; }
+}

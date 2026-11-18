@@ -747,9 +747,9 @@ Expense Application Register,费用申请台账
 Expense Category,费用类别
 Expense Composition,费用构成
 Expense Description,事项说明
-Expense Details,费用明细
+Expense Details,支出明细
 Expense Entity,费用承担主体
-Expense Overview,费用概览
+Expense Overview,支出概览
 Expense Period,费用所属期间
 Expense Period End,费用期间结束
 Expense Period Start,费用期间开始
@@ -801,10 +801,10 @@ Mexico Expense Settings,墨西哥费用设置
 Mexico Expense Source,墨西哥费用审批来源
 Mexico Expense Sync Failed,墨西哥费用同步失败
 Mexico Expense Synchronization,墨西哥费用同步设置
-Mexico Expense Trend,墨西哥月度费用趋势
+Mexico Expense Trend,月度支出趋势
 Mexico Expenses,运营支出（MX）
-Mexico Personnel Expenses,墨西哥薪酬人事汇总
-Mexico Subsidiary Expenses,墨西哥子公司费用汇总
+Mexico Personnel Expenses,薪酬人事分析
+Mexico Subsidiary Expenses,子公司支出对比
 Mexico approval scan exceeds the configured page limit,墨西哥审批扫描超过配置的分页上限
 Mexico expense records can only be changed through the workbench,墨西哥费用记录只能通过专用工作台修改
 Mexico expense synchronization failed; retry or contact an administrator,墨西哥费用同步失败，请重试或联系管理员
@@ -1066,3 +1066,34 @@ No unmapped names,暂无未映射名称
 Invalid mapping page,无效的映射列表页码
 Expense Lines,费用明细数
 Loading...,加载中…
+Confirmed Expenditure,已确认支出
+Subsidiaries Included,纳入子公司数
+Applications Requiring Review,待核对申请
+Known Amount Requiring Review,待核对可确定金额
+{0} lines have unconfirmed amounts,{0} 条明细金额待确认
+Report Scope,统计范围
+Confirmed expense lines only; financial approval is not proof of payment.,仅统计已确认明细；财务审批通过不代表实际付款完成。
+Review items cover active applications. Items without a finance period use application dates; they are not added to confirmed totals. Amounts before finance approval use estimated conversion.,待核对事项覆盖有效申请，未归期项目按申请日期定位，不并入已确认合计；未通过财务审批的金额采用暂估折算。
+Period Comparison,期间对比
+Previous complete calendar period,与上一段完整月份比较
+Same period of previous month,与上月同期比较
+Previous equal-length period,与前一段等长日期范围比较
+Comparison Period,本次对比期间
+Previous Period,上期
+Change Amount,增减金额
+Change Rate,增减率
+No prior-period base,无上期基数
+No comparable elapsed period,暂无可对比的已发生期间
+Subsidiary Ranking,子公司支出排名
+Share,占比
+No confirmed expenses,暂无已确认支出
+Monthly Expenditure,月度支出
+Partial Month,非完整月份
+Largest Subsidiary Changes,子公司支出变化排行
+Largest Category Changes,费用类别变化排行
+Current: {0} confirmed applications; previous: {1}. Unsynchronized or unconfirmed records are excluded from comparisons.,本期纳入 {0} 笔已确认申请，上期 {1} 笔；尚未同步或确认的记录不在对比范围内。
+Restore six complete months and reset filters,恢复最近六个完整月份并重置筛选
+Show All Matching Details,显示全部符合条件的明细
+Subtotal,小计
+View Review Items,查看待核对事项
+Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available.,管理分析暂不可用或数据已更新，请刷新重试；下方汇总表仍可查看。

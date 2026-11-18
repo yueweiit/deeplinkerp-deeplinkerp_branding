@@ -2473,10 +2473,10 @@ Mexico Expense Settings,Configuración de gastos de México
 Mexico Expense Source,Origen de aprobaciones de gastos de México
 Mexico Expense Sync Failed,Error de sincronización de gastos de México
 Mexico Expense Synchronization,Sincronización de gastos de México
-Mexico Expense Trend,Tendencia mensual de gastos de México
+Mexico Expense Trend,Tendencia mensual de gastos
 Mexico Expenses,Gastos operativos (MX)
-Mexico Personnel Expenses,Resumen de remuneraciones y personal de México
-Mexico Subsidiary Expenses,Resumen de gastos por subsidiaria de México
+Mexico Personnel Expenses,Análisis de gastos de personal
+Mexico Subsidiary Expenses,Comparación de gastos por subsidiaria
 Mexico approval scan exceeds the configured page limit,La consulta de aprobaciones de México supera el límite de páginas
 Mexico expense records can only be changed through the workbench,Los registros de gastos de México solo se pueden modificar desde su área de trabajo
 Mexico expense synchronization failed; retry or contact an administrator,Falló la sincronización de gastos de México; inténtalo de nuevo o contacta al administrador
@@ -2738,3 +2738,34 @@ No unmapped names,No hay nombres sin asignar
 Invalid mapping page,Página de asignaciones no válida
 Expense Lines,Líneas de gastos
 Loading...,Cargando...
+Confirmed Expenditure,Gasto confirmado
+Subsidiaries Included,Subsidiarias incluidas
+Applications Requiring Review,Solicitudes por revisar
+Known Amount Requiring Review,Importe conocido por revisar
+{0} lines have unconfirmed amounts,{0} líneas con importes sin confirmar
+Report Scope,Alcance del informe
+Confirmed expense lines only; financial approval is not proof of payment.,Solo líneas confirmadas; la aprobación financiera no acredita el pago.
+Review items cover active applications. Items without a finance period use application dates; they are not added to confirmed totals. Amounts before finance approval use estimated conversion.,"La revisión abarca solicitudes activas. Sin período financiero se usa la fecha de solicitud; no se suman al total confirmado. Antes de la aprobación financiera, la conversión es estimada."
+Period Comparison,Comparación de períodos
+Previous complete calendar period,Comparación con el período calendario completo anterior
+Same period of previous month,Comparación con el mismo período del mes anterior
+Previous equal-length period,Comparación con el período anterior de igual duración
+Comparison Period,Período comparado
+Previous Period,Período anterior
+Change Amount,Variación del importe
+Change Rate,Variación porcentual
+No prior-period base,Sin base del período anterior
+No comparable elapsed period,No hay un período transcurrido comparable
+Subsidiary Ranking,Clasificación de gastos por subsidiaria
+Share,Participación
+No confirmed expenses,No hay gastos confirmados
+Monthly Expenditure,Gasto mensual
+Partial Month,Mes parcial
+Largest Subsidiary Changes,Mayores variaciones por subsidiaria
+Largest Category Changes,Mayores variaciones por categoría
+Current: {0} confirmed applications; previous: {1}. Unsynchronized or unconfirmed records are excluded from comparisons.,Período actual: {0} solicitudes confirmadas; anterior: {1}. La comparación excluye registros no sincronizados o sin confirmar.
+Restore six complete months and reset filters,Restaurar los últimos seis meses completos y los filtros
+Show All Matching Details,Mostrar todas las líneas coincidentes
+Subtotal,Subtotal
+View Review Items,Ver elementos por revisar
+Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available.,El análisis no está disponible o los datos han cambiado. Actualice para reintentar; la tabla de resumen sigue disponible.
