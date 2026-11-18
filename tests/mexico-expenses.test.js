@@ -414,3 +414,30 @@ test("DingTalk entry uses the authorized source link without loading attachments
         assert.deepEqual(requests, ['deeplinkerp_branding.services.mexico_expenses.get_detail']);
     }
 });
+
+test("composition legend follows filtered amounts and retains form/category drilldown semantics", () => {
+    const categories = [
+        {id:'personnel', label:'Personnel', color:'#547ee0'},
+        {id:'tax', label:'Taxes', color:'#69b8ae'},
+        {id:'administration', label:'Administration', color:'#88a4be'},
+        {id:'procurement', label:'Purchases', color:'#c5a26b'},
+    ];
+    const workbench = Object.create(api.Workbench.prototype);
+    workbench.context = {categories};
+    for (const [rows, expected] of [
+        [[{category:'personnel',amount:'25.00'},{category:'administration',amount:'75.00'}], ['personnel','administration']],
+        [[{category:'tax',amount:'10.00'},{category:'personnel',amount:'0.00'}], ['tax']],
+        [[{category:'procurement',amount:'10.00'}], ['procurement']],
+    ]) {
+        const html=workbench.donut(rows);
+        for (const c of categories) assert.equal(html.includes(`data-category="${c.id}"`), expected.includes(c.id));
+        assert(!html.includes('NaN'));
+    }
+    assert.equal(categories.length,4);
+    assert(workbench.donut([{category:'tax',amount:'0.00'}]).includes('mx-empty'));
+    assert(!workbench.donut([]).includes('mx-donut'));
+    const forms = ['operating','expense','purchase'].map(id=>({id,label:id,color:'#547ee0'}));
+    const all=workbench.donut([{category:'expense',amount:'10.00'}],forms,true);
+    for(const f of forms) assert(all.includes(`data-form="${f.id}"`));
+    assert(!all.includes('data-category='));
+});

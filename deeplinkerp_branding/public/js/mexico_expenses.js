@@ -694,6 +694,10 @@
 		donut(rows, categories = this.context.categories, byForm = false) {
 			const byCategory = totals(rows, (r) => r.category),
 				total = Object.values(byCategory).reduce((s, v) => s + cents(v), 0n);
+			if (!total) return empty();
+			// A single form uses only categories present in its filtered amounts.
+			// Keep the three form choices for the all-forms comparison.
+			if (!byForm) categories = categories.filter((c) => cents(byCategory[c.id]) > 0n);
 			let offset = 0;
 			const gradient = categories
 				.map((c) => {
