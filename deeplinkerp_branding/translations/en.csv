@@ -2502,6 +2502,7 @@ Expenditure Analysis,Expenditure Analysis
 Analysis Dimension,Analysis Dimension
 By Subsidiary,By Subsidiary
 By Month,By Month
+China Operating Expenses,Operating Expenses (CN)
 Expense Scope,Expense Scope
 Scope Reason,Scope Reason
 Non-Mexico Expenses,Non-Mexico Expenses
@@ -2519,3 +2520,14 @@ Excluded from MX totals and pending reviews. Original approval details are retai
 Excluded from MX statistics,Excluded from MX statistics
 MX Scope Amount,MX Scope Amount
 Non-Mexico Amount,Non-Mexico Amount
+Personnel Analysis,Personnel Analysis
+CN statistics are not connected yet,CN statistics are not connected yet
+CN filters are ready; statistics and currency conversion will be connected later,CN filters are ready; statistics and currency conversion will be connected later
+Open Operating Workbench,Open Operating Workbench
+CN workspace could not be loaded,CN workspace could not be loaded
+Awaiting data connection,Awaiting data connection
+Budget,Budget
+Budget Amount,Budget Amount
+Social Insurance,Social Insurance
+Subsidiary Expense Distribution,Subsidiary Expense Distribution
+Budget Management,Budget Management

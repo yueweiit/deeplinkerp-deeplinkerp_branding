@@ -13,6 +13,9 @@
 		"ai assistant": "bot",
 		"china finance": "file-text",
 		"mexico expenses": "receipt-text",
+        "china operating expenses": "receipt-text",
+        "运营支出（cn）": "receipt-text",
+        "gastos operativos (cn)": "receipt-text",
 		"operating expenses (mx)": "receipt-text",
 		"运营支出（mx）": "receipt-text",
 		"gastos operativos (mx)": "receipt-text",
@@ -40,6 +43,7 @@
 		["china finance", "中国财务", "财务"],
 		["overseas costing", "overseas cost", "overseas cost workbench", "海外成本核算"],
 		["mexico expenses", "operating expenses (mx)", "运营支出（mx）", "gastos operativos (mx)", "expenses (mx)", "费用支出（mx）", "gastos (mx)"],
+		["china operating expenses", "operating expenses (cn)", "运营支出（cn）", "gastos operativos (cn)"],
 		["projects", "项目"],
 		["quality", "质量"],
 		["subcontracting", "委外"],
@@ -88,6 +92,7 @@
 			if (key && !authorized.has(key)) authorized.set(key, icon);
 		});
 
+		runtimeLayout = restoreNativeBudgetPlacement(authorizedIcons, runtimeLayout);
 		const projected = [];
 		const included = new Set();
 		(runtimeLayout || []).forEach((layoutIcon) => {
@@ -111,9 +116,8 @@
 		return projected;
 	}
 
-	function includeMexicoExpenseDesktopIcon(authorizedIcons, runtimeLayout) {
+	function includeExpenseDesktopIcon(authorizedIcons, runtimeLayout, key) {
 		if (!Array.isArray(runtimeLayout)) return runtimeLayout;
-		const key = "mexico expenses";
 		const icon = (authorizedIcons || []).find((item) => desktopIconKey(item) === key);
 		const present = runtimeLayout.some((item) => desktopIconKey(item) === key);
 		if (!icon || icon.hidden === 1 || icon.hidden === "1") {
@@ -124,6 +128,20 @@
 		// Add only this new, permission-filtered entry in memory. Keep user layout choices intact.
 		return [...runtimeLayout, { ...icon, idx: lastIndex + 1 }];
 	}
+
+    function restoreNativeBudgetPlacement(authorizedIcons, runtimeLayout) {
+        if (!Array.isArray(runtimeLayout) || !(authorizedIcons || []).some((icon) => desktopIconKey(icon) === "china operating expenses")) return runtimeLayout;
+        const native = authorizedIcons.find((icon) => desktopIconKey(icon) === "budget" && icon.parent_icon === "Accounting");
+        if (!native || !runtimeLayout.some((icon) => desktopIconKey(icon) === "budget" && icon.parent_icon !== "Accounting")) return runtimeLayout;
+        return runtimeLayout.map((icon) => desktopIconKey(icon) === "budget" ? {...icon, parent_icon:native.parent_icon, idx:native.idx} : icon);
+    }
+
+    function includeMexicoExpenseDesktopIcon(authorizedIcons, runtimeLayout) {
+        return includeExpenseDesktopIcon(authorizedIcons, runtimeLayout, "mexico expenses");
+    }
+    function includeChinaExpenseDesktopIcon(authorizedIcons, runtimeLayout) {
+        return includeExpenseDesktopIcon(authorizedIcons, restoreNativeBudgetPlacement(authorizedIcons, runtimeLayout), "china operating expenses");
+    }
 
 	function replaceNavigationRoot(top, nativeItems, buildNavigation) {
 		top.appendChild(nativeItems);
@@ -662,6 +680,7 @@
 		getNavigationDisplayLabel,
 		getNavigationIcon,
 		includeMexicoExpenseDesktopIcon,
+        includeChinaExpenseDesktopIcon,
 		isInternalDeskLink,
 		normalizeRoute,
 		observeNativeSidebarChanges,

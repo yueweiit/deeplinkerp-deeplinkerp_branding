@@ -1,0 +1,19 @@
+{
+ "doctype": "Page",
+ "name": "china-personnel-report",
+ "page_name": "china-personnel-report",
+ "module": "Deeplinkerp Branding",
+ "title": "Personnel Analysis",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

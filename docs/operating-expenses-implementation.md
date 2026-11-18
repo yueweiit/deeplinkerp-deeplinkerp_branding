@@ -1,5 +1,13 @@
 # 运营费用接入实施与验收
 
+## CN 分析页面框架（2026-11-18）
+
+“运营支出（CN）”新增 `china-expenses`、`china-expense-details`、`china-expense-reports`、`china-personnel-report`、`china-expense-review` 五个 Page，复用 MX 页面样式及 `mexico_expenses.filterControls`、日期范围和 Tooltip 组件。原 `operating-expenses` 的财务办理逻辑和 API 保持不变，可从新页面菜单打开。
+
+本阶段仅完成页面和导航：审批表为运营支出／预算／采购支出，统计值显示待接入；没有 MX 数据复用、国内审批统计查询、金额换算、同步或财务写入。公司下拉使用原生 `frappe.client.get_list` 读取获授权的中国非集团公司；`cn_filters` 与用户偏好独立于 MX，默认当月及 CNY。所有页面沿用财务角色，并使用中英西翻译。导航与原预算入口由 `budget.setup` 维护，预算台账、看板和配置保留在预算管理分组，ERPNext 原生预算不变。
+
+代码入口：`public/js/china_expenses.js`、`public/js/china_expenses_page.js`、`deeplinkerp_branding/page/china_*/`；交互回归见 `tests/china-expenses.test.js`。
+
 ## 已确认边界
 
 - 保留请款网站，ERP 只同步运营付款申请、费用报销和付款依据。

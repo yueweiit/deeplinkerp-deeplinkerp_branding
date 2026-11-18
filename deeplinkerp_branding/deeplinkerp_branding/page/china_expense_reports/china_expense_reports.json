@@ -1,0 +1,19 @@
+{
+ "doctype": "Page",
+ "name": "china-expense-reports",
+ "page_name": "china-expense-reports",
+ "module": "Deeplinkerp Branding",
+ "title": "Expenditure Analysis",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

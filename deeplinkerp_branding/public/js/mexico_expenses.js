@@ -1445,5 +1445,9 @@
 			root.setTimeout(() => root.URL.revokeObjectURL(url), 1000);
 		}
 	}
-	return { Workbench, reportDefaultRange, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, validDateRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
+	// Presentation-only controls shared by regional workbenches; no MX API or route handlers.
+	const filterControls = Object.fromEntries([
+		"option", "filter", "mountSelectControls", "disposeDateControls", "disposeFilterControls",
+	].map((name) => [name, Workbench.prototype[name]]));
+	return { Workbench, filterControls, reportDefaultRange, cents, decimal, totals, monthsEnding, monthRange, monthsInRange, validDateRange, esc, views, routes, reportRoutes, reportFromRoute, viewFromRoute, installBreadcrumbs };
 });

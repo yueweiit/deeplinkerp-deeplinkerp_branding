@@ -1101,6 +1101,7 @@ Expenditure Analysis,支出分析
 Analysis Dimension,分析维度
 By Subsidiary,按子公司
 By Month,按月份
+China Operating Expenses,运营支出（CN）
 Expense Scope,支出归属范围
 Scope Reason,归属说明
 Non-Mexico Expenses,非墨西哥支出
@@ -1118,3 +1119,14 @@ Excluded from MX totals and pending reviews. Original approval details are retai
 Excluded from MX statistics,已排除墨西哥统计
 MX Scope Amount,墨西哥范围金额
 Non-Mexico Amount,非墨西哥金额
+Personnel Analysis,薪酬人事分析
+CN statistics are not connected yet,CN 数据统计尚未接入
+CN filters are ready; statistics and currency conversion will be connected later,CN 筛选界面已准备好，数据统计和币种折算将在后续接入
+Open Operating Workbench,打开运营办理工作台
+CN workspace could not be loaded,无法加载 CN 工作台
+Awaiting data connection,待接入数据
+Budget,预算
+Budget Amount,预算金额
+Social Insurance,社保
+Subsidiary Expense Distribution,子公司支出分布
+Budget Management,预算管理

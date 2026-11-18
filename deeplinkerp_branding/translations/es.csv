@@ -2773,6 +2773,7 @@ Expenditure Analysis,Análisis de gastos
 Analysis Dimension,Dimensión de análisis
 By Subsidiary,Por filial
 By Month,Por mes
+China Operating Expenses,Gastos operativos (CN)
 Expense Scope,Ámbito del gasto
 Scope Reason,Motivo de la clasificación
 Non-Mexico Expenses,Gastos fuera de México
@@ -2790,3 +2791,14 @@ Excluded from MX totals and pending reviews. Original approval details are retai
 Excluded from MX statistics,Excluido de las estadísticas de México
 MX Scope Amount,Importe del ámbito de México
 Non-Mexico Amount,Importe fuera de México
+Personnel Analysis,Análisis de nómina y personal
+CN statistics are not connected yet,Las estadísticas de CN aún no están conectadas
+CN filters are ready; statistics and currency conversion will be connected later,Los filtros de CN están listos; las estadísticas y la conversión de moneda se conectarán más adelante
+Open Operating Workbench,Abrir el panel de gestión operativa
+CN workspace could not be loaded,No se pudo cargar el panel de CN
+Awaiting data connection,Pendiente de conexión de datos
+Budget,Presupuesto
+Budget Amount,Importe del presupuesto
+Social Insurance,Seguridad social
+Subsidiary Expense Distribution,Distribución de gastos por filial
+Budget Management,Gestión presupuestaria

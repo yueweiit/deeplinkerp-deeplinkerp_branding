@@ -664,7 +664,8 @@
 		const desktop = frappe.pages?.desktop?.desktop_page;
 		if (!desktop || desktop.edit_mode || !window.DeepLinkERPNavigation) return false;
 		const layout = frappe.desktop_icons;
-		const projected = DeepLinkERPNavigation.includeMexicoExpenseDesktopIcon(frappe.boot.desktop_icons, layout);
+		const projected = DeepLinkERPNavigation.includeChinaExpenseDesktopIcon(frappe.boot.desktop_icons,
+            DeepLinkERPNavigation.includeMexicoExpenseDesktopIcon(frappe.boot.desktop_icons, layout));
 		if (projected === layout) return false;
 		// Native rendering only; never save or reset the user's Desktop Layout.
 		desktop.data = projected;

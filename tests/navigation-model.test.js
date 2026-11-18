@@ -925,7 +925,7 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
-	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.23/);
+	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.24/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
   assert.match(hooks, /deeplinkerp_branding\.js\?v=\d+\.\d+\.\d+/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);
@@ -1490,4 +1490,19 @@ test("expands the root Desktop grid and keeps enhanced entries compact and horiz
 		stylesheet,
 		/body\.dlp-mes-navigation-enabled\s+\.desktop-container\s+\.desktop-icon\s*\{/
 	);
+});
+
+test("CN entry respects authorization and restores only native Budget placement", () => {
+    const budget = {name:"Budget",parent_icon:"Accounting",idx:6};
+    const cn = {name:"China Operating Expenses",parent_icon:"",idx:104};
+    const custom = {name:"My Dashboard",idx:1,parent_icon:"Personal"};
+    const layout = [{...budget,parent_icon:"",idx:103},custom];
+    const result = navigation.includeChinaExpenseDesktopIcon([budget,cn,custom],layout);
+    assert.deepEqual(result.find(i=>i.name==="Budget"),budget);
+    assert.equal(result.find(i=>i.name===cn.name).parent_icon,"");
+    assert.equal(result.find(i=>i.name===custom.name),custom);
+    assert.equal(layout[0].parent_icon,"");
+    assert.equal(navigation.includeChinaExpenseDesktopIcon([budget,custom],layout),layout);
+    assert.equal(navigation.includeChinaExpenseDesktopIcon([budget,cn,custom],result),result);
+    assert.ok(!navigation.includeChinaExpenseDesktopIcon([budget,custom],result).some(i=>i.name===cn.name));
 });
