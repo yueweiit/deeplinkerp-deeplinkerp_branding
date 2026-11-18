@@ -47,7 +47,7 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/unified_purchase_list.js?v=0.0.14",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.24",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_interface_mode.js?v=0.0.3",
-	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.35",
+	"/assets/deeplinkerp_branding/js/deeplinkerp_branding.js?v=0.0.36",
 	"/assets/deeplinkerp_branding/js/inventory_detail.bundle.js?v=0.0.29",
 	"/assets/deeplinkerp_branding/js/selection_dropdown.bundle.js",
 	"/assets/deeplinkerp_branding/js/form_grid_insert.js?v=0.0.1",

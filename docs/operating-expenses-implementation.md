@@ -8,6 +8,8 @@
 
 代码入口：`public/js/china_expenses.js`、`public/js/china_expenses_page.js`、`deeplinkerp_branding/page/china_*/`；交互回归见 `tests/china-expenses.test.js`。
 
+CN/MX 页面加载器向 `frappe.require` 传递不带查询参数的资源路径，由框架添加缓存版本；共用资源使用相同路径，避免重复执行。当前 Frappe 的资源类型识别不兼容手工 `?v=` 参数，会在页面初始化前抛错。原生加载链路及两种访问顺序的回归见 `tests/regional-expense-page-loading.test.js`。
+
 ## 已确认边界
 
 - 保留请款网站，ERP 只同步运营付款申请、费用报销和付款依据。

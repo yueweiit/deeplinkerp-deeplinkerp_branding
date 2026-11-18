@@ -660,7 +660,7 @@
 	}
 
 	function ensureMexicoExpenseHomeIcon() {
-		if (!["desktop", "home"].includes(frappe.get_route?.()[0])) return false;
+		if (!["desktop", "home"].includes(frappe.get_route?.()?.[0])) return false;
 		const desktop = frappe.pages?.desktop?.desktop_page;
 		if (!desktop || desktop.edit_mode || !window.DeepLinkERPNavigation) return false;
 		const layout = frappe.desktop_icons;

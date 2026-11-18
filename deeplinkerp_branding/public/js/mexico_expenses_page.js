@@ -2,6 +2,7 @@
 	root.DeepLinkERPMexicoExpensesPage = {
 		register(route) {
 			frappe.pages[route].on_page_load = function (wrapper) {
+				// Pass plain asset paths; Frappe adds its own cache-busting version.
 				frappe.require([
 					"/assets/deeplinkerp_branding/css/mexico_expenses.css",
 					"/assets/deeplinkerp_branding/js/mexico_expense_date_range.js",
