@@ -5,7 +5,7 @@ import re
 from . import mexico_expense_contract as c
 
 CONFIG_FIELDS = ('enabled', 'approval_type', 'template_name', 'corp_id', 'process_code',
-                 'finance_node_names', 'finance_activity_ids', 'field_mapping')
+                 'finance_node_names', 'finance_activity_ids', 'field_mapping', 'classification_fields')
 STATE_FIELDS = ('cursor', 'sync_until', 'page_count', 'last_sync_at', 'last_error')
 DEFAULT_CODES = {
     'operating': ('PROC-D3ED660B-A5D4-4516-BC82-D83E52B5FEF8', 'PROC-75FEF975-C79F-44A3-A02C-21734C2DBC49', 'PROC-CCB314E9-1458-4D53-9EF2-F68A21EA018D'),
@@ -71,7 +71,7 @@ def normalize(entry):
     out['enabled']=int(out['enabled'])
     for key in CONFIG_FIELDS[1:]:
         value=out[key] or ''
-        if not isinstance(value,str) or len(value) > (10000 if key=='field_mapping' else 2000):raise ValueError('Invalid approval template')
+        if not isinstance(value,str) or len(value) > (10000 if key in ('field_mapping', 'classification_fields') else 2000):raise ValueError('Invalid approval template')
         out[key]=value.strip()
     if out['approval_type'] not in c.APPROVAL_FORMS or not re.fullmatch(r'PROC-[A-Fa-f0-9-]{36}',out['process_code']) or not re.fullmatch(r'[A-Za-z0-9_-]{1,140}',out['corp_id']):raise ValueError('Invalid approval template')
     mapping=json.loads(out['field_mapping'] or '{}')
@@ -81,6 +81,8 @@ def normalize(entry):
         if not isinstance(value,list) or not value or len(value)>20 or any(not isinstance(v,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,140}',v) for v in value):raise ValueError('Invalid template field mapping')
     out['field_mapping']=json.dumps(mapping,sort_keys=True)
     if not tokens(out['finance_node_names']) and not tokens(out['finance_activity_ids']):raise ValueError('Finance nodes are required')
+    from .mexico_expense_classification import validate_fields
+    validate_fields(out['classification_fields'])
     return out
 
 def finance_options(template):

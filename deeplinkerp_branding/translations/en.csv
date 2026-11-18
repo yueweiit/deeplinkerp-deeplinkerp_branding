@@ -2436,3 +2436,14 @@ Invalid reporting currency,Invalid reporting currency
 The exchange rate service is unavailable; install Overseas Costing or contact the administrator,The exchange rate service is unavailable; install Overseas Costing or contact the administrator
 Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.
 Open Original in DingTalk,Open Original in DingTalk
+Classification Fields JSON,Classification Fields JSON
+Source Classification Path,Source Classification Path
+Source Classification Key,Source Classification Key
+Source classification requires review,Source classification requires review
+Exact Source Classification,Exact Source Classification
+Filtered by source classification,Filtered by source classification
+Clear Source Classification,Clear Source Classification
+No Further Classification,No Further Classification
+Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.
+Other Source Categories,Other Source Categories
+source_other,Other Source Categories

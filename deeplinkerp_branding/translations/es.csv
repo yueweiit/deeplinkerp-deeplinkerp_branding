@@ -2707,3 +2707,14 @@ Invalid reporting currency,Moneda de conversión no válida
 The exchange rate service is unavailable; install Overseas Costing or contact the administrator,El servicio de tipos de cambio no está disponible; instale Overseas Costing o contacte al administrador
 Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,No está disponible el tipo de cambio de {0} a CNY al inicio del mes ({1}). Se ha detenido la conversión; vuelva a intentarlo cuando esté disponible.
 Open Original in DingTalk,Abrir solicitud original en DingTalk
+Classification Fields JSON,Campos de clasificación JSON
+Source Classification Path,Ruta de clasificación de origen
+Source Classification Key,Identificador de clasificación de origen
+Source classification requires review,La clasificación de origen requiere revisión
+Exact Source Classification,Clasificación de origen exacta
+Filtered by source classification,Filtrado por clasificación de origen
+Clear Source Classification,Borrar filtro de clasificación de origen
+No Further Classification,Sin clasificación adicional
+Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,Niveles ordenados de ID de componentes; los ID de un nivel son ramas alternativas. Deje vacío para usar los valores predeterminados de la plantilla.
+Other Source Categories,Otras categorías de origen
+source_other,Otras categorías de origen

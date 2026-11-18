@@ -51,7 +51,7 @@ class MexicoContractTests(unittest.TestCase):
         self.assertFalse(any(k in source for k in ("paid_amount", "pending_amount")))
 
     def test_category_dictionary_preserves_existing_groups_and_adds_operating_and_purchase(self):
-        self.assertEqual({row[0] for row in c.CATEGORIES}, {"personnel","tax","utilities","logistics","services","administration","selling","procurement"})
+        self.assertEqual({row[0] for row in c.CATEGORIES}, {"personnel","tax","utilities","logistics","services","administration","selling","procurement","source_other"})
         self.assertIn("salary", c.SUBCATEGORIES)
         self.assertEqual(c.SUBCATEGORIES["purchase_mro"][0], "procurement")
 

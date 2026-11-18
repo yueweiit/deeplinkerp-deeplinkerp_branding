@@ -194,7 +194,7 @@
 				company: "",
 				approval_type: "",
 				category: "",
-				subcategory: "",
+				subcategory: "", classification_key: "", classification_exact: "",
 				currency: "MXN",
 				status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 				keyword: "",
@@ -266,7 +266,7 @@
 				if (validDateRange(saved)) Object.assign(this.filters, { from_date: saved.from_date, to_date: saved.to_date });
 				if (saved.approval_type === "" || this.context.approval_forms.some((f) => f.id === saved.approval_type)) {
 					if (saved.approval_type !== this.filters.approval_type)
-						Object.assign(this.filters, { category: "", subcategory: "", keyword: "", issue: "" });
+						Object.assign(this.filters, { category: "", subcategory: "", classification_key: "", classification_exact: "", keyword: "", issue: "" });
 					this.filters.approval_type = saved.approval_type;
 				}
 			} catch (_) {
@@ -318,7 +318,7 @@
 				group.addEventListener("click", (event) => {
 					const item = event.target.closest("[data-approval-type]");
 					if (!item || !this.isCurrentRoute()) return;
-					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", issue: "", keyword: "" });
+					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", classification_key: "", classification_exact: "", issue: "", keyword: "" });
 					this.start = 0;
 					this.refresh();
 					this.approvalSidebar?.querySelector('[aria-pressed="true"]')?.focus();
@@ -456,6 +456,7 @@
 			)}</span></div>
                 ${this.context.approval_forms.find((form) => form.id === f.approval_type)?.connected === false
                     ? `<div class="mx-notice">${esc(t("This approval form is not connected yet; no data is available"))}</div>` : ""}
+                ${f.classification_key ? `<div class="mx-notice">${esc(t("Filtered by source classification"))} · ${esc(t("Only confirmed expense lines are included"))} ${button("Clear Source Classification", "clear-classification", "mx-link")}</div>` : ""}
                 ${f.category && !payroll
                     ? `<div class="mx-notice">${esc(t("Expense Category"))}: ${esc(this.cat(f.category)?.label || f.category)} ${button("Clear Expense Category", "clear-category", "mx-link")}</div>` : ""}
                 ${
@@ -643,7 +644,7 @@
 				)}</h3><p>${esc(t("Confirmed expenses within the selected date range by month"))}</p></div><span>${esc(f.currency)}</span></div>${this.trend(data.trend)}</section>
                 <section class="mx-panel"><div class="mx-panel-head"><div><h3>${esc(
 					t("Expense Composition")
-				)}</h3><p>${esc(t("Select a category to view its details"))}</p></div><span>${esc(f.currency)}</span></div>${this.filters.approval_type ? this.donut(data.categories) : this.donut((data.forms || []).map((r) => ({...r, category: r.approval_type})), this.context.approval_forms.map((f, i) => ({...f, color: ["#547ee0", "#69b8ae", "#e2b67d"][i]})), true)}</section></div>${this.companyTable(data.company_forms || [], data.company_totals || [])}`;
+				)}</h3><p>${esc(t("Select a category to view its details"))}</p></div><span>${esc(f.currency)}</span></div>${this.filters.approval_type ? this.sourceComposition(data.composition || []) : this.donut((data.forms || []).map((r) => ({...r, category: r.approval_type})), this.context.approval_forms.map((f, i) => ({...f, color: ["#547ee0", "#69b8ae", "#e2b67d"][i]})), true)}</section></div>${this.companyTable(data.company_forms || [], data.company_totals || [])}`;
 		}
 		trend(rows) {
 			const months = monthsInRange(this.filters.from_date, this.filters.to_date),
@@ -691,6 +692,37 @@
 				})
 				.join("")}</svg></div>`;
 		}
+        sourceComposition(nodes) {
+            this.compositionNodes = nodes;
+            if (this.compositionForm !== this.filters.approval_type) this.compositionSelection = "";
+            this.compositionForm = this.filters.approval_type;
+            const selected = nodes.find((n) => n.id === this.compositionSelection);
+            if (!selected) this.compositionSelection = "";
+            const current = selected?.id || "";
+            const rows = nodes.filter((n) => n.parent === current && cents(n.amount) > 0n);
+            // Older forms may stop at a parent while newer ones provide more detail.
+            // Keep the parent's direct amounts visible and drill them with exact matching.
+            if (selected && cents(selected.direct_amount) > 0n) rows.push({
+                ...selected, label: t("No Further Classification"), amount: selected.direct_amount, has_children: false,
+            });
+            const total = rows.reduce((sum, row) => sum + cents(row.amount), 0n);
+            const trail = [];
+            let ancestor = selected;
+            while (ancestor) {
+                trail.unshift(ancestor);
+                ancestor = nodes.find((n) => n.id === ancestor.parent);
+            }
+            const breadcrumbs = `<div class="mx-classification-trail"><button type="button" class="mx-link" data-classification-open="">${esc(t("All Categories"))}</button>${trail.map((n) => ` / <button type="button" class="mx-link" data-classification-open="${esc(n.id)}" ${n.id === current ? 'disabled aria-current="true"' : ''}>${esc(n.label)}</button>`).join("")}</div>`;
+            if (!total) return `<div class="mx-source-composition">${breadcrumbs}${empty()}</div>`;
+            const color = (id) => `hsl(${parseInt(id.split("/").pop().slice(0, 8), 16) % 360}, 52%, 62%)`;
+            let offset = 0;
+            const gradient = rows.map((row) => {
+                const start = offset;
+                offset += Number(cents(row.amount)) / Number(total) * 100;
+                return `${color(row.id)} ${start}% ${offset}%`;
+            }).join(",");
+            return `<div class="mx-source-composition">${breadcrumbs}<div class="mx-composition"><div class="mx-donut" style="background:conic-gradient(${gradient})"><div><b>${String(rows.length).padStart(2, "0")}</b><small>${esc(t("Categories"))}</small></div></div><div class="mx-legend mx-source-legend">${rows.map((row) => `<div class="mx-classification-row"><button type="button" data-classification-${row.has_children ? "open" : "details"}="${esc(row.id)}" ${row.has_children ? '' : 'data-exact="1"'} title="${esc(row.label)} · ${esc(money(row.amount, this.filters.currency))}"><span><i style="background:${color(row.id)}"></i>${esc(row.label)}${row.has_children ? ' ›' : ''}</span><strong>${(Number(cents(row.amount)) / Number(total) * 100).toFixed(1)}%</strong></button>${row.has_children ? `<button type="button" class="mx-link mx-classification-details" data-classification-details="${esc(row.id)}">${esc(t("View Expense Details"))}</button>` : ''}</div>`).join("")}</div></div></div>`;
+        }
 		donut(rows, categories = this.context.categories, byForm = false) {
 			const byCategory = totals(rows, (r) => r.category),
 				total = Object.values(byCategory).reduce((s, v) => s + cents(v), 0n);
@@ -921,11 +953,22 @@
 		}
 		async click(event) {
 			const target = event.target.closest(
-				"[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue]"
+				"[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue],[data-classification-open],[data-classification-details]"
 			);
 			if (!target || target.disabled) return;
 			const d = target.dataset;
 			if (d.row) return this.detail(d.row);
+            if (d.classificationOpen !== undefined) {
+                this.compositionSelection = d.classificationOpen;
+                const panel = this.el.querySelector(".mx-source-composition");
+                if (panel) panel.outerHTML = this.sourceComposition(this.compositionNodes || []);
+                this.el.querySelector(".mx-source-composition button")?.focus();
+                return;
+            }
+            if (d.classificationDetails) return this.navigate("details", {
+                ...this.filters, category: "", subcategory: "", keyword: "", issue: "",
+                classification_key: d.classificationDetails, classification_exact: d.exact || "",
+            });
 			if (d.action) {
 				if (d.action === "retry" && !this.context) return this.initialize();
 				if (d.action === "criteria") return this.showCriteria();
@@ -939,7 +982,7 @@
 						basis: "period",
 						company: "",
 						category: "",
-						subcategory: "",
+						subcategory: "", classification_key: "", classification_exact: "",
 						currency: "MXN",
 						status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 						keyword: "",
@@ -954,7 +997,8 @@
 					});
 				}
 				if (d.action === "clear-category") Object.assign(this.filters, { category: "", subcategory: "" });
-				if (d.action === "clear-sub") this.filters.subcategory = "";
+				if (d.action === "clear-classification") Object.assign(this.filters, { classification_key: "", classification_exact: "" });
+                if (d.action === "clear-sub") this.filters.subcategory = "";
 				if (d.action === "previous") this.start = Math.max(0, this.start - 25);
 				if (d.action === "next") this.start += 25;
 				if (d.action === "all-issues") {
@@ -977,7 +1021,7 @@
 				return this.refresh();
 			}
 			if (d.company) this.filters.company = d.company;
-			if (d.form) Object.assign(this.filters, { approval_type: d.form, category: "", subcategory: "" });
+			if (d.form) Object.assign(this.filters, { approval_type: d.form, category: "", subcategory: "", classification_key: "", classification_exact: "" });
 			if (d.category) this.filters.category = d.category;
 			if (d.subcategory)
 				Object.assign(this.filters, { category: "personnel", subcategory: d.subcategory });
@@ -1216,6 +1260,7 @@
 							{fieldname: "process_code", label: t("Process Code"), fieldtype:"Data", reqd:1, in_list_view:1, columns:4},
 							{fieldname: "finance_node_names", label: t("Finance Node Names"), fieldtype:"Small Text", default:"MX财务Finanzas"},
 							{fieldname: "finance_activity_ids", label: t("Finance Activity IDs"), fieldtype:"Small Text"},
+							{fieldname: "classification_fields", label: t("Classification Fields JSON"), fieldtype:"Code", options:"JSON", description:t("Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.")},
 							{fieldname: "field_mapping", label: t("Field Mapping JSON"), fieldtype:"Code", options:"JSON", default:"{}"},
 							{fieldname: "last_sync_at", label: t("Last Successful Sync"), fieldtype:"Datetime", read_only:1},
 							{fieldname: "last_error", label: t("Last Sync Error"), fieldtype:"Small Text", read_only:1},

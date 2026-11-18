@@ -19,7 +19,8 @@
   "sync_until",
   "page_count",
   "last_sync_at",
-  "last_error"
+  "last_error",
+  "classification_fields"
  ],
  "fields": [
   {
@@ -102,6 +103,12 @@
    "label": "Last Sync Error",
    "fieldtype": "Small Text",
    "read_only": 1
+  },
+  {
+   "fieldname": "classification_fields",
+   "label": "Classification Fields JSON",
+   "fieldtype": "Code",
+   "options": "JSON"
   }
  ],
  "permissions": []

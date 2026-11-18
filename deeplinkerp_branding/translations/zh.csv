@@ -1035,3 +1035,14 @@ Invalid reporting currency,折算币种无效
 The exchange rate service is unavailable; install Overseas Costing or contact the administrator,汇率服务不可用，请安装海外成本模块或联系管理员
 Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,无法获取 {1} 的 {0} 兑人民币月初汇率，已暂停折算，请在汇率可用后重试。
 Open Original in DingTalk,打开钉钉原单
+Classification Fields JSON,分类字段层级 JSON
+Source Classification Path,来源分类路径
+Source Classification Key,来源分类标识
+Source classification requires review,来源分类待核对
+Exact Source Classification,精确匹配来源分类
+Filtered by source classification,已按来源分类筛选
+Clear Source Classification,清除来源分类筛选
+No Further Classification,未填写下级分类
+Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,按层级顺序填写组件 ID 数组，同一层的 ID 为不同分支；留空使用模板默认配置。
+Other Source Categories,其他来源分类
+source_other,其他来源分类

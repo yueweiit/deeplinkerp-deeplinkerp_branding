@@ -31,6 +31,7 @@ CATEGORIES = (
     ("administration", "Administrative Expenses", "#88a4be"),
     ("selling", "Selling Expenses", "#df9d96"),
     ("procurement", "Purchase Expenses", "#c5a26b"),
+    ("source_other", "Other Source Categories", "#8795a8"),
 )
 SUBCATEGORIES = {
     "welfare": ("personnel", "Employee Benefits", ("职工福利",)),
@@ -64,6 +65,7 @@ MAIN_ALIASES = {
     "services": ("Servicios Profesionales", "专业服务"),
 }
 ISSUES = {
+    "classification": "Source classification requires review",
     "amount_pending": "Zero amount requires review",
     "company": "Subsidiary mapping required", "period": "Awaiting MX Finance approval",
     "finance": "Finance approval evidence requires review",

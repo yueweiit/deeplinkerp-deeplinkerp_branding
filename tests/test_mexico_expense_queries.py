@@ -59,6 +59,18 @@ class MexicoQueryTests(unittest.TestCase):
             row.setdefault('finance_approved_date', row['period_month'])
             self.db.execute('INSERT INTO "tabMexico Expense Line" ('+','.join('"'+c+'"' for c in row)+') VALUES ('+','.join('?' for _ in row)+')',list(row.values()))
 
+    def test_source_classification_subtree_and_exact_scope_keep_company_permissions(self):
+        parent = 'a' * 32
+        child = parent + '/' + 'b' * 32
+        self.db.execute('UPDATE "tabMexico Expense Line" SET classification_key=? WHERE name IN (?,?)', (parent,'a1','forbidden'))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET classification_key=? WHERE name=?', (child,'a2'))
+        subtree = {**self.filters, 'classification_key':parent}
+        self.db.execute('UPDATE "tabMexico Expense Line" SET classification_key=? WHERE name=?', (parent,'missing_period'))
+        self.assertEqual(s._aggregates(subtree,confirmed=True)[0]['amount'],30)
+        self.assertEqual(s._aggregates({**subtree,'basis':'request'})[0]['amount'],30)
+        self.assertEqual(s._aggregates({**subtree,'classification_exact':'1'},confirmed=True)[0]['amount'],10)
+        self.assertEqual(s._aggregates({**subtree,'classification_key':child},confirmed=True)[0]['amount'],20)
+
     def test_approval_form_scope_matches_corporation_and_template_not_expense_category(self):
         self.db.executemany('INSERT INTO "tabMexico Expense Source" VALUES (?,?,?)', [
             ("shared", s.contract.CORP_ID, s.contract.PROCESS_CODE),

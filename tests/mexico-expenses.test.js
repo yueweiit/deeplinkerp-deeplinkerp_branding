@@ -457,3 +457,40 @@ test("template grid uses approval labels in both editing and static cells withou
         assert.equal(field.formatter('expense'),label);
     }
 });
+
+test("source composition expands actual field labels and keeps direct parent amounts", () => {
+    const parent = "a".repeat(32), child = parent + "/" + "b".repeat(32);
+    const wb = { filters: {approval_type:"operating",currency:"MXN"} };
+    const nodes = [
+        {id:parent,parent:"",label:"管理费用 / Admin",amount:"30.00",direct_amount:"10.00",has_children:true},
+        {id:child,parent,label:'平台费 <script>',amount:"20.00",direct_amount:"20.00",has_children:false},
+    ];
+    let html = api.Workbench.prototype.sourceComposition.call(wb,nodes);
+    assert.ok(html.includes(`data-classification-open="${parent}"`));
+    assert.ok(html.includes('100.0%'));
+    wb.compositionSelection = parent;
+    html = api.Workbench.prototype.sourceComposition.call(wb,nodes);
+    assert.ok(html.includes('平台费 &lt;script&gt;'));
+    assert.ok(!html.includes('<script>'));
+    assert.ok(html.includes('66.7%'));
+    assert.ok(html.includes('33.3%'));
+    assert.ok(html.includes('data-exact="1"'));
+    assert.ok(html.includes('No Further Classification'));
+    wb.filters.approval_type = "purchase";
+    api.Workbench.prototype.sourceComposition.call(wb,nodes);
+    assert.equal(wb.compositionSelection, "");
+});
+
+test("source classification detail navigation retains filters with an exact leaf scope", async () => {
+    let actual;
+    const key = "a".repeat(32);
+    const wb = {filters:{approval_type:"purchase",company:"MX",category:"procurement",currency:"USD"},
+        navigate: (view, filters) => {actual={view,filters};}};
+    await api.Workbench.prototype.click.call(wb,{target:{closest:()=>({dataset:{classificationDetails:key,exact:"1"}})}});
+    assert.equal(actual.view,"details");
+    assert.equal(actual.filters.classification_key,key);
+    assert.equal(actual.filters.classification_exact,"1");
+    assert.equal(actual.filters.company,"MX");
+    assert.equal(actual.filters.category,"");
+    assert.equal(actual.filters.currency,"USD");
+});

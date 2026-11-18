@@ -50,7 +50,9 @@
   "source_row_id",
   "approval_type",
   "business_category",
-  "salary_type"
+  "salary_type",
+  "classification_path",
+  "classification_key"
  ],
  "fields": [
   {
@@ -152,7 +154,7 @@
    "fieldname": "category",
    "label": "Expense Category",
    "fieldtype": "Select",
-   "options": "\npersonnel\ntax\nutilities\nlogistics\nservices\nadministration\nselling\nprocurement",
+   "options": "\npersonnel\ntax\nutilities\nlogistics\nservices\nadministration\nselling\nprocurement\nsource_other",
    "in_list_view": 1,
    "read_only": 1
   },
@@ -319,6 +321,18 @@
    "fieldname": "salary_type",
    "label": "Salary Type",
    "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "classification_path",
+   "label": "Source Classification Path",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "classification_key",
+   "label": "Source Classification Key",
+   "fieldtype": "Small Text",
    "read_only": 1
   }
  ],

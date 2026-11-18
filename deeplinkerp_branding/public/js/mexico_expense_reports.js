@@ -10,6 +10,8 @@ frappe.deeplinkerp.mexico_expense_report = function (kind) {
 			return defaultFormatter(value, row, column, data);
 		},
 		filters: [
+            {fieldname: "classification_key", label: __("Source Classification Key"), fieldtype: "Data", hidden: 1},
+            {fieldname: "classification_exact", label: __("Exact Source Classification"), fieldtype: "Data", hidden: 1},
 			{
                 fieldname: "from_date", label: __("Start Date"), fieldtype: "Date", reqd: 1,
             },

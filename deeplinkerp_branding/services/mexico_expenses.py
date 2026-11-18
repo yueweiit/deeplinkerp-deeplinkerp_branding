@@ -21,6 +21,7 @@ from . import operating_oa_http as http
 from . import mexico_expense_templates as templates
 from . import mexico_expense_projection as projection
 from . import mexico_expense_fx as fx
+from . import mexico_expense_classification as classification
 from .operating_expense_contract import digest
 from .purchase_payment_service import _require_fields
 
@@ -29,7 +30,7 @@ LINE = "Mexico Expense Line"
 SETTINGS = "Mexico Expense Settings"
 MAX_EXPORT_ROWS = 20000
 FIELDS = ("name", "source", "source_version", "row_fingerprint", "modified", "approval_no", "applicant",
-    "company", "source_entity", "entity_kind", "approval_type", "business_category", "salary_type", "category", "subcategory", "description", "amount", "amount_raw",
+    "company", "source_entity", "entity_kind", "approval_type", "business_category", "classification_path", "classification_key", "salary_type", "category", "subcategory", "description", "amount", "amount_raw",
     "currency", "approval_status", "request_date", "planned_payment_date", "finance_approved_at", "finance_approved_date", "period_month", "period_start",
     "period_end", "period_kind", "period_version", "review_state", "issues", "base_issues", "review_note", "reviewed_by", "reviewed_at", "company_basis", "mapping_version")
 _managed = ContextVar("mexico_expense_managed_write", default=False)
@@ -104,7 +105,7 @@ def _template_key(template):
 
 
 def _template_facts(settings):
-    return [{k: t.get(k) for k in ("corp_id", "process_code", "approval_type", "finance_node_names", "finance_activity_ids", "field_mapping")}
+    return [{k: t.get(k) for k in ("corp_id", "process_code", "approval_type", "finance_node_names", "finance_activity_ids", "field_mapping", "classification_fields")}
             for t in sorted(_templates(settings), key=_template_key)]
 
 
@@ -213,7 +214,9 @@ def _upsert(row, settings):
     mappings = _maps(settings)
     for raw in projected:
         old = previous.get(raw["line_key"])
-        line = contract.apply_review(raw, old, mappings, settings.mapping_version or "")
+        legacy_fingerprint = raw.pop("_legacy_row_fingerprint", None)
+        prior_review = projection.compatible_previous_review(old, raw, source["source_version"], legacy_fingerprint)
+        line = contract.apply_review(raw, prior_review, mappings, settings.mapping_version or "")
         line.update({k: source.get(k) for k in ("source_version", "approval_no", "applicant", "approval_status", "request_date", "planned_payment_date")})
         line.update(is_active=1, period_version=_period_version(settings), issues=json.dumps(line["issues"]), base_issues=json.dumps(raw["base_issues"]))
         item = frappe.get_doc(LINE, raw["line_key"], for_update=True) if old else frappe.new_doc(LINE)
@@ -302,7 +305,7 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
             old = old_templates.get(identity)
             if old and item["approval_type"] != old.get("approval_type"):
                 frappe.throw(_("An existing template cannot change approval form"))
-            changed_rules = not old or any(item.get(k) != old.get(k) for k in ("finance_node_names", "finance_activity_ids", "field_mapping"))
+            changed_rules = not old or any((item.get(k) or "") != (old.get(k) or "") for k in ("finance_node_names", "finance_activity_ids", "field_mapping", "classification_fields"))
             if item["enabled"] and (changed_rules or not old.get("enabled")):
                 _preview_template(item, business_timezone)
             if old:
@@ -330,7 +333,7 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
 def _period_version(settings):
     # The shared cache guard also blocks facts projected before the mapping and
     # zero-amount fixes. Reprojection keeps the finance dates themselves unchanged.
-    return digest(["mx-finance-period-v3", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
+    return digest(["mx-finance-period-v4.2-classification-review", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
 
 
 def _projection_version(settings):
@@ -457,7 +460,7 @@ def preview_template(template, business_timezone="America/Mexico_City"):
 
 def _filters(filters):
     values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue"}
+    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact"}
     if not isinstance(values, dict) or set(values) - allowed:
         frappe.throw(_("Invalid Mexico expense filters"))
     if any(not isinstance(v, str) or len(v) > 200 for v in values.values() if v is not None):
@@ -485,6 +488,10 @@ def _filters(filters):
         frappe.throw(_("Invalid expense category"))
     if values.get("subcategory") and values["subcategory"] not in contract.SUBCATEGORIES:
         frappe.throw(_("Invalid expense category"))
+    if values.get("classification_key") and (not values.get("approval_type") or not re.fullmatch(classification.KEY_PATTERN, values["classification_key"])):
+        frappe.throw(_("Invalid expense category"))
+    if values.get("classification_exact") not in (None, "", "1"):
+        frappe.throw(_("Invalid expense category"))
     if values.get("issue") and values["issue"] not in contract.ISSUES:
         frappe.throw(_("Invalid review issue"))
     if values.get("keyword") and (not isinstance(values["keyword"], str) or len(values["keyword"]) > 200):
@@ -496,6 +503,8 @@ def _query(values, fields, *, confirmed=False, review=False):
     """All lists, aggregates, native reports and exports share this scope."""
     from pypika.functions import Coalesce
     table = frappe.qb.DocType(LINE)
+    # Chart drilldown must reconcile to the confirmed amounts displayed in the chart.
+    confirmed = confirmed or bool(values.get("classification_key") and not review)
     filters = [["is_active", "=", 1]]
     for field in ("company", "category", "subcategory"):
         if values.get(field):
@@ -527,6 +536,12 @@ def _query(values, fields, *, confirmed=False, review=False):
             query = query.where(currency_scope)
         if approval_scope is not None:
             query = query.where(approval_scope)
+        if values.get("classification_key"):
+            key = values["classification_key"]
+            match = table.classification_key == key
+            if values.get("classification_exact") != "1":
+                match |= table.classification_key.like(key + "/%")
+            query = query.where(match)
         if values.get("keyword"):
             keyword = "%" + values["keyword"].replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
             query = query.where(table.approval_no.like(keyword) | table.description.like(keyword) | table.source_entity.like(keyword))
@@ -619,6 +634,9 @@ def _public_lines(rows):
 
 def _public_line(row, mapping_version, period_version):
     item = dict(row)
+    if item.get("classification_path"):
+        path = json.loads(item["classification_path"])
+        item["business_category"] = " → ".join(_(node["label"]) if node.get("translate") else node["label"] for node in path)
     item["issues"] = json.loads(item.get("issues") or "[]")
     if item.get("company_basis") != "manual" and item.get("mapping_version") != mapping_version:
         item["issues"] = sorted(set(item["issues"] + ["stale"]))
@@ -664,10 +682,13 @@ def get_overview(filters=None):
         return _aggregates(values, groups, conversion=conversion, **scope)
     def clean(rows):
         return [{**r, "amount": str(r.get("amount") or 0)} for r in rows]
+    nodes = classification.composition(aggregate(("classification_path",), confirmed=True)) if values.get("approval_type") else []
+    nodes = [{**node, "label": _(node["label"]) if node.get("translate") else node["label"]} for node in nodes]
     return {"metrics": clean(aggregate(("approval_status",))),
         "forms": clean(aggregate(("approval_type",), confirmed=True)),
         "company_forms": clean(aggregate(("company", "approval_type"), confirmed=True)),
         "categories": clean(aggregate(("category",), confirmed=True)),
+        "composition": nodes,
         "companies": clean(aggregate(("company", "category"), confirmed=True)),
         "company_totals": clean(aggregate(("company",), confirmed=True)),
         "trend": clean(aggregate(({"period": "period_month", "request": "request_date", "planned": "planned_payment_date"}[values["basis"]], "category"), confirmed=True)),

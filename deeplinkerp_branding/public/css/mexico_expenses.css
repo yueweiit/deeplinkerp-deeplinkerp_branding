@@ -1020,3 +1020,32 @@
  .mx-range-popup { width: 320px; }
  .mx-range-popup .mx-range-calendars { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Source labels can be bilingual and longer than the accounting category names. */
+.mx-expenses .mx-classification-trail {
+    padding: 0 23px;
+    overflow-wrap: anywhere;
+    line-height: 1.8;
+}
+.mx-expenses .mx-classification-trail button:disabled {
+    color: var(--text-color);
+    cursor: default;
+}
+.mx-expenses .mx-source-legend {
+    min-width: 0;
+    max-height: 340px;
+    overflow-y: auto;
+}
+.mx-expenses .mx-classification-row > button {
+    width: 100%;
+}
+.mx-expenses .mx-classification-row > button > span {
+    overflow-wrap: anywhere;
+}
+.mx-expenses .mx-classification-row strong {
+    flex-shrink: 0;
+}
+.mx-expenses .mx-source-legend .mx-classification-details {
+    margin-top: 4px;
+    color: var(--mx-blue);
+}

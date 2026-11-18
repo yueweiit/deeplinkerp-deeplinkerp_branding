@@ -21,7 +21,7 @@ def text(value):
     return str(value)
 
 
-def project(row, template, business_timezone):
+def _project(row, template, business_timezone):
     template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
     if row.get('corp_id')!=template['corp_id'] or row.get('process_code')!=template['process_code'] or not row.get('process_instance_id'):
         raise ValueError('Unexpected Mexico approval identity')
@@ -137,3 +137,61 @@ def project(row, template, business_timezone):
         finance_approved_at=period['finance_approved_at'],finance_approved_date=period['finance_approved_date'],approval_type=family,
         details_json=json.dumps({'fields':{'Production Type':text(value('production')),'Execution Region':text(value('region')),'Application Type':text(value('request_type')),'Source Department':department,'Delivery Date':text(value('delivery')),'Budget Snapshot':text(value('budget')),'Used Budget Snapshot':text(value('budget_used'))},'tables':details},ensure_ascii=False))
     return source,lines
+
+
+def project(row, template, business_timezone):
+    from . import mexico_expense_classification as classification
+    template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
+    source, lines = _project(row, template, business_timezone)
+    path, problems = classification.extract(row, template)
+    conflict = False
+    if template['approval_type'] == 'expense':
+        raw = row.get('raw_payload') or {}
+        components = c._json(row.get('form_component_values') or raw.get('formComponentValues') or [])
+        fields, _ = templates.resolve(components, template, schema=templates.EXPENSE_FIELDS)
+        main = c._match(fields.get('expense_type', {}).get('value'), c.MAIN_ALIASES)
+        candidates = {c._match(fields.get(key, {}).get('value'), {k: v[2] for k, v in c.SUBCATEGORIES.items()})
+                      for key in ('personnel_category', 'tax_category', 'utilities_category', 'logistics_category', 'services_category')} - {None}
+        conflict = len(candidates) > 1 or bool(main and any(c.SUBCATEGORIES[sub][0] != main for sub in candidates))
+    source_path, source_problems = path, problems
+    for line in lines:
+        legacy_fingerprint = line['row_fingerprint']
+        path, problems = classification.line_path(row, template, line, source_path, source_problems)
+        # New source options are valid classifications without a hardcoded alias.
+        # Keep them out of payroll assumptions; fixed accounting reports have an explicit fallback column.
+        if path and not problems and not conflict and 'category' in line['base_issues']:
+            line['category'], line['subcategory'] = 'source_other', None
+            line['base_issues'] = [issue for issue in line['base_issues'] if issue != 'category']
+        path = classification.expense_root(row, template, line, path)
+        line.update(classification_path=json.dumps(path, ensure_ascii=False),
+                    classification_key=path[-1]['key'] if path else '')
+        line['base_issues'] = sorted(set(line['base_issues'] + problems))
+        line['business_category'] = ' → '.join(node.get('source_label') or node['label'] for node in path)
+        line['_legacy_row_fingerprint'] = legacy_fingerprint  # consumed before persistence
+        line['row_fingerprint'] = 'mx-class-v1:' + c.digest([
+            legacy_fingerprint, line['category'], line['subcategory'],
+            line['classification_key'], line['base_issues'],
+        ])
+    return source, lines
+
+
+def compatible_previous_review(previous, line, source_version, legacy_fingerprint):
+    """Upgrade a pre-classification review only against the identical saved snapshot.
+
+This is a one-way bridge: versioned fingerprints never enter this branch.
+Changed paths, business facts, source snapshots and already-stale reviews must
+follow the ordinary stale-review handling.
+"""
+    if not previous or not legacy_fingerprint:
+        return previous
+    old_fingerprint = previous.get('row_fingerprint') or ''
+    if (old_fingerprint != legacy_fingerprint
+            or previous.get('reviewed_fingerprint') != old_fingerprint
+            or old_fingerprint.startswith('mx-class-v1:')
+            or not source_version or previous.get('source_version') != source_version
+            or 'stale' in c._json(previous.get('issues') or '[]')
+            or previous.get('category') != line.get('category')
+            or previous.get('subcategory') != line.get('subcategory')
+            or previous.get('classification_key') and previous.get('classification_key') != line.get('classification_key')):
+        return previous
+    return {**previous, 'reviewed_fingerprint': line['row_fingerprint']}
