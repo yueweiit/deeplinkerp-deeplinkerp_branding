@@ -82,6 +82,8 @@
 		trend: "Mexico Expense Trend",
 	};
 	const reportTitles = {company: "Expenditure Analysis", payroll: "Mexico Personnel Expenses", trend: "Expenditure Analysis"};
+	const insightUI = () => root.DeepLinkERPMexicoExpenseInsights || (typeof module === "object" && module.exports ? require("./mexico_expense_insights.js")(root) : null);
+	const help = (text) => insightUI().help(text);
 	const nodeMoneyFormatter = typeof module === "object" && module.exports
 		? require("./mexico_expense_money.js")(root) : null;
 	// frappe.require may fetch these scripts concurrently; resolve the browser
@@ -369,6 +371,7 @@
 				</div></div>`;
 		}
 		disposeFilterControls() {
+			insightUI()?.dispose(this.el);
 			this.disposeDateControls();
 			root.$(this.el).find(".mx-select-toggle").each(function () {
 				// Dispose only mounted dropdowns; Bootstrap owns outside-click and keyboard events.
@@ -465,18 +468,16 @@
 						planned: "Planned Payment Date",
 					}[f.basis]
 				)
-			)} · ${esc(f.approval_type ? this.form(f.approval_type) : t("All Approval Forms"))} · ${esc(t(statuses[f.status]))} · ${esc(f.currency)}</span><span>${esc(
-				t("OA approvals do not prove actual payment")
-			)}</span></div>
+			)} · ${esc(f.approval_type ? this.form(f.approval_type) : t("All Approval Forms"))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(statuses[f.status]))} · ${esc(f.currency)}</span><span>${help(t("OA approvals do not prove actual payment"))}</span></div>
                 ${this.context.approval_forms.find((form) => form.id === f.approval_type)?.connected === false
                     ? `<div class="mx-notice">${esc(t("This approval form is not connected yet; no data is available"))}</div>` : ""}
-                ${f.confirmed_only ? `<div class="mx-notice">${esc(t("Only confirmed expense lines are included"))} ${button("Show All Matching Details", "clear-confirmed", "mx-link")}</div>` : ""}
-                ${f.classification_key ? `<div class="mx-notice">${esc(t("Filtered by source classification"))} · ${esc(t("Only confirmed expense lines are included"))} ${button("Clear Source Classification", "clear-classification", "mx-link")}</div>` : ""}
+                ${f.confirmed_only ? `<div class="mx-active-filter">${esc(t("Only confirmed expense lines are included"))} ${button("Show All Matching Details", "clear-confirmed", "mx-link")}</div>` : ""}
+                ${f.classification_key ? `<div class="mx-active-filter">${esc(t("Filtered by source classification"))} · ${esc(t("Only confirmed expense lines are included"))} ${button("Clear Source Classification", "clear-classification", "mx-link")}</div>` : ""}
                 ${f.category && !payroll
-                    ? `<div class="mx-notice">${esc(t("Expense Category"))}: ${esc(this.cat(f.category)?.label || f.category)} ${button("Clear Expense Category", "clear-category", "mx-link")}</div>` : ""}
+                    ? `<div class="mx-active-filter">${esc(t("Expense Category"))}: ${esc(this.cat(f.category)?.label || f.category)} ${button("Clear Expense Category", "clear-category", "mx-link")}</div>` : ""}
                 ${
 					f.subcategory
-						? `<div class="mx-notice">${esc(this.sub(f.subcategory)?.label)} ${button(
+						? `<div class="mx-active-filter">${esc(this.sub(f.subcategory)?.label)} ${button(
 								"Clear Subcategory",
 								"clear-sub",
 								"mx-link"
@@ -488,11 +489,10 @@
 				)}…</div></div>
                 <footer class="mx-footer"><span>${esc(
 					t("Last Successful Sync")
-				)}: <span class="mx-last-sync">—</span></span><span>${esc(
-				t("Month-start rates by finance approval month; pending approvals use application month estimates")
-			)}</span></footer>`;
+				)}: <span class="mx-last-sync">—</span></span><span>${help(t("Month-start rates by finance approval month; pending approvals use application month estimates"))}</span></footer>`;
 			this.mountDateControls();
 			this.mountSelectControls();
+			insightUI()?.mount(this.el);
 			this.setSyncTime();
 		}
 		setSyncTime() {
@@ -602,6 +602,7 @@
 					? `<div class="mx-notice mx-warning">${esc(this.context.last_error)}</div>`
 					: "";
 				this.el.querySelector(".mx-body").innerHTML = sync + html;
+				insightUI()?.mount(this.el);
 				if (searchFocus) {
 					const input = this.el.querySelector("#mx-search");
 					input?.focus();
@@ -896,7 +897,7 @@
             const summary = data.insights ? root.DeepLinkERPMexicoExpenseInsights.render(data.insights, {
                 currency:this.filters.currency, approval:this.filters.approval_type ? this.form(this.filters.approval_type) : t("All Approval Forms"),
                 company:this.filters.company || t("All Subsidiaries"), basis:t({period:"Expense Period",request:"Application Date",planned:"Planned Payment Date"}[this.filters.basis]),
-                kind, categories:this.context.categories, subcategories:this.context.subcategories,
+                kind, categories:this.context.categories, subcategories:this.context.subcategories, from:this.filters.from_date, to:this.filters.to_date,
             }) : data.insightsUnavailable ? `<div class="mx-notice mx-warning">${esc(t("Management analysis is unavailable or data changed. Refresh to retry; the summary table remains available."))}</div>` : "";
             const partialMonths = new Set((data.insights?.trend || []).filter(r=>r.partial).map(r=>r.month));
             const displayRows = [], subtotals = new Map();
@@ -914,20 +915,13 @@
             });
             return (
                 summary + cards +
-				`<div class="mx-notice">${esc(
-					t("Reports include confirmed expense lines in the selected approval status")
-				)} ${esc(
-					t("OA approvals do not prove actual payment")
-				)}</div><section class="mx-panel"><div class="mx-panel-head"><div><h3>${esc(
-					t(reportNames[kind])
-				)}</h3><p>${esc(
-					t(
-						kind === "payroll"
-							? "Payroll is summarized by subsidiary, category and period; no employee details"
-							: "Only confirmed expense lines are included"
-					)
-				)}</p></div><div class="mx-report-actions">${kind !== "payroll" ? `<div class="mx-analysis-group" role="group" aria-label="${esc(t("Analysis Dimension"))}">${["company","trend"].map(group => `<button type="button" class="mx-button" data-action="group-${group}" aria-pressed="${kind === group}">${esc(t(group === "company" ? "By Subsidiary" : "By Month"))}</button>`).join("")}</div>` : ""}${button("Open Native Report", "native-report", "mx-link")}</div></div>${
-					data.rows.length
+				`<section class="mx-panel"><div class="mx-panel-head"><div><h3>${esc(t(reportNames[kind]))} ${help([
+                    t("Reports include confirmed expense lines in the selected approval status"),
+                    t("OA approvals do not prove actual payment"),
+                    t(kind === "payroll" ? "Payroll is summarized by subsidiary, category and period; no employee details" : "Only confirmed expense lines are included"),
+                    t("Reporting months follow MX Finance approval in the business timezone"),
+                ].join("\n"))}</h3></div><div class="mx-report-actions">${kind !== "payroll" ? `<div class="mx-analysis-group" role="group" aria-label="${esc(t("Analysis Dimension"))}">${["company","trend"].map(group => `<button type="button" class="mx-button" data-action="group-${group}" aria-pressed="${kind === group}">${esc(t(group === "company" ? "By Subsidiary" : "By Month"))}</button>`).join("")}</div>` : ""}${button("Open Native Report", "native-report", "mx-link")}</div></div>${
+                    data.rows.length
 						? `<div class="mx-scroll"><table><thead><tr>${data.columns
 								.map(
 									(c) =>
@@ -979,9 +973,7 @@
 								)
 								.join("")}</tr></tfoot></table></div>`
 						: empty()
-				}<div class="mx-panel-foot">${esc(
-					t("Reporting months follow MX Finance approval in the business timezone")
-				)}</div></section>`
+				}</section>`
 			);
 		}
 		showCriteria() {

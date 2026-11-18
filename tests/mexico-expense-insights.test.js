@@ -113,3 +113,9 @@ test('analysis dimension survives direct links and URL updates without entering 
  wb.rememberFilters();assert.ok(replaced.includes('mx_group=trend'));
  assert.equal(wb.effectiveFilters().mx_group,undefined);
 });
+
+test('help text escapes source values and remains available to keyboard and assistive technology',()=>{
+ const ui=renderer({});const html=ui.help('Rule <img src=x> " &');
+ assert.ok(html.includes('type="button"'));assert.ok(html.includes('aria-label="Rule &lt;img'));
+ assert.ok(!html.includes('<img'));assert.ok(html.includes('data-mx-help'));
+});

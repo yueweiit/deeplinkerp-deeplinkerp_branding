@@ -1085,6 +1085,17 @@
 	.mx-expenses .mx-month-bar { grid-template-columns: 66px 1fr 100px; gap: 6px; }
 }
 
+.mx-expenses .mx-help {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 17px; height: 17px; padding: 0; margin-left: 5px;
+    border: 1px solid var(--mx-muted); border-radius: 50%;
+    background: transparent; color: var(--mx-muted); font-size: 11px;
+    line-height: 1; font-weight: 500; cursor: help; vertical-align: middle;
+}
+.mx-expenses .mx-help:hover, .mx-expenses .mx-help:focus-visible { color: var(--mx-blue); border-color: var(--mx-blue); }
+.mx-report-tooltip .tooltip-inner { max-width: 360px; text-align: left; white-space: pre-line; overflow-wrap: anywhere; }
+.mx-expenses .mx-active-filter { display: inline-flex; align-items: center; gap: 12px; padding: 6px 12px; margin: 0 8px 14px 0; border: 1px solid var(--mx-line); border-radius: 16px; max-width: 100%; flex-wrap: wrap; font-size: 12px; }
 .mx-expenses .mx-report-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .mx-expenses .mx-analysis-group { display: inline-flex; gap: 4px; }
 .mx-expenses .mx-analysis-group [aria-pressed="true"] { background: var(--mx-blue-light); color: var(--mx-blue); border-color: var(--mx-blue); }
+.mx-expenses .mx-comparison-dates { display: block; margin-top: 6px; }
