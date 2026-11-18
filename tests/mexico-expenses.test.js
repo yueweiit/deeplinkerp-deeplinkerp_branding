@@ -445,10 +445,10 @@ test("composition legend follows filtered amounts and retains form/category dril
 test("template grid uses approval labels in both editing and static cells without changing stored codes", async () => {
     for (const label of ['费用支出', 'Expense Requests', 'Solicitudes de gastos']) {
         let options;
-        const local = factory({frappe: {
+        const local = factory({DeepLinkERPMexicoExpenseMappings: {Editor: class {async loadPage() {}}}, frappe: {
             call: async () => ({message: {can_manage: true, approval_forms: [{id:'expense',label}],
                 settings: {templates: [],company_mappings: []}}}),
-            ui: {Dialog: class {constructor(value) {options=value;} show() {}}},
+            ui: {Dialog: class {constructor(value) {options=value;this.fields_dict={company_mappings:{$wrapper:{}}};} show() {}}},
         }});
         const page = Object.create(local.Workbench.prototype);
         await page.settings();
@@ -456,6 +456,34 @@ test("template grid uses approval labels in both editing and static cells withou
         assert.deepEqual(field.options,[{value:'expense',label}]);
         assert.equal(field.formatter('expense'),label);
     }
+});
+
+test("settings save sends explicitly edited alias draft through the existing versioned API", async () => {
+    let options, editor, submitted;
+    const original = [{source_entity:"Old A", entity_kind:"entity", company:"A"}];
+    const context = {can_manage:true, companies:["A"], approval_forms:[], settings:{
+        config_version:"v1", company_mappings:original, templates:[]}};
+    const local = factory({
+        DeepLinkERPMexicoExpenseMappings:{Editor:class {
+            constructor(config) {this.mappings=config.mappings.map(r=>({...r}));editor=this;}
+            async loadPage() {}
+        }},
+        frappe:{call:async ({method,args})=>{
+            if (method.endsWith("save_settings")) {submitted=args;return {message:{ok:true}};}
+            return {message:context};
+        },show_alert:()=>{},ui:{Dialog:class {
+            constructor(value) {options=value;this.fields_dict={company_mappings:{$wrapper:{}}};}
+            show() {} hide() {} disable_primary_action() {} enable_primary_action() {}
+        }}}
+    });
+    const wb=Object.create(local.Workbench.prototype);wb.refresh=async()=>{};
+    await wb.settings();
+    assert.equal(submitted,undefined);
+    editor.mappings.push({source_entity:"New A",entity_kind:"entity",company:"A"});
+    await options.primary_action({enabled:0,business_timezone:"America/Mexico_City",approval_templates:[]});
+    assert.equal(submitted.company_mappings.length,2);
+    assert.equal(submitted.expected_config_version,"v1");
+    assert.equal(original.length,1);
 });
 
 test("source composition expands actual field labels and keeps direct parent amounts", () => {

@@ -2447,3 +2447,23 @@ No Further Classification,No Further Classification
 Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.
 Other Source Categories,Other Source Categories
 source_other,Other Source Categories
+Subsidiary Aliases,Subsidiary Aliases
+Maintain historical names under each subsidiary. Entity and department aliases are separate. Changes take effect after Save Settings.,Maintain historical names under each subsidiary. Entity and department aliases are separate. Changes take effect after Save Settings.
+{0} aliases,{0} aliases
+No aliases configured,No aliases configured
+Edit Aliases,Edit Aliases
+Historical Source Names,Historical Source Names
+Apply to Settings,Apply to Settings
+Unmapped Source Names,Unmapped Source Names
+"Suggestions do not assign a company. Select the subsidiary and add the alias, then Save Settings to recheck existing details.","Suggestions do not assign a company. Select the subsidiary and add the alias, then Save Settings to recheck existing details."
+Unable to load unmapped names,Unable to load unmapped names
+Missing Source Entity,Missing Source Entity
+Included in Settings,Included in Settings
+Complete the source information first,Complete the source information first
+Select Subsidiary,Select Subsidiary
+Add Alias,Add Alias
+Suggested Subsidiaries,Suggested Subsidiaries
+No unmapped names,No unmapped names
+Invalid mapping page,Invalid mapping page
+Expense Lines,Expense Lines
+Loading...,Loading...

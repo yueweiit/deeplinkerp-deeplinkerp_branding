@@ -6,6 +6,10 @@
 
 工作台在左侧二级导航提供费用概览、费用明细、薪酬人事、统计报表和数据核对五个入口。“统计报表”为原生可折叠分组，包含子公司费用汇总、薪酬人事汇总、月度费用趋势三个子菜单，移除内容区原有横向报表切换栏。复用 Frappe Section Break 的展开/折叠和本地状态保存；进入任一子报表时，由原生侧栏按独立路由高亮子项并展开父级。内容区直接从筛选条件开始，不再重复显示大标题、介绍和横向五页签；“统计口径”保留在右上角菜单。费用承担主体对应 ERP Company；部门仅在管理员明确配置 `department` 类型映射时才可归属公司。映射以主体类型和原始名称形成稳定键，不用可能被复用的钉钉选项 key 单独判定公司。
 
+同步设置按 ERP 子公司集中维护多个来源历史名称，继续存入现有 `Mexico Expense Company Map`，无需增加公司或修改来源原文。每个名称分别指定 `entity`（费用承担主体）或 `department`（部门）；同一名称与类型只能映射一个公司。编辑弹窗“应用到设置”及未映射列表“添加历史名称”仅修改当前设置草稿，点击主弹窗“保存设置”后才持久化并复用异步缓存重算。取消设置不写入数据，配置版本冲突时拒绝覆盖。
+
+`get_unmapped_entities(start)` 仅向具备全部现有映射公司权限的系统管理员提供活动、未归属公司的名称分组及明细数量，沿用原生明细读取权限，每页 50 组。建议来自获授权的墨西哥非集团公司名称和同类型已确认别名，大小写、空格、全半角和标点差异仅用于候选推荐；相似名称最多展示三个候选，不自动选择或保存。部门只参考明确配置的部门别名，不从公司名称推断。空来源不提供映射操作；需补充来源后重新同步。已在当前设置中的别名会显示目标公司，避免后台重算未完成时重复添加。来源身份键及正式财务归属匹配规则保持不变。实现入口：`services/mexico_expense_mapping.py`、`services/mexico_expenses.py:get_unmapped_entities/save_settings`、`public/js/mexico_expense_mappings.js`。
+
 审批表分为运营支出、费用支出、采购支出。费用支出保留薪酬人事、税费、公用运营、运输物流、专业服务分类；运营支出补充福利、管理费用、销售费用，采购支出细分 MRO、订单、投资、服务和项目采购。薪酬人事包含工资、社保、Fonacot、年终奖、奖金，其余分类见 `services/mexico_expense_contract.py` 的 `CATEGORIES`、`SUBCATEGORIES`。分类使用中立编码；界面和报表以翻译后的标签展示。来源按稳定组件 ID 识别结构，并使用集中维护的历史标签别名识别类别；未知值、歧义和重复字段留待核对。
 
 - 申请金额卡片展示所选口径下的来源明细金额；待核对数据与已确认统计分开。子公司图表、趋势、薪酬和汇总报表仅采用无来源问题且归属、期间已确认的明细。
@@ -117,7 +121,7 @@
 | --- | --- |
 | 纯解析、分类、金额、期间、确认失效 | `services/mexico_expense_contract.py`；多模板适配 `mexico_expense_projection.py`、配置及布局 `mexico_expense_templates.py` |
 | 同步、权限、查询、报表、核对和附件 | `services/mexico_expenses.py` |
-| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js`、`public/js/mexico_expense_money.js` 和 `public/css/mexico_expenses.css` |
+| 页面及本页样式 | 七个 `deeplinkerp_branding/page/mexico_*/` 页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js`、`public/js/mexico_expense_money.js`、`public/js/mexico_expense_mappings.js` 和 `public/css/mexico_expenses.css` |
 | 标准报表 | `deeplinkerp_branding/report/mexico_subsidiary_expenses/`、`mexico_personnel_expenses/`、`mexico_expense_trend/`；通过原生 include 共用 `public/js/mexico_expense_reports.js` 筛选定义 |
 | 一级导航与首页图标 | `desktop_icon/mexico_expenses.json`、`workspace_sidebar/mexico_expenses.json`、`public/icons/desktop_icons/solid/mexico_expenses.svg`；排序和首页兼容复用 `public/js/deeplinkerp_navigation.js` 与 `deeplinkerp_branding.js` |
 | 安装、索引与 hooks | `mexico_expense_install.py`、`hooks.py` |
@@ -141,7 +145,7 @@
 
 ## API 与权限
 
-方法均位于 `deeplinkerp_branding.services.mexico_expenses`，要求登录。`get_context`、`get_lines`、`get_overview`、`get_report`、`get_detail`、`get_attachments` 提供受权限约束的读取；`export_report` 返回 XLSX，`download_attachment` 返回经校验的文件。`save_settings`、`enqueue_sync`、`review_line` 仅接受 POST。
+方法均位于 `deeplinkerp_branding.services.mexico_expenses`，要求登录。`get_context`、`get_unmapped_entities`、`get_lines`、`get_overview`、`get_report`、`get_detail`、`get_attachments` 提供受权限约束的读取；`export_report` 返回 XLSX，`download_attachment` 返回经校验的文件。`save_settings`、`enqueue_sync`、`review_line` 仅接受 POST。
 
 筛选字段为 `from_date/to_date`（YYYY-MM-DD，含起止日期；兼容旧 `month`）、`basis`（`period/request/planned`）、`company`、`approval_type`（`operating/expense/purchase`）、`category`、`subcategory`、`reporting_currency`（折算币种）、`currency`（兼容旧原币筛选）、`status`、`keyword`、`issue`。列表每页最多 100 行；明细导出最多 20000 行。全部汇总、列表、标准报表和导出共用 `_query()`，启用原生查询权限并检查字段读取范围；金额和去重计数在数据库聚合，避免浏览器分页后的局部数据被当成全量。明细列表、详情和导出在序列化时每批读取一次当前映射版本，避免逐行读取设置及映射子表。
 

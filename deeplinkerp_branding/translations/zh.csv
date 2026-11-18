@@ -1046,3 +1046,23 @@ No Further Classification,未填写下级分类
 Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,按层级顺序填写组件 ID 数组，同一层的 ID 为不同分支；留空使用模板默认配置。
 Other Source Categories,其他来源分类
 source_other,其他来源分类
+Subsidiary Aliases,子公司历史名称
+Maintain historical names under each subsidiary. Entity and department aliases are separate. Changes take effect after Save Settings.,按子公司维护历史名称，费用承担主体与部门分别映射。点击“保存设置”后生效。
+{0} aliases,{0} 个历史名称
+No aliases configured,暂无历史名称
+Edit Aliases,编辑历史名称
+Historical Source Names,来源历史名称
+Apply to Settings,应用到设置
+Unmapped Source Names,未映射来源名称
+"Suggestions do not assign a company. Select the subsidiary and add the alias, then Save Settings to recheck existing details.",建议不会自动分配公司。请选择子公司并添加历史名称，再保存设置，系统将重新核对已有明细。
+Unable to load unmapped names,无法加载未映射名称
+Missing Source Entity,来源主体缺失
+Included in Settings,已加入设置
+Complete the source information first,请先补充来源信息
+Select Subsidiary,请选择子公司
+Add Alias,添加历史名称
+Suggested Subsidiaries,建议子公司
+No unmapped names,暂无未映射名称
+Invalid mapping page,无效的映射列表页码
+Expense Lines,费用明细数
+Loading...,加载中…

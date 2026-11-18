@@ -77,6 +77,25 @@ class MexicoServiceTests(unittest.TestCase):
                 s.reproject_cache(version, start=50)
             self.assertEqual(upsert.call_count, 51)
 
+    def test_alias_settings_reuse_reprojection_and_reject_duplicate_or_stale_save(self):
+        settings = Doc(enabled=0, business_timezone="America/Mexico_City", mapping_version="old",
+                       config_version="old", company_mappings=[])
+        entries = [dict(source_entity=name, entity_kind="entity", company="A") for name in ("Old A", "New A")]
+        with patch.object(s, "_settings", return_value=settings), patch.object(s, "_require_manager"), \
+                patch.object(s, "_require_settings_access"), patch.object(s, "_company_access"), \
+                patch.object(s, "_save") as save, patch.object(frappe, "enqueue") as enqueue:
+            s.save_settings(entries, settings.business_timezone, 0, "old")
+            self.assertEqual(len(settings.company_mappings), 2)
+            self.assertEqual(enqueue.call_count, 1)
+            self.assertTrue(enqueue.call_args.kwargs["enqueue_after_commit"])
+            with self.assertRaises(frappe.ValidationError):
+                s.save_settings(entries, settings.business_timezone, 0, "old")
+            with self.assertRaises(frappe.ValidationError):
+                s.save_settings(entries + [dict(source_entity=" Old   A ", entity_kind="entity", company="B")],
+                                settings.business_timezone, 0, settings.config_version)
+            self.assertEqual(save.call_count, 1)
+            self.assertEqual(enqueue.call_count, 1)
+
     def test_new_mapping_or_timezone_supersedes_older_reprojection(self):
         for change in ({"mapping_version": "v2"}, {"business_timezone": "America/Tijuana"}):
             settings = Doc(mapping_version="v1", business_timezone="America/Mexico_City")

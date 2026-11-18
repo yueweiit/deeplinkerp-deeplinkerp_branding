@@ -1049,3 +1049,20 @@
     margin-top: 4px;
     color: var(--mx-blue);
 }
+.mx-company-mappings .mx-alias-group {
+	border: 1px solid var(--border-color, #e2e8f0);
+	border-radius: 8px;
+	margin-bottom: 8px;
+}
+.mx-company-mappings summary { padding: 12px; cursor: pointer; }
+.mx-company-mappings summary span { margin-left: 8px; }
+.mx-company-mappings .mx-alias-body { padding: 0 14px 14px; }
+.mx-company-mappings .mx-alias-body li { overflow-wrap: anywhere; }
+.mx-company-mappings .mx-unmapped-entities { margin-top: 24px; }
+.mx-company-mappings .mx-alias-scroll { max-height: 440px; overflow: auto; }
+.mx-company-mappings table { min-width: 600px; font-size: 12px; }
+.mx-company-mappings th { position: sticky; top: 0; background: var(--fg-color, white); z-index: 1; }
+.mx-company-mappings td { min-width: 70px; max-width: 250px; overflow-wrap: anywhere; vertical-align: middle; }
+.mx-company-mappings small { display: block; color: var(--text-muted); margin-top: 4px; }
+.mx-company-mappings select { min-width: 150px; margin-bottom: 6px; }
+.mx-company-mappings .mx-alias-pages { display: flex; justify-content: flex-end; gap: 8px; }

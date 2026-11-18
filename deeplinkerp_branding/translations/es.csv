@@ -2718,3 +2718,23 @@ No Further Classification,Sin clasificación adicional
 Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.,Niveles ordenados de ID de componentes; los ID de un nivel son ramas alternativas. Deje vacío para usar los valores predeterminados de la plantilla.
 Other Source Categories,Otras categorías de origen
 source_other,Otras categorías de origen
+Subsidiary Aliases,Alias de subsidiarias
+Maintain historical names under each subsidiary. Entity and department aliases are separate. Changes take effect after Save Settings.,Mantenga los nombres históricos de cada subsidiaria. Los alias de entidades y departamentos se gestionan por separado. Los cambios se aplican al guardar la configuración.
+{0} aliases,{0} alias
+No aliases configured,Sin alias configurados
+Edit Aliases,Editar alias
+Historical Source Names,Nombres históricos de origen
+Apply to Settings,Aplicar a la configuración
+Unmapped Source Names,Nombres de origen sin asignar
+"Suggestions do not assign a company. Select the subsidiary and add the alias, then Save Settings to recheck existing details.",Las sugerencias no asignan empresas automáticamente. Seleccione la subsidiaria y añada el alias; guarde la configuración para revisar los detalles existentes.
+Unable to load unmapped names,No se pudieron cargar los nombres sin asignar
+Missing Source Entity,Falta la entidad de origen
+Included in Settings,Incluido en la configuración
+Complete the source information first,Complete primero la información de origen
+Select Subsidiary,Seleccione una subsidiaria
+Add Alias,Añadir alias
+Suggested Subsidiaries,Subsidiarias sugeridas
+No unmapped names,No hay nombres sin asignar
+Invalid mapping page,Página de asignaciones no válida
+Expense Lines,Líneas de gastos
+Loading...,Cargando...

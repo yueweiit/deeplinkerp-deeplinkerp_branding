@@ -22,6 +22,7 @@ from . import mexico_expense_templates as templates
 from . import mexico_expense_projection as projection
 from . import mexico_expense_fx as fx
 from . import mexico_expense_classification as classification
+from . import mexico_expense_mapping as company_mapping
 from .operating_expense_contract import digest
 from .purchase_payment_service import _require_fields
 
@@ -254,6 +255,35 @@ def get_context():
             "templates": [{k: t.get(k) for k in (*templates.CONFIG_FIELDS, *templates.STATE_FIELDS)} for t in _templates(settings)],
             "company_mappings": [{"source_entity": r.source_entity, "entity_kind": r.entity_kind, "company": r.company} for r in settings.company_mappings or []]}
     return result
+
+
+@frappe.whitelist()
+def get_unmapped_entities(start=0):
+    """Bounded, permission-scoped groups for the administrator's alias editor."""
+    settings = _settings()
+    _require_settings_access(settings)
+    _finance()
+    try:
+        start = int(start)
+        if start < 0 or start > 1000000:
+            raise ValueError
+    except (ValueError, TypeError):
+        frappe.throw(_("Invalid mapping page"))
+    from frappe.query_builder.functions import Count, Coalesce
+    table = frappe.qb.DocType(LINE)
+    query = frappe.qb.get_query(LINE, fields=[table.source_entity, table.entity_kind,
+        Count(table.name).as_("line_count")], filters=[["is_active", "=", 1]], ignore_permissions=False)
+    rows = (query.where(Coalesce(table.company, "") == "")
+        .groupby(table.source_entity, table.entity_kind)
+        .orderby(Count(table.name), order=Order.desc).orderby(table.source_entity).orderby(table.entity_kind)
+        .offset(start).limit(51).run(as_dict=True))
+    companies = _companies()
+    mappings = [{"source_entity": r.source_entity, "entity_kind": r.entity_kind, "company": r.company}
+                for r in settings.company_mappings or []]
+    for row in rows[:50]:
+        row["suggestions"] = company_mapping.suggest_companies(row.source_entity, row.entity_kind, companies, mappings)
+    return {"rows": rows[:50], "has_more": len(rows) > 50, "start": start,
+            "config_version": settings.config_version or ""}
 
 
 @frappe.whitelist(methods=["POST"])

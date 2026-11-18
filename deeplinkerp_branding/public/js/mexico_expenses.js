@@ -1261,7 +1261,7 @@
 							{fieldname: "finance_node_names", label: t("Finance Node Names"), fieldtype:"Small Text", default:"MX财务Finanzas"},
 							{fieldname: "finance_activity_ids", label: t("Finance Activity IDs"), fieldtype:"Small Text"},
 							{fieldname: "classification_fields", label: t("Classification Fields JSON"), fieldtype:"Code", options:"JSON", description:t("Ordered levels of component IDs; IDs in one level are alternative branches. Leave blank to use template defaults.")},
-							{fieldname: "field_mapping", label: t("Field Mapping JSON"), fieldtype:"Code", options:"JSON", default:"{}"},
+                            {fieldname: "field_mapping", label: t("Field Mapping JSON"), fieldtype:"Code", options:"JSON", default:"{}"},
 							{fieldname: "last_sync_at", label: t("Last Successful Sync"), fieldtype:"Datetime", read_only:1},
 							{fieldname: "last_error", label: t("Last Sync Error"), fieldtype:"Small Text", read_only:1},
 						],
@@ -1274,42 +1274,7 @@
 						dialog.fields_dict.template_preview.$wrapper.html(`<div class="mx-notice">${esc(t("{0} applications · {1} expense lines", [result.applications,result.lines]))}<br>${esc(result.finance_nodes.join(" / "))}<br>${esc(result.issues.map((issue) => this.context.issue_labels[issue] || issue).join(" / "))}</div>`);
 					}},
 					{fieldname:"template_preview", fieldtype:"HTML"},
-					{
-						fieldname: "company_mappings",
-						label: t("Subsidiary Mappings"),
-						fieldtype: "Table",
-						cannot_add_rows: false,
-						data: saved.company_mappings,
-						fields: [
-							{
-								fieldname: "source_entity",
-								label: t("Source Entity"),
-								fieldtype: "Data",
-								in_list_view: 1,
-								reqd: 1,
-							},
-							{
-								fieldname: "entity_kind",
-								label: t("Entity Kind"),
-								fieldtype: "Select",
-								options: [
-									{ value: "entity", label: t("Expense Entity") },
-									{ value: "department", label: t("Department") },
-								],
-								default: "entity",
-								in_list_view: 1,
-								reqd: 1,
-							},
-							{
-								fieldname: "company",
-								label: t("Subsidiary"),
-								fieldtype: "Select",
-								options: this.context.companies,
-								in_list_view: 1,
-								reqd: 1,
-							},
-						],
-					},
+					{fieldname: "company_mappings", fieldtype: "HTML"},
 				],
 				primary_action_label: t("Save Settings"),
 				primary_action: async (values) => {
@@ -1319,11 +1284,7 @@
 							enabled: values.enabled || 0,
 							business_timezone: values.business_timezone,
 							approval_templates: values.approval_templates,
-							company_mappings: values.company_mappings.map((r) => ({
-								source_entity: r.source_entity,
-								entity_kind: r.entity_kind,
-								company: r.company,
-							})),
+							company_mappings: mappingEditor.mappings,
 							expected_config_version: saved.config_version,
 						});
 						dialog.hide();
@@ -1338,7 +1299,15 @@
 					}
 				},
 			});
+			const mappingEditor = new root.DeepLinkERPMexicoExpenseMappings.Editor({
+				wrapper: dialog.fields_dict.company_mappings.$wrapper,
+				companies: this.context.companies,
+				mappings: saved.company_mappings,
+				configVersion: saved.config_version,
+				fetchPage: (start) => call("get_unmapped_entities", {start}),
+			});
 			dialog.show();
+			await mappingEditor.loadPage();
 		}
 		async synchronize() {
 			await call("enqueue_sync");
