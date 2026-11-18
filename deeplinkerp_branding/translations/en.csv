@@ -2403,7 +2403,8 @@ Select one template to preview. Disable historical templates instead of deleting
 Preview Selected Template,Preview Selected Template
 Select exactly one template,Select exactly one template
 operating,Operating Expenses
-expense,Expense Requests
+expense,Expense
+expense,Expense Requests,Mexico Expense Template
 purchase,Purchase Expenses
 administration,Administrative Expenses
 selling,Selling Expenses
