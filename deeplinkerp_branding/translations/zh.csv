@@ -1034,3 +1034,4 @@ Pending approvals are converted using application-month opening rates (estimated
 Invalid reporting currency,折算币种无效
 The exchange rate service is unavailable; install Overseas Costing or contact the administrator,汇率服务不可用，请安装海外成本模块或联系管理员
 Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,无法获取 {1} 的 {0} 兑人民币月初汇率，已暂停折算，请在汇率可用后重试。
+Open Original in DingTalk,打开钉钉原单

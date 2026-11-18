@@ -265,7 +265,36 @@ class MexicoServiceTests(unittest.TestCase):
         self.assertFalse(result["whole_source"])
         self.assertNotIn("workflow",result)
         self.assertNotIn("payee",result)
+        self.assertNotIn("dingtalk_url",result)
         self.assertEqual(result["visible_amount"],"10")
+
+    def test_whole_source_detail_reuses_dingtalk_instance_link_without_oa_request(self):
+        from overseas_costing.utils.dingtalk import build_desktop_approval_url
+        line = Doc(name="a"*64, source="source", is_active=1, company="A", amount="10", amount_raw="10", issues="[]", mapping_version="v1")
+        source = Doc(raw_json=json.dumps({"process_instance_id":"instance_123-ABC"}), process_instance_id="instance_123-ABC", approval_no="business-number")
+        with patch.object(s, "_finance"), patch.object(s, "_line", return_value=line), \
+                patch.object(s, "_whole_source_allowed", return_value=True), \
+                patch.object(frappe, "get_doc", return_value=source), \
+                patch.object(frappe, "get_list", return_value=[line]), patch.object(http, "read_page") as read:
+            result = s.get_detail(line.name)
+        self.assertEqual(result["dingtalk_url"], build_desktop_approval_url("instance_123-ABC"))
+        self.assertNotIn("business-number", result["dingtalk_url"])
+        read.assert_not_called()
+
+    def test_dingtalk_link_rejects_missing_identity_urls_and_query_injection(self):
+        for identity in (None, "", "https://example.com", "javascript:alert(1)", "id&other=1", "id#other", "a"*257):
+            with self.subTest(identity=identity):
+                self.assertEqual(s._dingtalk_url(Doc(process_instance_id=identity)), "")
+
+    def test_dingtalk_link_is_optional_when_costing_app_is_unavailable(self):
+        import builtins
+        original = builtins.__import__
+        def missing(name, *args, **kwargs):
+            if name == "overseas_costing.utils.dingtalk":
+                raise ModuleNotFoundError(name="overseas_costing")
+            return original(name, *args, **kwargs)
+        with patch("builtins.__import__", side_effect=missing):
+            self.assertEqual(s._dingtalk_url(Doc(process_instance_id="instance_123")), "")
 
     def test_attachment_access_fails_before_any_remote_read_for_partial_source(self):
         with patch.object(s,"_finance"),patch.object(s,"_line",return_value=Doc(source="source")),patch.object(s,"_whole_source_allowed",return_value=False),patch.object(http,"read_page") as read:

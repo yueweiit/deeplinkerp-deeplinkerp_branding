@@ -4,6 +4,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date, datetime
@@ -811,6 +812,21 @@ def _whole_source_allowed(source):
     )
 
 
+def _dingtalk_url(source):
+    """Reuse the costing link builder with a stored instance ID, never a source URL."""
+    instance_id = str(source.get("process_instance_id") or "").strip()
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,256}", instance_id):
+        return ""
+    try:
+        from overseas_costing.utils.dingtalk import build_desktop_approval_url
+    except ModuleNotFoundError as exc:
+        # Branding can be installed without the optional costing app.
+        if exc.name not in {"overseas_costing", "overseas_costing.utils", "overseas_costing.utils.dingtalk"}:
+            raise
+        return ""
+    return build_desktop_approval_url(instance_id)
+
+
 @frappe.whitelist()
 def get_detail(line_key, reporting_currency=None):
     _finance()
@@ -839,6 +855,7 @@ def get_detail(line_key, reporting_currency=None):
     if whole:
         from .operating_oa_workflow import workflow
         result.update(workflow=workflow(json.loads(source.raw_json)), payee=source.payee, payment_terms=source.payment_terms, details=json.loads(source.get("details_json") or "{}"))
+        result["dingtalk_url"] = _dingtalk_url(source)
     return result
 
 

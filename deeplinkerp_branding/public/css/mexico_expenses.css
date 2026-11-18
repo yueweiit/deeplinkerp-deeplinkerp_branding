@@ -709,6 +709,11 @@
 	color: #99a8bc;
 	margin-top: 7px;
 }
+.mx-detail-dialog .mx-detail-source {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: 16px;
+}
 .mx-detail-dialog .mx-detail-actions {
 	margin-top: 25px;
 	display: flex;

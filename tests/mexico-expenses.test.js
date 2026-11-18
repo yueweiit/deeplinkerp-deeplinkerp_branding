@@ -386,3 +386,31 @@ test("converted line rendering retains original amounts and estimated rate evide
     const incomplete=api.Workbench.prototype.lineAmount({currency:null,amount:'10.00',reporting_currency:'CNY',converted_amount:null});
     assert(incomplete.startsWith('—'));
 });
+
+test("DingTalk entry uses the authorized source link without loading attachments", async () => {
+    const url = 'dingtalk://dingtalkclient/page/link?url=https%3A%2F%2Faflow.dingtalk.com%2F&pc_slide=true';
+    for (const [whole, link, expected] of [[true, url, true], [false, url, false], [true, '', false]]) {
+        let html = ''; const requests = [];
+        const content = {html(value) { html = value; return this; }, on() {return this;}};
+        const data = {whole_source: whole, dingtalk_url: link, visible_amount: '10', lines: [],
+            line: {issues: [], amount: '10', currency: 'MXN', approval_no: '123'}};
+        const local = factory({frappe: {
+            format: (value) => String(value),
+            call: async ({method}) => {requests.push(method); return {message: data};},
+            ui: {Dialog: class {
+                constructor() {this.$wrapper = {addClass() {}}; this.fields_dict = {content: {$wrapper: content}};}
+                show() {}
+            }},
+        }});
+        const workbench = Object.create(local.Workbench.prototype);
+        Object.assign(workbench, {filters: {currency: 'MXN'}, context: {can_review: false},
+            isCurrentRoute: () => true, form: () => '', cat: () => null, sub: () => null});
+        await workbench.detail('line');
+        assert.equal(html.includes('Open Original in DingTalk'), expected);
+        if (expected) {
+            assert(html.includes('href="' + local.esc(url) + '"'));
+            assert(html.indexOf('mx-detail-source') < html.indexOf('mx-detail-amount'));
+        }
+        assert.deepEqual(requests, ['deeplinkerp_branding.services.mexico_expenses.get_detail']);
+    }
+});

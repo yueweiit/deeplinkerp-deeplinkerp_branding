@@ -2434,3 +2434,4 @@ Pending approvals are converted using application-month opening rates (estimated
 Invalid reporting currency,Invalid reporting currency
 The exchange rate service is unavailable; install Overseas Costing or contact the administrator,The exchange rate service is unavailable; install Overseas Costing or contact the administrator
 Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.,Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.
+Open Original in DingTalk,Open Original in DingTalk
