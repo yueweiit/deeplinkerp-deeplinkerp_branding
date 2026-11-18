@@ -52,3 +52,64 @@ test('legacy payroll bookmark redirects and keeps explicit filters',()=>{
  context.frappe.pages['mexico-personnel-expenses'].on_page_load();
  assert.equal(destination[0],'mexico-personnel-report');assert.equal(destination[1].mx_filters.approval_type,'operating');
 });
+
+test('unified analysis switches only the table dimension and exports that same scope', async () => {
+ let route, download, requests=[];
+ const local=workbench({frappe:{set_route:(...args)=>route=args},DeepLinkERPPurchaseOrderExport:{
+  fetchNativeWorkbook:async(root,args)=>{download=args;return 'bytes';},downloadWorkbook:()=>{},
+ }});
+ const wb=Object.create(local.Workbench.prototype);
+ Object.assign(wb,{view:'reports',report:'company',analysisGrouping:'company',filters:{from_date:'2026-09-01',to_date:'2026-11-18',company:'A',currency:'USD',approval_type:'expense'},
+  refresh:async()=>requests.push(wb.tableKind()),el:{querySelector:()=>null}});
+ const original={...wb.filters};
+ await wb.click({target:{closest:()=>({dataset:{action:'group-trend'}})}});
+ assert.equal(wb.tableKind(),'trend');assert.deepEqual(wb.filters,original);
+ await wb.export();assert.equal(download.kind,'trend');assert.equal(JSON.parse(download.filters).reporting_currency,'USD');
+ await wb.click({target:{closest:()=>({dataset:{action:'native-report'}})}});
+ assert.deepEqual(route,['query-report','Mexico Expense Trend']);
+ await wb.click({target:{closest:()=>({dataset:{action:'group-company'}})}});
+ await wb.export();assert.equal(download.kind,'company');assert.deepEqual(requests,['trend','company']);
+});
+
+test('monthly legacy route replaces history and restores the Frappe-encoded dimension',()=>{
+ const vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
+ const filters={from_date:'2026-08-17',to_date:'2026-11-17',company:'A'};
+ const history=['/desk/mexico-expenses','/desk/mexico-expense-trend?mx_filters='+encodeURIComponent(JSON.stringify(filters))];
+ const location={search:new URL('https://erp.test'+history.at(-1)).search};
+ let current=['mexico-expense-trend'];
+ const frappe={route_flags:{},pages:{'mexico-expense-trend':{}},get_route:()=>current,set_route:(route,options)=>{
+  // Frappe router.set_route serializes every option with JSON.stringify.
+  const query='?'+Object.entries(options).map(([key,value])=>key+'='+encodeURIComponent(JSON.stringify(value))).join('&');
+  const target='/desk/'+route+query;
+  if(frappe.route_flags.replace_route)history[history.length-1]=target;else history.push(target);
+  location.search=query;current=[route];frappe.route_flags={};
+ }};
+ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../deeplinkerp_branding/deeplinkerp_branding/page/mexico_expense_trend/mexico_expense_trend.js'),'utf8'),{URLSearchParams,location,frappe});
+ frappe.pages['mexico-expense-trend'].on_page_load();
+ frappe.pages['mexico-expense-trend'].on_page_show();
+ const local=workbench({location,frappe});const wb=Object.create(local.Workbench.prototype);
+ Object.assign(wb,{view:'reports',report:'company',filters:{from_date:'',to_date:'',company:''},isCurrentRoute:()=>true});
+ wb.applyRouteFilters();assert.equal(wb.tableKind(),'trend');assert.deepEqual(wb.filters,filters);
+ assert.equal(history.length,2);history.pop();
+ assert.equal(history.at(-1),'/desk/mexico-expenses');
+});
+
+test('analysis dimension accepts plain and JSON strings and rejects other values',()=>{
+ for(const [value,expected] of [['trend','trend'],['"trend"','trend'],['company','company'],['"company"','company'],['["trend"]','company'],['{"group":"trend"}','company'],['true','company'],['null','company'],['"trend','company'],['other','company'],['','company']]){
+  const local=workbench({location:{search:'?mx_group='+encodeURIComponent(value)}});
+  const wb=Object.create(local.Workbench.prototype);
+  Object.assign(wb,{view:'reports',report:'company',analysisGrouping:'trend',filters:{},isCurrentRoute:()=>true});
+  wb.applyRouteFilters();assert.equal(wb.tableKind(),expected,value);
+ }
+});
+
+test('analysis dimension survives direct links and URL updates without entering API filters',()=>{
+ let replaced;
+ const query='?mx_group=trend&mx_filters='+encodeURIComponent(JSON.stringify({from_date:'2026-09-01',to_date:'2026-09-30'}));
+ const local=workbench({location:{search:query,href:'https://erp.test/desk/mexico-expense-reports'+query},history:{replaceState:(state,title,url)=>replaced=url},frappe:{session:{user:'boss'}}});
+ const wb=Object.create(local.Workbench.prototype);
+ Object.assign(wb,{view:'reports',report:'company',filters:{from_date:'',to_date:'',currency:'MXN'},context:{approval_forms:[]},isCurrentRoute:()=>true});
+ wb.applyRouteFilters();assert.equal(wb.tableKind(),'trend');
+ wb.rememberFilters();assert.ok(replaced.includes('mx_group=trend'));
+ assert.equal(wb.effectiveFilters().mx_group,undefined);
+});

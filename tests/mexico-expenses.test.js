@@ -164,7 +164,7 @@ test("route breadcrumbs keep parents clickable and the current page as text", ()
 		const current = children.at(-1).children[0];
 		assert.equal(current.tag, "span");
 		assert.equal(current.attributes["aria-current"], "page");
-		assert.equal(current.textContent, view === "reports" ? "Mexico Subsidiary Expenses" : api.views[view]);
+		assert.equal(current.textContent, view === "reports" ? "Expenditure Analysis" : api.views[view]);
 		assert(!current.attributes.href);
 	}
 	route = ["other-page"];

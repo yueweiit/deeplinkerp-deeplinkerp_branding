@@ -45,7 +45,7 @@
    "icon": "",
    "indent": 0,
    "keep_closed": 0,
-   "label": "Mexico Subsidiary Expenses",
+   "label": "Expenditure Analysis",
    "link_to": "mexico-expense-reports",
    "link_type": "Page",
    "show_arrow": 0,
@@ -59,18 +59,6 @@
    "keep_closed": 0,
    "label": "Mexico Personnel Expenses",
    "link_to": "mexico-personnel-report",
-   "link_type": "Page",
-   "show_arrow": 0,
-   "type": "Link"
-  },
-  {
-   "child": 1,
-   "collapsible": 0,
-   "icon": "",
-   "indent": 0,
-   "keep_closed": 0,
-   "label": "Mexico Expense Trend",
-   "link_to": "mexico-expense-trend",
    "link_type": "Page",
    "show_arrow": 0,
    "type": "Link"

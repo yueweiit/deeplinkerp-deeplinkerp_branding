@@ -1084,3 +1084,7 @@
 	.mx-expenses .mx-insight-cards, .mx-expenses .mx-insight-panel .mx-payroll-cards, .mx-expenses .mx-personnel-breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	.mx-expenses .mx-month-bar { grid-template-columns: 66px 1fr 100px; gap: 6px; }
 }
+
+.mx-expenses .mx-report-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.mx-expenses .mx-analysis-group { display: inline-flex; gap: 4px; }
+.mx-expenses .mx-analysis-group [aria-pressed="true"] { background: var(--mx-blue-light); color: var(--mx-blue); border-color: var(--mx-blue); }

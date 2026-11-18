@@ -4,7 +4,7 @@
 
 ## 业务范围与口径
 
-工作台在左侧二级导航提供支出概览、支出明细、统计报表和数据核对四个入口。“统计报表”为原生可折叠分组，包含子公司支出对比、薪酬人事分析、月度支出趋势。外层薪酬入口已合并，旧 `/desk/mexico-personnel-expenses` 链接保留带筛选参数的重定向，目标为 `/desk/mexico-personnel-report`。页面/报表内部名称不变，展示名称通过翻译资源调整。复用 Frappe Section Break 的展开/折叠和本地状态保存；进入子报表时自动高亮并展开父级。内容区直接从筛选条件开始，不再重复显示大标题、介绍和横向五页签；“统计口径”保留在右上角菜单。费用承担主体对应 ERP Company；部门仅在管理员明确配置 `department` 类型映射时才可归属公司。映射以主体类型和原始名称形成稳定键，不用可能被复用的钉钉选项 key 单独判定公司。
+工作台在左侧二级导航提供支出概览、支出明细、统计报表和数据核对四个入口。“统计报表”为原生可折叠分组，包含支出分析、薪酬人事分析两个入口。支出分析共用一套指标、公司排名和月度趋势，底部汇总表支持按子公司/按月份切换；原生报表及 Excel 跟随当前维度。旧 `/desk/mexico-expense-trend` 带原筛选及 `mx_group=trend` 重定向至 `/desk/mexico-expense-reports`。外层薪酬入口已合并，旧 `/desk/mexico-personnel-expenses` 链接保留带筛选参数的重定向，目标为 `/desk/mexico-personnel-report`。页面/报表内部名称不变，展示名称通过翻译资源调整。复用 Frappe Section Break 的展开/折叠和本地状态保存；进入子报表时自动高亮并展开父级。内容区直接从筛选条件开始，不再重复显示大标题、介绍和横向五页签；“统计口径”保留在右上角菜单。费用承担主体对应 ERP Company；部门仅在管理员明确配置 `department` 类型映射时才可归属公司。映射以主体类型和原始名称形成稳定键，不用可能被复用的钉钉选项 key 单独判定公司。
 
 同步设置按 ERP 子公司集中维护多个来源历史名称，继续存入现有 `Mexico Expense Company Map`，无需增加公司或修改来源原文。每个名称分别指定 `entity`（费用承担主体）或 `department`（部门）；同一名称与类型只能映射一个公司。编辑弹窗“应用到设置”及未映射列表“添加历史名称”仅修改当前设置草稿，点击主弹窗“保存设置”后才持久化并复用异步缓存重算。取消设置不写入数据，配置版本冲突时拒绝覆盖。
 
@@ -41,11 +41,11 @@
 
 ### 管理报表与期间对比
 
-三类报表共用 `get_report_insights(filters, kind)`，沿用 `_filters/_query/_aggregates` 的原生公司权限、财务归期、确认及汇率口径；无新增业务数据表。顶部明确审批表、公司、日期口径、折算币种，显示已确认总额、去重申请/明细数、公司数、待核对事项及可确定金额。待核对范围固定为有效申请，未归期按申请日期定位，不与已确认总额相加；金额、表头合计、结构、行身份、币种或折算无法确定的行排除出“可确定金额”，单列数量。原币筛选与折算调用共用币种校验：币种为空、不受支持或存在 `currency` 来源问题时，不能把该行金额认定为所选币种的可确定金额；该行仍保留在符合查询范围的待核对数量中。该金额仍可能属于暂估折算或归属未确认项目，不代表付款。
+两个分析入口复用既有三类汇总接口，并共用 `get_report_insights(filters, kind)`，沿用 `_filters/_query/_aggregates` 的原生公司权限、财务归期、确认及汇率口径；无新增业务数据表。顶部明确审批表、公司、日期口径、折算币种，显示已确认总额、去重申请/明细数、公司数、待核对事项及可确定金额。待核对范围固定为有效申请，未归期按申请日期定位，不与已确认总额相加；金额、表头合计、结构、行身份、币种或折算无法确定的行排除出“可确定金额”，单列数量。原币筛选与折算调用共用币种校验：币种为空、不受支持或存在 `currency` 来源问题时，不能把该行金额认定为所选币种的可确定金额；该行仍保留在符合查询范围的待核对数量中。该金额仍可能属于暂估折算或归属未确认项目，不代表付款。
 
 期间比较规则由 `services/mexico_expense_insights.py` 统一计算：完整月份与前一段相同月数的完整月份比较；当月截至业务时区今天与上月同期比较（短月按月末截断）；其他日期范围与紧邻前一段相同天数比较。对比截止日期不超过今天，纯未来范围不生成对比。页面展示两期实际日期及各自去重申请数量，零基数不计算百分比；未同步/未确认的历史资料不在比较范围内，增减不能据此证明真实经营增长。
 
-子公司排名按所选范围金额排序并显示占比；变化排行分别展示子公司及类别的两期金额、差额、增减率，按差额绝对值排列。月度趋势标注部分月份，期间无已确认记录的月份显示零；月度趋势首次默认最近六个完整月份，有已保存日期或 URL 参数时尊重用户选择，重置恢复六个完整月份。薪酬分析保留工资/社保等分类卡片及公司×月份明细，增加公司小计；小计仅用于展示，不重复参与合计或原生导出。
+子公司排名按所选范围金额排序并显示占比；变化排行分别展示子公司及类别的两期金额、差额、增减率，按差额绝对值排列。月度趋势标注部分月份，期间无已确认记录的月份显示零；合并后的支出分析首次默认当月，有已保存日期或 URL 参数时尊重用户选择，重置恢复当月；切换表格维度不改变日期或其他筛选。维度通过独立 URL 参数 `mx_group=company/trend` 保存，不进入服务端金额筛选；读取兼容普通参数及 Frappe 路由生成的 JSON 字符串，其他值回退按子公司。旧月度趋势入口使用原生 `replace_route` 替换历史记录，浏览器返回不会再次进入重定向。薪酬分析保留工资/社保等分类卡片及公司×月份明细，增加公司小计；小计仅用于展示，不重复参与合计或原生导出。
 
 薪酬分析使用独立的审批表选择记忆；首次进入仅继承公共日期，审批表默认全部；明确的 URL 和之后保存的个人选择仍有效。报表下钻携带 `confirmed_only=1`，保证金额与明细一致，明细页提示仅显示已确认记录并允许清除此限制；服务器继续检查确认状态和映射版本。原生报表/Excel 保留原有明细汇总结构，管理分析在工作台展示。分析加载失败或两次查询合计不一致时明确提示刷新，仍保留已成功加载的汇总表，不混用分析金额。尚未接入员工人数、完整预算和实际支付流水，不生成相关推测指标。
 
@@ -133,7 +133,7 @@
 | --- | --- |
 | 纯解析、分类、金额、期间、确认失效 | `services/mexico_expense_contract.py`；多模板适配 `mexico_expense_projection.py`、配置及布局 `mexico_expense_templates.py` |
 | 同步、权限、查询、报表、核对和附件 | `services/mexico_expenses.py` |
-| 页面及本页样式 | 六个分析页面及一个兼容重定向页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js`、`public/js/mexico_expense_money.js`、`public/js/mexico_expense_mappings.js` 和 `public/css/mexico_expenses.css` |
+| 页面及本页样式 | 五个工作台页面共用 `public/js/mexico_expenses_page.js` 加载器，按需加载 `public/js/mexico_expenses.js`、`public/js/mexico_expense_date_range.js`、`public/js/mexico_expense_money.js`、`public/js/mexico_expense_mappings.js` 和 `public/css/mexico_expenses.css`；两个历史页面仅执行兼容重定向 |
 | 标准报表 | `deeplinkerp_branding/report/mexico_subsidiary_expenses/`、`mexico_personnel_expenses/`、`mexico_expense_trend/`；通过原生 include 共用 `public/js/mexico_expense_reports.js` 筛选定义 |
 | 一级导航与首页图标 | `desktop_icon/mexico_expenses.json`、`workspace_sidebar/mexico_expenses.json`、`public/icons/desktop_icons/solid/mexico_expenses.svg`；排序和首页兼容复用 `public/js/deeplinkerp_navigation.js` 与 `deeplinkerp_branding.js` |
 | 安装、索引与 hooks | `mexico_expense_install.py`、`hooks.py` |
@@ -146,12 +146,12 @@
 | 费用概览 | `/desk/mexico-expenses`（兼容原入口及首页图标） |
 | 费用明细 | `/desk/mexico-expense-details` |
 | 历史薪酬入口（重定向） | `/desk/mexico-personnel-expenses` → `/desk/mexico-personnel-report` |
-| 统计报表 → 子公司费用汇总 | `/desk/mexico-expense-reports`（保留原地址） |
-| 统计报表 → 薪酬人事汇总 | `/desk/mexico-personnel-report` |
-| 统计报表 → 月度费用趋势 | `/desk/mexico-expense-trend` |
+| 统计报表 → 支出分析 | `/desk/mexico-expense-reports`（保留原地址） |
+| 统计报表 → 薪酬人事分析 | `/desk/mexico-personnel-report` |
+| 历史月度趋势入口（重定向） | `/desk/mexico-expense-trend` → `/desk/mexico-expense-reports?mx_group=trend` |
 | 数据核对 | `/desk/mexico-expense-review` |
 
-原生侧栏按独立路径选中对应菜单。报表页的面包屑为“首页 → 运营支出（MX）→ 统计报表 → 当前报表”；统计报表上级可点击返回子公司汇总，当前报表名称不可点击。三个报表复用同一 Workbench、API、筛选和权限，各自保存页面查询状态；异步处理按完整页面路由核对，防止同属 reports 视图的其他页面读取当前页的 URL 筛选。工作台通过路由表生成“首页 → 运营支出（MX）→ 当前页面”面包屑；首页和模块上级可点击，当前页使用带 `aria-current="page"` 的文本。复用 Frappe 面包屑更新生命周期，仅扩展墨西哥费用页面，其余页面沿用原有行为。
+原生侧栏按独立路径选中对应菜单。报表页的面包屑为“首页 → 运营支出（MX）→ 统计报表 → 当前报表”；统计报表上级可点击返回支出分析，当前报表名称不可点击。两个分析入口复用同一 Workbench、API、筛选和权限，各自保存页面查询状态；异步处理按完整页面路由核对，防止同属 reports 视图的其他页面读取当前页的 URL 筛选。工作台通过路由表生成“首页 → 运营支出（MX）→ 当前页面”面包屑；首页和模块上级可点击，当前页使用带 `aria-current="page"` 的文本。复用 Frappe 面包屑更新生命周期，仅扩展墨西哥费用页面，其余页面沿用原有行为。
 
 每页保留自己的查询状态；概览和报表下钻到明细时将筛选以 `mx_filters` 参数传入目标地址，直接打开、刷新和历史导航可恢复该筛选。业务筛选仍由后端检查权限与合法性。页面标题、侧栏标签和面包屑复用现有中英西翻译。
 

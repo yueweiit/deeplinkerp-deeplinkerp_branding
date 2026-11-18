@@ -59,7 +59,7 @@
 			const current = root.document.createElement("span");
 			current.className = "mx-breadcrumb-current";
 			current.setAttribute("aria-current", "page");
-			current.textContent = t(report ? reportNames[report] : views[view]);
+			current.textContent = t(report ? reportTitles[report] : views[view]);
 			item.appendChild(current);
 			this.$breadcrumbs.append(item);
 		};
@@ -81,6 +81,7 @@
 		payroll: "Mexico Personnel Expenses",
 		trend: "Mexico Expense Trend",
 	};
+	const reportTitles = {company: "Expenditure Analysis", payroll: "Mexico Personnel Expenses", trend: "Expenditure Analysis"};
 	const nodeMoneyFormatter = typeof module === "object" && module.exports
 		? require("./mexico_expense_money.js")(root) : null;
 	// frappe.require may fetch these scripts concurrently; resolve the browser
@@ -179,10 +180,11 @@
 			this.wrapper = wrapper;
 			this.view = viewFromRoute([wrapper.page_name]) || "overview";
 			this.report = reportFromRoute([wrapper.page_name]) || "company";
+			this.analysisGrouping = "company";
 			installBreadcrumbs();
 			this.page = root.frappe.ui.make_app_page({
 				parent: wrapper,
-				title: t(this.view === "reports" ? reportNames[this.report] : views[this.view]),
+				title: t(this.view === "reports" ? reportTitles[this.report] : views[this.view]),
 				single_column: true,
 			});
 			this.el = root.document.createElement("div");
@@ -295,6 +297,7 @@
 			if (root.history?.replaceState && root.location?.href) {
 				const url = new URL(root.location.href);
 				url.searchParams.set("mx_filters", JSON.stringify(this.filters));
+				if (this.view === "reports" && this.report === "company") url.searchParams.set("mx_group", this.analysisGrouping === "trend" ? "trend" : "company");
 				root.history.replaceState(root.history.state, "", url.pathname + url.search + url.hash);
 			}
 		}
@@ -516,7 +519,14 @@
 		applyRouteFilters() {
 			// Read this URL, not global route_options that another sidebar may consume.
 			if (!this.isCurrentRoute()) return;
-			const raw = new URLSearchParams(root.location?.search || "").get("mx_filters");
+			const params = new URLSearchParams(root.location?.search || "");
+			if (this.view === "reports" && this.report === "company") {
+				let group = params.get("mx_group");
+				// Frappe set_route JSON-encodes options; direct links use plain values.
+				try { group = JSON.parse(group); } catch (_) { /* Keep the plain value. */ }
+				this.analysisGrouping = group === "trend" ? "trend" : "company";
+			}
+			const raw = params.get("mx_filters");
 			if (!raw) return;
 			try {
 				const values = JSON.parse(raw);
@@ -577,9 +587,9 @@
 					if (epoch !== this.epoch) return;
 					html = this.details(data, this.view === "review");
 				} else {
-                    const kind = this.view === "payroll" ? "payroll" : this.report;
+                    const kind = this.tableKind();
                     const [reportResult, insightResult] = await Promise.allSettled([
-                        call("get_report", {filters, kind}), call("get_report_insights", {filters, kind}),
+                        call("get_report", {filters, kind}), call("get_report_insights", {filters, kind: this.report === "payroll" || this.view === "payroll" ? "payroll" : "company"}),
                     ]);
                     if (reportResult.status === "rejected") throw reportResult.reason;
                     const data = reportResult.value;
@@ -862,9 +872,12 @@
 					data.total ? this.start + 1 : 0
 				)}–${number(Math.min(this.start + 25, data.total))} / ${number(data.total)}</span><div>${button("Previous", "previous", "mx-button", this.start === 0 ? "disabled" : "")}${button("Next", "next", "mx-button", this.start + 25 >= data.total ? "disabled" : "")}</div></div></section>`;
 		}
+		tableKind() {
+			if (this.view === "payroll" || this.report === "payroll") return "payroll";
+			return this.analysisGrouping === "trend" || this.report === "trend" ? "trend" : "company";
+		}
 		reportTable(data) {
-			const payroll = this.view === "payroll",
-				kind = payroll ? "payroll" : this.report;
+			const kind = this.tableKind();
 			const cards = kind === "payroll"
 				? `<div class="mx-payroll-cards mx-personnel-breakdown">${this.context.subcategories
 						.filter((c) => c.category === "personnel")
@@ -913,7 +926,7 @@
 							? "Payroll is summarized by subsidiary, category and period; no employee details"
 							: "Only confirmed expense lines are included"
 					)
-				)}</p></div>${button("Open Native Report", "native-report", "mx-link")}</div>${
+				)}</p></div><div class="mx-report-actions">${kind !== "payroll" ? `<div class="mx-analysis-group" role="group" aria-label="${esc(t("Analysis Dimension"))}">${["company","trend"].map(group => `<button type="button" class="mx-button" data-action="group-${group}" aria-pressed="${kind === group}">${esc(t(group === "company" ? "By Subsidiary" : "By Month"))}</button>`).join("")}</div>` : ""}${button("Open Native Report", "native-report", "mx-link")}</div></div>${
 					data.rows.length
 						? `<div class="mx-scroll"><table><thead><tr>${data.columns
 								.map(
@@ -1018,6 +1031,12 @@
 			if (d.action) {
 				if (d.action === "retry" && !this.context) return this.initialize();
 				if (d.action === "criteria") return this.showCriteria();
+                if (["group-company", "group-trend"].includes(d.action) && this.view === "reports" && this.report === "company") {
+                    this.analysisGrouping = d.action === "group-trend" ? "trend" : "company";
+                    await this.refresh();
+                    this.el.querySelector(`[data-action="${d.action}"]`)?.focus();
+                    return;
+                }
 				if (d.action === "reset") {
 					const context = await call("get_context");
 					if (!this.isCurrentRoute()) return;
@@ -1056,7 +1075,7 @@
 					root.frappe.route_options = this.effectiveFilters();
 					return root.frappe.set_route(
 						"query-report",
-						reportNames[this.view === "payroll" ? "payroll" : this.report]
+						reportNames[this.tableKind()]
 					);
 				}
 				return this.refresh();
@@ -1375,7 +1394,7 @@
 				this.view === "overview"
 					? "company"
 					: this.view === "reports"
-					? this.report
+					? this.tableKind()
 					: this.view;
 			const bytes = await exporter.fetchNativeWorkbook(
 				root,
