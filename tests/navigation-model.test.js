@@ -345,7 +345,7 @@ test("classic sorting tolerates the optional sidebar missing and recognizes Chin
 });
 
 test("Mexico expense identity uses the same receipt icon in all navigation languages", () => {
-	for (const label of ["Mexico Expenses", "Expenses (MX)", "费用支出（MX）", "Gastos (MX)"])
+	for (const label of ["Mexico Expenses", "Operating Expenses (MX)", "运营支出（MX）", "Gastos operativos (MX)", "Expenses (MX)", "费用支出（MX）", "Gastos (MX)"])
 		assert.equal(navigation.getNavigationIcon(label), "receipt-text");
 });
 
@@ -925,7 +925,7 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
-	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.22/);
+	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.23/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
   assert.match(hooks, /deeplinkerp_branding\.js\?v=\d+\.\d+\.\d+/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);
