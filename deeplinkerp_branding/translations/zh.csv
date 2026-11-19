@@ -1168,3 +1168,11 @@ Synchronize Data,同步数据
 Operating Expense Synchronization,运营支出同步
 Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data.,保存设置后同步会暂停，请在“同步数据”中核对并启用新配置。
 Settings saved. Continue in Synchronize Data.,设置已保存，请在“同步数据”中继续操作。
+Budget Execution Analysis,预算执行分析
+Budget Overview,预算概览
+Budget Details,预算明细
+Budget Data Review,预算数据核对
+Sync Settings,同步设置
+This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet.,此合计仅包含运营支出。选择“预算”可查看预算申请和额度；采购支出统计尚未接入。
+Synchronize Budget Ledger,同步预算台账
+Budget Sync Settings,预算同步设置

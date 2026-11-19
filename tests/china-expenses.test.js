@@ -10,7 +10,7 @@ function environment(extra = {}) {
 test("CN routes and approval forms remain independent from MX", () => {
     const {api, root} = environment();
     assert.deepEqual(api.forms.map(([id]) => id), ["", "operating", "budget", "purchase"]);
-    assert.equal(new Set(Object.values(api.routes)).size, 5);
+    assert.equal(new Set(Object.values(api.routes)).size, 6);
     for (const route of Object.values(api.routes)) assert(!Object.values(root.DeepLinkERPMexicoExpenses.routes).includes(route));
     assert.equal(api.viewFor(["china-personnel-report"]), "payroll");
     assert.equal(api.viewFor(["mexico-expenses"]), undefined);

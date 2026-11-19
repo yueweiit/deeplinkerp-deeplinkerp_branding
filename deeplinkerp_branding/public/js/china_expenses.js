@@ -10,9 +10,9 @@
         (c) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c])));
     const routes = {
         overview: "china-expenses", details: "china-expense-details",
-        analysis: "china-expense-reports", payroll: "china-personnel-report", review: "china-expense-review",
+        budget_analysis: "budget-dashboard", analysis: "china-expense-reports", payroll: "china-personnel-report", review: "china-expense-review",
     };
-    const titles = {overview:"Expense Overview", details:"Expense Details", analysis:"Expenditure Analysis",
+    const titles = {budget_analysis:"Budget Execution Analysis", overview:"Expense Overview", details:"Expense Details", analysis:"Expenditure Analysis",
         payroll:"Personnel Analysis", review:"Data Review"};
     const forms = [["", "All Approval Forms"], ["operating", "Operating Expenses"], ["budget", "Budget"], ["purchase", "Purchase Expenses"]];
     const bases = [["period", "Expense Period"], ["request", "Application Date"], ["planned", "Planned Payment Date"]];
@@ -28,7 +28,7 @@
     }
     function defaults(day = today()) {
         return {...shared.monthRange(day.slice(0, 7)), basis:"request", company:"", approval_type:"", currency:"CNY", status:"all",
-            quick_tab:"all", keyword:"", company_review:"", application_type:""};
+            quick_tab:"all", keyword:"", company_review:"", application_type:"", budget_tab:"ledger", budget_type:"", department_id:""};
     }
     function validFilters(values, companies) {
         if (!values || typeof values !== "object" || Array.isArray(values)) return {};
@@ -36,10 +36,12 @@
         if (shared.validDateRange(values)) Object.assign(clean, {from_date:values.from_date, to_date:values.to_date});
         for (const [key, allowed] of Object.entries({basis:bases.map(([id]) => id), company:["", ...companies],
             approval_type:forms.map(([id]) => id), currency:["CNY", "USD", "MXN"], status:statuses.map(([id]) => id),
+            budget_tab:["ledger", "quota"], budget_type:["", "production", "non_production"],
             quick_tab:["all", "pending_work", "approvals_running", "paid", "reconciliation"],
             company_review:["", "unmapped", "stale", "confirmed"], application_type:["", "payment", "reimbursement", "unclassified"]})) {
             if (allowed.includes(values[key])) clean[key] = values[key];
         }
+        if (typeof values.department_id === "string" && values.department_id.length <= 140) clean.department_id = values.department_id;
         if (typeof values.keyword === "string" && values.keyword.length <= 200) clean.keyword = values.keyword;
         return clean;
     }
@@ -51,13 +53,13 @@
             const view = viewFor(root.frappe.get_route());
             if (!view) return original.call(this, options);
             this.append_breadcrumb_element("/desk/china-expenses", esc(t("China Operating Expenses")));
-            if (["analysis", "payroll"].includes(view)) {
+            if (["analysis", "payroll", "budget_analysis"].includes(view)) {
                 this.append_breadcrumb_element("/desk/china-expense-reports", esc(t("Expense Reports")));
             }
             const item = root.document.createElement("li"), current = root.document.createElement("span");
             current.className = "mx-breadcrumb-current";
             current.setAttribute("aria-current", "page");
-            current.textContent = t(titles[view]);
+            current.textContent = t(options.label || titles[view]);
             item.appendChild(current);
             this.$breadcrumbs.append(item);
         };
@@ -81,15 +83,17 @@
             installBreadcrumbs();
             this.el.addEventListener("change", (event) => {
                 if (!Object.hasOwn(this.filters, event.target.dataset.filter)) return;
-                Object.assign(this.filters, validFilters({[event.target.dataset.filter]:event.target.value}, this.companies));
+                Object.assign(this.filters, validFilters({[event.target.dataset.filter]:event.target.value}, this.activeCompanies()));
                 this.refresh();
             });
             this.el.addEventListener("click", (event) => {
+                const budgetControl = event.target.closest("[data-budget-action]");
+                if (budgetControl) return root.CNBudget?.action(this, budgetControl);
                 const source = event.target.closest(".dlp-operating-open");
                 if (source) return operating.openSource(source.dataset.source, source.dataset.tab, () => this.refresh());
                 const control = event.target.closest("[data-cn-action]");
                 const action = control?.dataset.cnAction;
-                if (action === "reset") this.filters = defaults();
+                if (action === "reset") this.filters = {...defaults(), approval_type:this.filters.approval_type, budget_tab:this.filters.budget_tab};
                 else if (["company", "trend"].includes(action)) this.grouping = action;
                 else if (action === "review") return root.frappe.set_route(routes.review, {cn_filters:JSON.stringify({...this.filters, quick_tab:"all"})});
                 else if (action === "tab") this.filters.quick_tab = control.dataset.tab;
@@ -105,12 +109,16 @@
             this.page.add_inner_button(t("Refresh"), () => this.initialize().catch(() => this.loadError()));
             this.exportButton = this.page.add_inner_button(t("Export Excel"), () => this.exportCurrent());
             if (root.DeepLinkERPOperatingExpenseDrawer?.isManager?.()) {
-                this.page.add_menu_item(t("Operating Expense Sync Settings"), () =>
-                    root.DeepLinkERPOperatingExpenseDrawer.openSettings(() => this.refresh()));
-                this.page.add_inner_button(t("Synchronize Data"), () =>
-                    root.DeepLinkERPOperatingExpenseDrawer.openSync(() => this.refresh()));
+                this.syncSettingsItem = this.page.add_menu_item(t("Sync Settings"), () => this.openSync(true));
+                this.syncButton = this.page.add_inner_button(t("Synchronize Data"), () => this.openSync(false));
             }
             this.ready = this.initialize().catch(() => this.loadError());
+        }
+        activeCompanies() { return this.filters.approval_type === "budget" ? (this.budgetCompanies || this.companies) : this.companies; }
+        openSync(settings) {
+            if (this.filters.approval_type === "budget" && root.CNBudget) return root.CNBudget.sync(this, settings);
+            if (!["", "operating"].includes(this.filters.approval_type)) return;
+            return root.DeepLinkERPOperatingExpenseDrawer[settings ? "openSettings" : "openSync"](() => this.refresh());
         }
         async loadCompanies() {
             // Same permitted legal-company scope as the existing operating service.
@@ -152,18 +160,18 @@
         restore() {
             try {
                 const key = this.preferenceKey(), saved = key && JSON.parse(root.localStorage?.getItem(key) || "null");
-                if (saved) Object.assign(this.filters, validFilters(saved, this.companies));
+                if (saved) Object.assign(this.filters, validFilters(saved, [...this.companies, ...(typeof saved.company === "string" ? [saved.company] : [])]));
             } catch { /* Optional browser preferences. */ }
             const params = new URLSearchParams(root.location?.search || "");
             try {
                 let filters = JSON.parse(params.get("cn_filters"));
                 // Native routing can serialize the JSON route option once more.
                 if (typeof filters === "string") filters = JSON.parse(filters);
-                Object.assign(this.filters, validFilters(filters, this.companies));
+                Object.assign(this.filters, validFilters(filters, [...this.companies, ...(typeof filters?.company === "string" ? [filters.company] : [])]));
             }
             catch { /* Invalid links retain valid defaults. */ }
             if (root.frappe.route_options?.cn_filters) {
-                try { Object.assign(this.filters, validFilters(JSON.parse(root.frappe.route_options.cn_filters), this.companies)); }
+                try { const values = JSON.parse(root.frappe.route_options.cn_filters); Object.assign(this.filters, validFilters(values, [...this.companies, ...(typeof values.company === "string" ? [values.company] : [])])); }
                 catch { /* Invalid navigation options retain valid filters. */ }
                 delete root.frappe.route_options.cn_filters;
             }
@@ -172,8 +180,8 @@
         remember() {
             if (!this.isCurrentRoute()) return;
             try {
-                const key = this.preferenceKey(), {from_date, to_date, approval_type} = this.filters;
-                if (key) root.localStorage?.setItem(key, JSON.stringify({from_date, to_date, approval_type}));
+                const key = this.preferenceKey(), {from_date, to_date, approval_type, company, budget_tab, budget_type} = this.filters;
+                if (key) root.localStorage?.setItem(key, JSON.stringify({from_date, to_date, approval_type, company, budget_tab, budget_type}));
             } catch { /* Disabled storage must not block navigation. */ }
             if (root.history?.replaceState && root.location?.href) {
                 const url = new URL(root.location.href);
@@ -188,6 +196,8 @@
             else this.ready = this.initialize();
         }
         dispose() {
+            this.budgetReport?.dispose();
+            this.budgetReport = null;
             this.initializationId = (this.initializationId || 0) + 1;
             this.initializing = false;
             this.generation++;
@@ -219,7 +229,15 @@
                 this.approvalSidebar.addEventListener("click", (event) => {
                     const choice = event.target.closest("[data-cn-form]");
                     if (!choice || !this.isCurrentRoute()) return;
+                    if (this.filters.approval_type === choice.dataset.cnForm) return;
                     this.filters.approval_type = choice.dataset.cnForm;
+                    this.filters.status = "all";
+                    this.filters.company = "";
+                    this.filters.keyword = "";
+                    this.filters.department_id = "";
+                    if (this.view === "budget_analysis" && this.filters.approval_type !== "budget") {
+                        return root.frappe.set_route(routes.overview, {cn_filters:JSON.stringify(this.filters)});
+                    }
                     this.refresh();
                     this.approvalSidebar.querySelector('[aria-pressed="true"]')?.focus();
                 });
@@ -239,6 +257,14 @@
             });
         }
         async exportCurrent() {
+            if (this.filters.approval_type === "budget" && root.CNBudget && this.data && !this.loading) {
+                this.exportButton.prop("disabled", true);
+                const generation = this.generation;
+                try { await root.CNBudget.exportCurrent(this); }
+                catch (error) { root.frappe.msgprint(t("Export failed. Please retry.")); }
+                finally { if (generation === this.generation) this.exportButton.prop("disabled", !this.data || this.loading); }
+                return;
+            }
             if (!operating?.connected(this.filters, this.view) || !this.data || this.loading) return;
             this.exportButton.prop("disabled", true);
             try { await operating.exportCurrent(this); }
@@ -250,6 +276,19 @@
             const generation = ++this.generation;
             if (resetPage) this.start = 0;
             this.data = null;
+            this.budgetReport?.dispose(); this.budgetReport = null;
+            if (this.view === "budget_analysis") this.filters.approval_type = "budget";
+            const isBudget = this.filters.approval_type === "budget";
+            this.syncButton?.text(t(isBudget ? "Synchronize Budget Ledger" : "Synchronize Data"))
+                .prop("disabled", !["", "operating", "budget"].includes(this.filters.approval_type));
+            this.syncSettingsItem?.text(t(isBudget ? "Budget Sync Settings" : "Sync Settings"));
+            if (this.filters.approval_type === "budget" && root.CNBudget) {
+                if (["analysis", "payroll"].includes(this.view)) {
+                    return root.frappe.set_route(this.view === "analysis" ? routes.budget_analysis : routes.overview, {cn_filters:JSON.stringify(this.filters)});
+                }
+                return root.CNBudget.render(this, generation);
+            }
+            this.page.set_title(t(titles[this.view]));
             this.filters = {...defaults(), ...validFilters(this.filters, this.companies)};
             this.disposeFilterControls();
             const f = this.filters;
@@ -264,7 +303,7 @@
                 ${this.filter("status", "Approval Status", statuses.map(([id, label]) => [id, t(label)]))}
                 <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset")}</div></div>
                 <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(t(forms.find(([id]) => id === f.approval_type)[1]))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(live ? "Original Currencies" : f.currency))}</span>${help(live ? operating.scope : "CN filters are ready; statistics and currency conversion will be connected later")}</div>
-                ${!live || !f.approval_type ? `<div class="mx-notice">${esc(t(live ? "Only operating expenses are connected. Budget and purchase statistics are not included yet." : pending))}</div>` : ""}
+                ${!live || !f.approval_type ? `<div class="mx-notice">${esc(t(live ? "This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet." : pending))}</div>` : ""}
                 <div class="mx-body">${live ? `<div class="mx-empty">${esc(t("Loading..."))}</div>` : this.content()}</div>`;
             this.mountDateControls();
             this.mountSelectControls();

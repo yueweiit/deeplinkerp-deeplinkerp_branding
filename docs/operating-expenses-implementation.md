@@ -4,15 +4,23 @@
 
 “运营支出（CN）”的概览、明细、支出分析和数据核对已接入原中国财务入口使用的 `Operating Expense Source`。复用 `services/operating_expenses.py` 的权限过滤、当前公司归属、ERP 付款覆盖、导出与原办理抽屉；不复制来源数据，不自动确认公司、登记付款或生成凭证。旧 `operating-expenses` URL 保留兼容，CN 导航可用时从 Accounting/China Finance 移除系统管理的重复入口及空“支出管理”分组，保留用户自定义筛选链接；没有 CN 导航的独立安装保留原入口。
 
-- 运营支出及“全部审批表”读取同一套现有国内申请；“全部”明确提示预算、采购统计尚未接入。预算管理原页面保持不变，薪酬分析缺少可靠分类仍显示待接入，不从摘要猜测工资。
+- 运营支出及“全部审批表”读取同一套现有国内申请；“全部”明确仅统计运营支出，预算通过独立选择展示，采购统计尚未接入。预算导航和数据适配由 Budget App 负责，薪酬分析缺少可靠分类仍显示待接入，不从摘要猜测工资。
 - 日期口径使用申请日期，默认中国时区当月及全部审批状态；按原始币种分列，暂不套用 MX 的审批月汇率。已核实付款为所选申请累计付款，不代表本期支付或总账已入账费用。
 - 概览、分析按公司、申请月份、财务申请类型汇总；复用精确十进制汇总。未知付款保持待核对并显示可确定部分，负数异常不参与正常合计；未映射或过期归属单独列组，不计入具体子公司。
 - 明细每页 20 条，支持快捷状态、关键词、归属状态和申请类型；数据核对使用原 reconciliation 规则。查看审批、付款明细、公司复核均调用原抽屉，继续受后端财务权限与版本校验约束；保存后重读数据。导出使用同一筛选和原生导出权限，覆盖全部匹配记录。
-- `cn_filters`、日期与审批表偏好独立于 MX。公司选择与原运营服务一致，读取原生权限过滤的 Company 范围，不因国家或集团标记隐藏已有法律公司归属。预算、采购占位页面保留原显示方式。
+- `cn_filters`、日期与审批表偏好独立于 MX。公司选择与原运营服务一致，读取原生权限过滤的 Company 范围，不因国家或集团标记隐藏已有法律公司归属。预算公司取本地台账/额度来源名称，按原名精确筛选，不猜测与法律公司的对应关系；采购页面仍待接入。
 
 代码入口：`public/js/china_expenses.js`（生命周期与筛选）、`china_operating_expenses.js`（现有服务适配与展示）、`services/operating_expense_analysis.py`（纯汇总）、`operating_navigation.py`（导航合并）。`budget.setup.apply_budget_nav` 创建可用 CN 侧栏后再次调用合并，兼容首次安装顺序；`restore_budget_nav` 在移除 CN 侧栏后恢复尚存品牌 App 的备用入口，无需再执行迁移。公司选项初始化与数据刷新分别校验请求代次及当前路由，旧页面的延迟响应不能消耗新页面的 `cn_filters`，兼容原生路由二次序列化。相关回归：`tests/china-operating-expenses.test.js`、`tests/test_operating_expense_analysis.py`、`tests/test_operating_expense_navigation.py`。
 
 CN/MX 页面加载器向 `frappe.require` 传递不带查询参数的资源路径，由框架添加缓存版本；共用资源使用相同路径，避免重复执行。当前 Frappe 的资源类型识别不兼容手工 `?v=` 参数，会在页面初始化前抛错。原生加载链路及两种访问顺序的回归见 `tests/regional-expense-page-loading.test.js`。
+
+## CN 预算导航整合（2026-11-19）
+
+取消单独“预算管理”分组；选择审批表“预算”后，概览/明细/核对委托 `window.CNBudget`，预算明细区分台账和额度。统计报表新增“预算执行分析”（原 `budget-dashboard` 路由）。预算数据、额度权限、报表及同步规则由 `budget/api/cn_workbench.py`、`budget/public/js/cn_budget.js` 实现，详见 [Budget 说明](../../budget/README.md#cn-预算整合2026-11-19)。原生 ERPNext Budget 不受影响。
+
+`china_expenses.js` 只负责公共框架和上下文传递：预算日期归一为完整月份、固定 CNY，记住日期/公司/审批表及额度页签；切换业务时清除不兼容的公司/部门筛选；预算报表切换到运营支出时返回概览。同步入口按当前业务调用原运营工作流或 `BudgetLedgerSync`，预算按钮明确为“同步预算台账”。切换路由和筛选会销毁报表图表、失效旧请求，避免迟到响应覆盖新页面。预算额度和计划均不并入实际支出合计。
+
+预算执行分析的已审批支出由 `services/operating_budget_report.py` 提供内部读取入口：先经过运营列表的原生公司/字段权限，再按可读父单 ID 批量投影 OA 企业身份及 `workflow_summary.reporting`，不公开原始 JSON。`operating_oa_workflow.py` 在同步快照中保留审批创建/完成时间、发起部门 ID/名称及节点起止时间，不增加用户信息或付款推断；正常同步结束核查会补齐已有记录的时间快照。报表由 Budget App 按审批完成月份月初汇率折算 CNY，运营工作台本身继续按原币分列；具体口径及不可用状态见上述 Budget 文档。
 
 ## CN 同步设置（2026-11-19）
 
