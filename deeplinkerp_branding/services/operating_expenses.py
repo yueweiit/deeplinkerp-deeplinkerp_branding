@@ -419,7 +419,8 @@ def _reconcile_oa_cache(until, maps):
             continue
         if row and oa.in_scope(row, process_codes=codes) and not row.get("deleted_at"):
             if (row["process_code"] not in active_codes
-                    or (raw.get("workflow_summary", {}).get("reporting") or {}).get("version") != 1):
+                    or (raw.get("workflow_summary", {}).get("reporting") or {}).get("version") != 1
+                    or (raw.get("workflow_summary", {}).get("cashier") or {}).get("version") != 1):
                 refresh_rows.append(row)
             continue
         withdrawn = oa.withdrawn_source(raw, row)
@@ -1218,18 +1219,23 @@ EXPORT_COLUMNS["display_source_id"] = "申请编号"
 EXPORT_COLUMNS["current_approver"] = "当前办理人"
 EXPORT_COLUMNS["source_system"] = "来源"
 EXPORT_COLUMNS["project"] = "项目"
+EXPORT_COLUMNS["cashier_date"] = "Cashier Processing Date"
 EXPORT_COLUMNS.update(source_status="付款状态", display_source_id="钉钉申请单号", source_company="来源组织",
     amount="申请金额", paid_amount="已支付金额", pending_amount="待付款金额", currency="货币类型",
     project="项目归属", account_nature="账户性质", needed_payment_date="需求付款日期",
     general_manager_approval="总经理审批", remark="备注", blocking_reason="办理阻碍")
 
 
-def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
+def _list_rows(filters=None, order_by="request_date desc", with_summary=False, report_meta=None):
     _require_fields(SOURCE, set(LIST_FIELDS))
     filters = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"company", "company_review", "application_type", "applicant", "source_status", "approval_state", "date_from", "date_to", "keyword", "quick_tab"}
+    allowed = {"basis", "company", "company_review", "application_type", "applicant", "source_status", "approval_state", "date_from", "date_to", "keyword", "quick_tab"}
     if not isinstance(filters, dict) or set(filters) - allowed:
         frappe.throw(_i18n("列表筛选无效"))
+    basis = filters.get("basis") or "request"
+    if not isinstance(basis, str) or basis not in {"request", "cashier"}:
+        frappe.throw(_i18n("列表筛选无效"))
+    dates = {field: str(getdate(filters[field])) for field in ("date_from", "date_to") if filters.get(field)}
     native = []
     for field in ("company", "application_type", "applicant"):
         if filters.get(field):
@@ -1237,8 +1243,8 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
                 frappe.throw(_i18n("筛选值无效"))
             native.append(["effective_application_type" if field == "application_type" else field, "=", filters[field]])
     for field, operator in (("date_from", ">="), ("date_to", "<=")):
-        if filters.get(field):
-            native.append(["request_date", operator, str(getdate(filters[field]))])
+        if basis == "request" and field in dates:
+            native.append(["request_date", operator, dates[field]])
     sort = str(order_by).split()
     if len(sort) != 2 or sort[0] not in {"request_date", "amount", "applicant", "source_id", "company", "modified"} or sort[1].lower() not in {"asc", "desc"}:
         frappe.throw(_i18n("排序字段无效"))
@@ -1269,6 +1275,9 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
     # parent-field projection; no full source JSON is hydrated per result row.
     rows = [dict(row) for row in rows]
     _readable_source_numbers(rows)
+    from .operating_cashier_reporting import eligible_date
+    for row in rows:
+        row["cashier_date"] = eligible_date(row)
     from .operating_payment_service import overlay_rows
     overlay_rows(rows)
     for row in rows:
@@ -1295,6 +1304,14 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
         if not isinstance(review, str) or review not in {"unmapped", "stale", "confirmed"}:
             frappe.throw(_i18n("公司归属状态筛选无效"))
         rows = [row for row in rows if row["company_review_state"] == review]
+    if report_meta is not None:
+        report_meta["cashier_pending_sync"] = sum(row.get("source_system") == "dingtalk-oa"
+            and not row.get("source_withdrawn") and row.get("approval_state") in {"approved", "pending"}
+            and not row.get("cashier_projection_available") for row in rows) if basis == "cashier" else 0
+    if basis == "cashier":
+        rows = [row for row in rows if row["cashier_date"]
+                and (not dates.get("date_from") or row["cashier_date"] >= dates["date_from"])
+                and (not dates.get("date_to") or row["cashier_date"] <= dates["date_to"])]
     tab = filters.get("quick_tab") or "all"
     if tab not in QUICK_TABS:
         frappe.throw(_i18n("快捷筛选无效"))
@@ -1320,12 +1337,13 @@ def get_operating_expenses(filters=None, order_by="request_date desc", page_leng
     page_length, start = int(page_length), int(start)
     if page_length not in {20, 100, 500, 2500} or start < 0:
         frappe.throw(_i18n("分页参数无效"))
-    rows, counts, totals, overview, review_counts = _list_rows(filters, order_by, with_summary=True)
+    report_meta = {}
+    rows, counts, totals, overview, review_counts = _list_rows(filters, order_by, with_summary=True, report_meta=report_meta)
     page = rows[start:start + page_length]
     _enrich_page(page)
     return {"rows": page, "total_count": len(rows), "currency_totals": totals, "tab_counts": counts,
             "company_overview": overview, "review_counts": review_counts,
-            "source_scope": _list_source_scope()}
+            "source_scope": _list_source_scope(), **report_meta}
 
 
 @frappe.whitelist()
@@ -1333,7 +1351,10 @@ def get_operating_expense_analysis(filters=None):
     # The same native permissions, current company mapping and ERP payment
     # overlay as the worklist/export. Never aggregate the raw cache directly.
     from .operating_expense_analysis import summarize
-    result = summarize(_list_rows(filters))
+    values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
+    report_meta = {}
+    result = summarize(_list_rows(filters, report_meta=report_meta), basis=values.get("basis") or "request")
+    result.update(report_meta)
     result["source_scope"] = _list_source_scope()
     return result
 
@@ -1435,6 +1456,7 @@ def _readable_source_numbers(rows):
              "source_company", "account_nature", "needed_payment_date", "general_manager_approval", "remark", "projection_conflicts", "original_url")
     expressions = ",".join("JSON_EXTRACT(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'$." + field + "') AS `" + field + "`" for field in paths)
     expressions += ",JSON_UNQUOTE(JSON_EXTRACT(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'$.workflow_summary.lookup_status')) AS workflow_lookup_status"
+    expressions += ",JSON_EXTRACT(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'$.workflow_summary.cashier') AS cashier"
     expressions += ",JSON_CONTAINS_PATH(CASE WHEN JSON_VALID(source_json) THEN source_json ELSE '{}' END,'one','$.company_mapping_source') AS mapping_source_present"
     raw = {}
     company_maps = _maps(_settings())
@@ -1443,9 +1465,14 @@ def _readable_source_numbers(rows):
         for projected in frappe.db.sql("SELECT name," + expressions + " FROM `tabOperating Expense Source` WHERE name IN %(names)s", {"names": names}, as_dict=True):
             raw[projected.name] = {field: json.loads(projected[field]) if projected[field] is not None else None for field in paths}
             raw[projected.name]["workflow_lookup_status"] = projected.workflow_lookup_status
+            cashier = json.loads(projected.get("cashier") or "null")
+            raw[projected.name]["cashier_projection_available"] = isinstance(cashier, dict) and cashier.get("version") == 1
+            raw[projected.name]["cashier_date"] = cashier.get("date") if isinstance(cashier, dict) and cashier.get("version") == 1 and cashier.get("status") == "completed" else None
             raw[projected.name]["mapping_source_present"] = bool(projected.mapping_source_present)
     for row in rows:
         item = raw.get(row["name"], {})
+        row["cashier_date"] = item.get("cashier_date")
+        row["cashier_projection_available"] = item.get("cashier_projection_available", False)
         item["source_system"] = row["source_system"]
         value = item.get("approval_no")
         row["approval_no"] = value if isinstance(value, str) and len(value) <= 140 else None
@@ -1480,10 +1507,17 @@ def _readable_source_numbers(rows):
 
 @frappe.whitelist()
 def export_operating_expenses(filters=None, order_by="request_date desc", columns=None):
-    rows = _list_rows(filters, order_by)
+    report_meta = {}
+    rows = _list_rows(filters, order_by, report_meta=report_meta)
+    if report_meta.get("cashier_pending_sync"):
+        frappe.throw(_i18n("Cashier completion data is not synchronized. Synchronize data before exporting."))
     # Lazy exact-owner proof; authorized _source reads keep native scope checks.
     _require_export_permission(SOURCE, ({"owner": _source(row["name"]).get("owner")} for row in rows))
     selected = frappe.parse_json(columns) if isinstance(columns, str) else columns or list(EXPORT_COLUMNS)
+    values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
+    cashier = values.get("basis") == "cashier"
+    if cashier and columns is None:
+        selected = [field for field in selected if field not in {"paid_amount", "pending_amount", "source_status"}]
     if not isinstance(selected, list) or not selected or len(selected) != len(set(selected)) or set(selected) - set(EXPORT_COLUMNS):
         frappe.throw(_i18n("导出列无效"))
     if "finance_status" in selected:
@@ -1497,7 +1531,7 @@ def export_operating_expenses(filters=None, order_by="request_date desc", column
         date_format = workbook.add_format({"num_format": "yyyy-mm-dd"})
         money_fields = {"amount", "paid_amount", "pending_amount"}
         for column_index, field in enumerate(selected):
-            sheet.write(0, column_index, _i18n(EXPORT_COLUMNS[field]))
+            sheet.write(0, column_index, _i18n("Cashier Processed Amount" if cashier and field == "amount" else EXPORT_COLUMNS[field]))
         for row_index, row in enumerate(rows, 1):
             for column_index, field in enumerate(selected):
                 value = (row.get("approval_no") or "—") if field == "display_source_id" else row.get(field)

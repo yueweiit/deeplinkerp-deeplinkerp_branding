@@ -170,6 +170,20 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         self.assertEqual(project.call_args.args[0], [rows[0]])
         upsert.assert_called_once_with(refreshed, maps)
 
+    def test_reconciliation_refreshes_cashier_projection_without_resyncing_new_identities(self):
+        row = approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC))
+        cached = self.cached([row])
+        doc, raw = cached[0]
+        raw["workflow_summary"].pop("cashier")
+        doc.name, doc.company, doc.issues = raw["source_id"], "Company A", ""
+        doc.source_version = "old-cashier-projection"
+        refreshed = self.source.merge_application(row)
+        with patch.object(self.service, "_oa_source_items", return_value=[refreshed]) as project, \
+                patch.object(self.service, "_mapped_company", return_value="Company A"):
+            changed, _, upsert, maps = self.reconcile(cached, [row])
+        self.assertEqual(changed, 1)
+        self.assertEqual(project.call_args.args[0], [row])
+        upsert.assert_called_once_with(refreshed, maps)
 
 
 class OriginalOperatingSourceTest(unittest.TestCase):

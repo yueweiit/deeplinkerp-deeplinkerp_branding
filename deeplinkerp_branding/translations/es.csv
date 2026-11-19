@@ -2848,3 +2848,14 @@ Sync Settings,Configuración de sincronización
 This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet.,Este total solo incluye gastos operativos. Seleccione Presupuesto para consultar las solicitudes y cuotas; los gastos de compras aún no están conectados.
 Synchronize Budget Ledger,Sincronizar registro presupuestario
 Budget Sync Settings,Configuración de sincronización presupuestaria
+Cashier Processing Date,Fecha de gestión de caja
+Cashier Processed Amount,Importe gestionado por caja
+Cashier Processed Applications,Solicitudes gestionadas por caja
+Included Subsidiaries,Filiales incluidas
+Subsidiary Cashier Processing Distribution,Distribución de gestiones de caja por filial
+Monthly Cashier Processing,Gestiones mensuales de caja
+Cashier Processing Month,Mes de gestión de caja
+"Counts application amounts once after all CN cashier tasks have completed and agreed, using the last completion date in China time. This is cashier processing, not verified bank payments. Missing completion evidence is excluded; synchronize data to refresh it.","Cuenta una sola vez el importe solicitado cuando todas las tareas de caja de CN están completadas y aprobadas, según la última fecha de finalización en horario de China. Refleja la gestión de caja, no pagos bancarios verificados. Se excluyen solicitudes sin evidencia de finalización; sincronice los datos para actualizarla."
+OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,Las tareas de aprobación de OA no incluyen importes de pagos reales. Los pagos verificados y los saldos pendientes siguen sujetos a revisión hasta disponer de evidencia; pendiente de revisión no significa cero ni impagado.
+Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,Algunas fechas de finalización de caja aún no se han sincronizado. Use Sincronizar datos para actualizarlas; las estadísticas actuales solo incluyen solicitudes con evidencia de finalización.
+Cashier completion data is not synchronized. Synchronize data before exporting.,Los datos de finalización de caja no están sincronizados. Sincronice los datos antes de exportar.

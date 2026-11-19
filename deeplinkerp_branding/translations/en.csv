@@ -2577,3 +2577,14 @@ Sync Settings,Sync Settings
 This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet.,This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet.
 Synchronize Budget Ledger,Synchronize Budget Ledger
 Budget Sync Settings,Budget Sync Settings
+Cashier Processing Date,Cashier Processing Date
+Cashier Processed Amount,Cashier Processed Amount
+Cashier Processed Applications,Cashier Processed Applications
+Included Subsidiaries,Included Subsidiaries
+Subsidiary Cashier Processing Distribution,Subsidiary Cashier Processing Distribution
+Monthly Cashier Processing,Monthly Cashier Processing
+Cashier Processing Month,Cashier Processing Month
+"Counts application amounts once after all CN cashier tasks have completed and agreed, using the last completion date in China time. This is cashier processing, not verified bank payments. Missing completion evidence is excluded; synchronize data to refresh it.","Counts application amounts once after all CN cashier tasks have completed and agreed, using the last completion date in China time. This is cashier processing, not verified bank payments. Missing completion evidence is excluded; synchronize data to refresh it."
+OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.
+Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.
+Cashier completion data is not synchronized. Synchronize data before exporting.,Cashier completion data is not synchronized. Synchronize data before exporting.

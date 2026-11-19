@@ -65,7 +65,7 @@ class ServiceBoundaryTests(unittest.TestCase):
         with patch.object(self.service, "_list_rows", return_value=[source()]) as query, \
                 patch.object(self.service, "_list_source_scope", return_value={"region": "CN"}):
             result = self.service.get_operating_expense_analysis(filters)
-            query.assert_called_once_with(filters)
+            query.assert_called_once_with(filters, report_meta={})
             self.assertEqual(result["total_count"], 1)
         with patch.object(self.service, "_list_rows", side_effect=PermissionError("denied")):
             with self.assertRaises(PermissionError):

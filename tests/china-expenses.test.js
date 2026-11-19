@@ -32,6 +32,7 @@ test("CN preferences restore last dates and form, honor URL, and do not touch MX
     assert.equal(wb.filters.from_date, saved.from_date);
     assert.equal(wb.filters.approval_type, "purchase");
     assert.deepEqual(api.validFilters({from_date:"2026-11-31", to_date:"2026-12-01", company:"MX A", approval_type:"expense", currency:"BAD"}, ["CN A"]), {});
+    assert.deepEqual(api.validFilters({basis:"cashier"}, []), {basis:"cashier"});
 });
 test("CN company options retain the existing operating service's native permitted scope", async () => {
     const calls=[];

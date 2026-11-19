@@ -15,7 +15,7 @@
     const titles = {budget_analysis:"Budget Execution Analysis", overview:"Expense Overview", details:"Expense Details", analysis:"Expenditure Analysis",
         payroll:"Personnel Analysis", review:"Data Review"};
     const forms = [["", "All Approval Forms"], ["operating", "Operating Expenses"], ["budget", "Budget"], ["purchase", "Purchase Expenses"]];
-    const bases = [["period", "Expense Period"], ["request", "Application Date"], ["planned", "Planned Payment Date"]];
+    const bases = [["period", "Expense Period"], ["request", "Application Date"], ["planned", "Planned Payment Date"], ["cashier", "Cashier Processing Date"]];
     const statuses = [["active", "Active Applications"], ["approved", "Approved"], ["pending", "In Approval"],
         ["all", "All Statuses"], ["rejected", "Rejected"], ["terminated", "Terminated"], ["withdrawn", "Withdrawn"], ["unknown", "Pending Review"]];
     const pending = "CN statistics are not connected yet";
@@ -84,6 +84,7 @@
             this.el.addEventListener("change", (event) => {
                 if (!Object.hasOwn(this.filters, event.target.dataset.filter)) return;
                 Object.assign(this.filters, validFilters({[event.target.dataset.filter]:event.target.value}, this.activeCompanies()));
+                if (event.target.dataset.filter === "basis") this.filters.quick_tab = "all";
                 this.refresh();
             });
             this.el.addEventListener("click", (event) => {
@@ -293,16 +294,17 @@
             this.disposeFilterControls();
             const f = this.filters;
             const live = operating?.connected(f, this.view);
-            if (live) f.basis = "request";
+            if (live && !["request", "cashier"].includes(f.basis)) f.basis = "request";
+            if (!live && f.basis === "cashier") f.basis = "request";
             this.loading = !!live;
             this.exportButton?.prop("disabled", true).attr("title", live ? "" : t(pending));
-            this.el.innerHTML = `<div class="mx-filters">${this.filter("basis", "Date Basis", (live ? [["request", "Application Date"]] : bases).map(([id, label]) => [id, t(label)]))}
+            this.el.innerHTML = `<div class="mx-filters">${this.filter("basis", "Date Basis", (live ? bases.filter(([id]) => ["request", "cashier"].includes(id)) : bases.filter(([id]) => id !== "cashier")).map(([id, label]) => [id, t(label)]))}
                 <div class="mx-filter mx-date-range-filter"><span>${esc(t("Date Range"))}</span><div class="mx-date-range-control"></div></div>
                 ${this.filter("company", "Subsidiary", [["", t("All Subsidiaries")], ...this.companies.map((c) => [c, c])])}
                 ${live ? "" : this.filter("currency", "Reporting Currency", ["CNY", "USD", "MXN"].map((c) => [c, c]))}
                 ${this.filter("status", "Approval Status", statuses.map(([id, label]) => [id, t(label)]))}
                 <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset")}</div></div>
-                <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(t(forms.find(([id]) => id === f.approval_type)[1]))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(live ? "Original Currencies" : f.currency))}</span>${help(live ? operating.scope : "CN filters are ready; statistics and currency conversion will be connected later")}</div>
+                <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(t(bases.find(([id]) => id === f.basis)[1]))} · ${esc(t(forms.find(([id]) => id === f.approval_type)[1]))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(live ? "Original Currencies" : f.currency))}</span>${help(live ? operating.scopeFor(f.basis) : "CN filters are ready; statistics and currency conversion will be connected later")}</div>
                 ${!live || !f.approval_type ? `<div class="mx-notice">${esc(t(live ? "This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet." : pending))}</div>` : ""}
                 <div class="mx-body">${live ? `<div class="mx-empty">${esc(t("Loading..."))}</div>` : this.content()}</div>`;
             this.mountDateControls();

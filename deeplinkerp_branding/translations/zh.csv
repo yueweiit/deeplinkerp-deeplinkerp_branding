@@ -1176,3 +1176,14 @@ Sync Settings,同步设置
 This total contains operating expenses only. Select Budget to view plans and quotas separately; purchase statistics are not connected yet.,此合计仅包含运营支出。选择“预算”可查看预算申请和额度；采购支出统计尚未接入。
 Synchronize Budget Ledger,同步预算台账
 Budget Sync Settings,预算同步设置
+Cashier Processing Date,出纳办理日期
+Cashier Processed Amount,出纳已办理金额
+Cashier Processed Applications,出纳已办理申请
+Included Subsidiaries,纳入子公司数
+Subsidiary Cashier Processing Distribution,子公司出纳办理分布
+Monthly Cashier Processing,月度出纳办理
+Cashier Processing Month,出纳办理月份
+"Counts application amounts once after all CN cashier tasks have completed and agreed, using the last completion date in China time. This is cashier processing, not verified bank payments. Missing completion evidence is excluded; synchronize data to refresh it.",仅统计国内出纳节点全部完成且同意的申请，每笔申请按最后完成日期（中国时区）计入一次申请金额。此口径为出纳已办理金额，不等同于银行实付金额；缺少完成依据的申请不计入，可同步数据更新。
+OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,OA 审批节点未提供逐笔实际付款金额。缺少付款依据时，已核实付款与剩余待付显示待核对；待核对不代表金额为零，也不代表尚未付款。
+Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,部分申请的出纳办理时间尚未同步。请点击“同步数据”补齐，当前统计仅包含已有办理依据的申请。
+Cashier completion data is not synchronized. Synchronize data before exporting.,出纳办理数据尚未同步完整，请先同步数据再导出。

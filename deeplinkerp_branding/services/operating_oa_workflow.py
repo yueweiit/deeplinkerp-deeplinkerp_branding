@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.parse import urlencode
 
 from .operating_expense_contract import digest
+from .operating_cashier_reporting import project as cashier_projection
 
 try:
     from frappe import _
@@ -72,6 +73,7 @@ def workflow(row):
                                               "status": row.get("status"), "result": row.get("result"),
                                               "updated_at": str(row.get("updated_at") or ""), "tasks": tasks})
     return {"lookup_status": "found" if raw else "missing", "events": events, "current_tasks": active,
+            "cashier": cashier_projection(row, tasks),
             # Persist bounded timing facts for local reporting; never infer payment
             # or completion dates from the last archive update/operation record.
             "reporting": {"version": 1, "process_code": row.get("process_code"),
