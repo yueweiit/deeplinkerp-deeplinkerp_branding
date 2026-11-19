@@ -152,6 +152,25 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         upsert.assert_not_called()
         self.assertEqual([read[-1] for read in reads], [None, "1", "2"])
 
+    def test_reconciliation_refreshes_old_timing_facts_only_for_cached_identities(self):
+        rows = [approval(updated_at=datetime(2026, 10, 5, tzinfo=UTC)) for _ in range(3)]
+        for index, row in enumerate(rows):
+            row["process_instance_id"] = "instance-" + str(index)
+        cached = self.cached(rows[:2])
+        doc, raw = cached[0]
+        raw["workflow_summary"].pop("reporting")
+        doc.name, doc.company, doc.issues = raw["source_id"], "Company A", ""
+        cached[1][0].name = cached[1][1]["source_id"]
+        refreshed = self.source.merge_application(rows[0])
+        doc.source_version = "old-timing-projection"
+        with patch.object(self.service, "_oa_source_items", return_value=[refreshed]) as project, \
+                patch.object(self.service, "_mapped_company", return_value="Company A"):
+            changed, _, upsert, maps = self.reconcile(cached, rows)
+        self.assertEqual(changed, 1)
+        self.assertEqual(project.call_args.args[0], [rows[0]])
+        upsert.assert_called_once_with(refreshed, maps)
+
+
 
 class OriginalOperatingSourceTest(unittest.TestCase):
     def setUp(self):

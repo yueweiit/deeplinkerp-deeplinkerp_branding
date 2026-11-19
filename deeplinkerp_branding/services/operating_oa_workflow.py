@@ -1,6 +1,7 @@
 """Bounded projection of the OA archive's rawPayload, without cashier IO."""
 from __future__ import annotations
 
+from datetime import datetime
 from urllib.parse import urlencode
 
 from .operating_expense_contract import digest
@@ -16,6 +17,10 @@ PAYMENT_NOTICE = "OA 接口尚未提供可核验的付款历史，付款登记�
 
 def _text(value):
     return value.strip() if isinstance(value, str) else ""
+
+
+def _time_text(value):
+    return value.isoformat() if isinstance(value, datetime) else value if isinstance(value, str) else None
 
 
 def workflow(row):
@@ -67,6 +72,16 @@ def workflow(row):
                                               "status": row.get("status"), "result": row.get("result"),
                                               "updated_at": str(row.get("updated_at") or ""), "tasks": tasks})
     return {"lookup_status": "found" if raw else "missing", "events": events, "current_tasks": active,
+            # Persist bounded timing facts for local reporting; never infer payment
+            # or completion dates from the last archive update/operation record.
+            "reporting": {"version": 1, "process_code": row.get("process_code"),
+                          "create_time": _time_text(row.get("create_time")), "finish_time": _time_text(raw.get("finishTime")),
+                          "department_id": row.get("originator_dept_id"),
+                          "department_name": row.get("originator_dept_name"),
+                          "tasks_available": isinstance(raw.get("tasks"), list),
+                          "tasks": [{"task_id": task.get("taskId"), "status": task.get("status"),
+                                     "start_time": _time_text(task.get("createTime")), "end_time": _time_text(task.get("finishTime"))}
+                                    for task in tasks]},
             "originator": {"id": row.get("originator_user_id"), "name": row.get("originator_user_name")},
             "approval_status": row.get("status"), "approval_result": row.get("result"),
             "source_updated_at": str(row.get("updated_at") or ""), "last_synced_at": str(row.get("updated_at") or ""),

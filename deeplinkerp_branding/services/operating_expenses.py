@@ -418,7 +418,8 @@ def _reconcile_oa_cache(until, maps):
         if row and oa.timestamp(row["updated_at"]) > oa.timestamp(until):
             continue
         if row and oa.in_scope(row, process_codes=codes) and not row.get("deleted_at"):
-            if row["process_code"] not in active_codes:
+            if (row["process_code"] not in active_codes
+                    or (raw.get("workflow_summary", {}).get("reporting") or {}).get("version") != 1):
                 refresh_rows.append(row)
             continue
         withdrawn = oa.withdrawn_source(raw, row)
@@ -426,8 +427,8 @@ def _reconcile_oa_cache(until, maps):
             _upsert(withdrawn, maps)
             changed += 1
     if refresh_rows:
-        # Only cached identities enter this path: disabled templates cannot
-        # import new applications. Batch attachments through the normal reader.
+        # Refresh cached timing projections as well as disabled-template history.
+        # Only cached identities enter this path; no new applications are imported.
         docs = {doc.name: doc for doc, _ in cached}
         for item in _oa_source_items(refresh_rows, url, codes, cached, roots):
             doc = docs[item["source_id"]]

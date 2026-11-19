@@ -85,6 +85,18 @@ class OAOnlyProjectionTests(unittest.TestCase):
 
 
 class OAWorkflowTests(unittest.TestCase):
+    def test_reporting_snapshot_retains_approval_and_task_times_without_private_text(self):
+        row = approval(raw_payload={"finishTime":"2026-02-03T12:00:00Z", "tasks":[self.task(
+            status="COMPLETED", finishTime="2026-02-03T12:00:00Z", remark="private")]})
+        before = copy.deepcopy(row)
+        snapshot = oa.merge_application(row)["workflow_summary"]["reporting"]
+        self.assertEqual(snapshot["version"], 1)
+        self.assertEqual(snapshot["create_time"], row["create_time"].isoformat())
+        self.assertEqual(snapshot["finish_time"], "2026-02-03T12:00:00Z")
+        self.assertNotIn("remark", snapshot["tasks"][0])
+        self.assertNotIn("userId", snapshot["tasks"][0])
+        self.assertEqual(row, before)
+
     def task(self, **values):
         return {"taskId": "task-1", "userId": "approver-1", "activityId": "node-1", "taskGroupName": "Review",
                 "status": "RUNNING", "result": "NONE", "createTime": "2026-01-01T12:00:00Z", **values}
