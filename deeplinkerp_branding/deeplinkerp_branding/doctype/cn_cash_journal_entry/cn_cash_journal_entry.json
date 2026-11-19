@@ -1,0 +1,171 @@
+{
+ "doctype": "DocType",
+ "name": "CN Cash Journal Entry",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "autoname": "format:CNCJ-{YYYY}-{#####}",
+ "allow_rename": 0,
+ "is_submittable": 0,
+ "track_changes": 1,
+ "title_field": "summary",
+ "search_fields": "summary,dingtalk_approval_number,company,reference_number",
+ "sort_field": "posting_date",
+ "sort_order": "DESC",
+ "field_order": [
+  "posting_date",
+  "dingtalk_approval_number",
+  "direction",
+  "amount",
+  "summary",
+  "column_break",
+  "company",
+  "currency",
+  "details_section",
+  "counterparty",
+  "reference_number",
+  "attachment",
+  "remarks",
+  "account"
+ ],
+ "fields": [
+  {
+   "fieldname": "posting_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date",
+   "default": "Today",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "dingtalk_approval_number",
+   "fieldtype": "Data",
+   "label": "DingTalk Approval Number",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "direction",
+   "fieldtype": "Select",
+   "label": "Receipt or Payment",
+   "options": "\nincome\nexpense",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "options": "currency",
+   "precision": "2",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "summary",
+   "fieldtype": "Small Text",
+   "label": "Journal Description",
+   "reqd": 0,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "remember_last_selected_value": 1,
+   "search_index": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "read_only": 0,
+   "reqd": 1,
+   "in_list_view": 1,
+   "description": "Amounts are recorded in the selected currency without conversion.",
+   "options": "Currency",
+   "default": "CNY"
+  },
+  {
+   "fieldname": "details_section",
+   "fieldtype": "Section Break",
+   "label": "Additional Details",
+   "description": "Manually recorded receipts and payments. Saving does not create accounting entries or update OA payment statistics."
+  },
+  {
+   "fieldname": "counterparty",
+   "fieldtype": "Data",
+   "label": "Counterparty"
+  },
+  {
+   "fieldname": "reference_number",
+   "fieldtype": "Data",
+   "label": "Bank Reference or Receipt Number"
+  },
+  {
+   "fieldname": "attachment",
+   "fieldtype": "Attach",
+   "label": "Supporting Document"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Journal Notes"
+  },
+  {
+   "fieldname": "account",
+   "fieldtype": "Link",
+   "label": "Cash or Bank Account",
+   "options": "Account",
+   "reqd": 0,
+   "in_list_view": 0,
+   "in_standard_filter": 0,
+   "search_index": 1,
+   "description": "Choose an enabled cash or bank account belonging to the selected company.",
+   "hidden": 1
+  }
+ ],
+ "permissions": [
+  {
+   "role": "Accounts User",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "Accounts Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1
+  },
+  {
+   "role": "System Manager",
+   "read": 1,
+   "write": 1,
+   "create": 1,
+   "delete": 1,
+   "print": 1,
+   "report": 1,
+   "export": 1
+  }
+ ]
+}

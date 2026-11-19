@@ -16,6 +16,34 @@ MODULE = ROOT / "deeplinkerp_branding/operating_navigation.py"
 
 
 class OperatingNavigationTest(unittest.TestCase):
+	def test_cash_journal_link_is_optional_idempotent_and_keeps_custom_links(self):
+		target = "china-cash-journal"
+		custom = Row(name="custom", type="Link", link_to="CN Cash Journal Entry", filters="mine", label="My cash book")
+		doc = Doc(name="China Operating Expenses", flags=Row(), items=[
+			Row(name="details", type="Link", link_to="china-expense-details"),
+			Row(name="old-journal", type="Link", link_to="CN Cash Journal Entry"),
+			Row(name="reports", type="Section Break", label="Expense Reports"), custom,
+		])
+		fake = types.ModuleType("frappe")
+		fake.flags, fake.conf = Row(in_import=False), Row(developer_mode=True)
+		fake.db = types.SimpleNamespace(exists=lambda dt, name: True)
+		fake.get_doc = lambda *_:doc
+		saved = []
+		doc.save = lambda **kwargs:saved.append(kwargs)
+		module = self.load_module(fake)
+		self.assertTrue(module.ensure_cn_cash_journal_navigation())
+		self.assertEqual(doc["items"][1].link_to, target)
+		self.assertEqual(doc["items"][1].link_type, "Page")
+		self.assertEqual(doc["items"][1].child, 0)
+		self.assertEqual(doc["items"][-1], custom)
+		self.assertFalse(module.ensure_cn_cash_journal_navigation())
+		self.assertEqual(len(saved), 1)
+		self.assertTrue(fake.conf.developer_mode)
+		fake.db.exists = lambda dt, name: dt != "DocType"
+		self.assertFalse(module.ensure_cn_cash_journal_navigation())
+		fake.db.exists = lambda dt, name: dt != "Page"
+		self.assertFalse(module.ensure_cn_cash_journal_navigation())
+
 	def test_cn_consolidation_removes_owned_finance_links_and_empty_group_idempotently(self):
 		sidebar = Doc(name="China Finance", flags=Row(), items=[
 			Row(name="expenses", type="Section Break", label="支出管理"),

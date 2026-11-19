@@ -1,0 +1,19 @@
+{
+ "doctype": "Page",
+ "name": "china-cash-journal",
+ "page_name": "china-cash-journal",
+ "module": "Deeplinkerp Branding",
+ "title": "CN Cash Journal Entry",
+ "standard": "Yes",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  },
+  {
+   "role": "Accounts User"
+  }
+ ]
+}

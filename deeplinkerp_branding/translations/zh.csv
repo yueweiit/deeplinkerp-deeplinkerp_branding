@@ -1187,3 +1187,45 @@ Cashier Processing Month,出纳办理月份
 OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,OA 审批节点未提供逐笔实际付款金额。缺少付款依据时，已核实付款与剩余待付显示待核对；待核对不代表金额为零，也不代表尚未付款。
 Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,部分申请的出纳办理时间尚未同步。请点击“同步数据”补齐，当前统计仅包含已有办理依据的申请。
 Cashier completion data is not synchronized. Synchronize data before exporting.,出纳办理数据尚未同步完整，请先同步数据再导出。
+CN Cash Journal Entry,日记账
+Transaction Date,流水日期
+Receipt or Payment,收支方向
+income,收入
+Cash or Bank Account,收付款账户
+Choose an enabled cash or bank account belonging to the selected company.,请选择所选公司下已启用的现金或银行账户。
+Uses the account currency. No currency conversion is performed.,按账户币种登记，不进行汇率换算。
+Transaction Details,流水明细
+Manually recorded receipts and payments. Saving does not create accounting entries or update OA payment statistics.,手工登记收支流水，保存不生成会计分录，也不更新 OA 付款统计。
+Summary,摘要
+Counterparty,收付款对象
+Bank Reference or Receipt Number,银行流水号或收据号
+Supporting Document,凭证附件
+Choose whether this entry is a receipt or a payment.,请选择收入或支出。
+A transaction summary is required.,请填写流水摘要。
+Amount must be greater than zero and have no more than two decimal places.,金额必须大于零，且最多保留两位小数。
+The entry currency must match the selected account currency.,流水币种必须与所选账户币种一致。
+Remarks,备注
+Transaction Summary,摘要
+income,收入,CN Cash Journal Entry
+expense,支出,CN Cash Journal Entry
+Journal Notes,备注
+DingTalk Approval Number,钉钉审批号
+Journal Description,说明
+Additional Details,更多信息
+Amounts are recorded in the selected currency without conversion.,按所选币种登记金额，不进行换算。
+Choose a non-group company for the cash journal.,请选择非集团公司登记日记账。
+Choose a valid currency for the cash journal.,请选择有效的日记账币种。
+Description and DingTalk approval number must be text.,说明和钉钉审批号必须是文本。
+Save or discard the edited rows before changing the view.,请先保存或撤销已编辑的行，再切换视图。
+Select a company and currency to record cash transactions.,请选择公司和币种，开始登记日记账。
+No cash transactions yet. Click Add Row to begin.,暂无流水，点击“新增一行”开始登记。
+Could not load cash transactions. Please refresh and try again.,日记账读取失败，请刷新后重试。
+"Enter a date, receipt or payment, and an amount greater than zero.",请填写日期、选择收入或支出，并输入大于零的金额。
+Row not saved. Your edits have been kept; check the error and retry.,该行未保存，已保留填写内容，请检查错误后重试。
+Add Row,新增一行
+Discard Changes,撤销修改
+Page {0},第 {0} 页
+Actions,操作
+Details,详情
+Save,保存
+Saved,已保存

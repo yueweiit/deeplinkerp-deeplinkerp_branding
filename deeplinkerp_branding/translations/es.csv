@@ -2859,3 +2859,45 @@ Cashier Processing Month,Mes de gestión de caja
 OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,Las tareas de aprobación de OA no incluyen importes de pagos reales. Los pagos verificados y los saldos pendientes siguen sujetos a revisión hasta disponer de evidencia; pendiente de revisión no significa cero ni impagado.
 Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,Algunas fechas de finalización de caja aún no se han sincronizado. Use Sincronizar datos para actualizarlas; las estadísticas actuales solo incluyen solicitudes con evidencia de finalización.
 Cashier completion data is not synchronized. Synchronize data before exporting.,Los datos de finalización de caja no están sincronizados. Sincronice los datos antes de exportar.
+CN Cash Journal Entry,Libro de caja
+Transaction Date,Fecha de la operación
+Receipt or Payment,Ingreso o gasto
+income,Ingreso
+Cash or Bank Account,Cuenta de caja o banco
+Choose an enabled cash or bank account belonging to the selected company.,Seleccione una cuenta de caja o banco habilitada de la empresa seleccionada.
+Uses the account currency. No currency conversion is performed.,"Se registra en la moneda de la cuenta, sin conversión de divisas."
+Transaction Details,Detalles de la operación
+Manually recorded receipts and payments. Saving does not create accounting entries or update OA payment statistics.,Registro manual de ingresos y gastos. Al guardar no se crean asientos contables ni se actualizan las estadísticas de pagos de OA.
+Summary,Descripción
+Counterparty,Contraparte
+Bank Reference or Receipt Number,Referencia bancaria o número de recibo
+Supporting Document,Documento justificativo
+Choose whether this entry is a receipt or a payment.,Seleccione si el registro es un ingreso o un gasto.
+A transaction summary is required.,Debe indicar una descripción de la operación.
+Amount must be greater than zero and have no more than two decimal places.,El importe debe ser mayor que cero y tener como máximo dos decimales.
+The entry currency must match the selected account currency.,La moneda del registro debe coincidir con la moneda de la cuenta seleccionada.
+Remarks,Observaciones
+Transaction Summary,Descripción de la operación
+income,Ingreso,CN Cash Journal Entry
+expense,Gasto,CN Cash Journal Entry
+Journal Notes,Notas del registro
+DingTalk Approval Number,Número de aprobación de DingTalk
+Journal Description,Descripción
+Additional Details,Información adicional
+Amounts are recorded in the selected currency without conversion.,Los importes se registran en la moneda seleccionada sin conversión.
+Choose a non-group company for the cash journal.,Seleccione una empresa que no sea un grupo para el libro de caja.
+Choose a valid currency for the cash journal.,Seleccione una moneda válida para el libro de caja.
+Description and DingTalk approval number must be text.,La descripción y el número de aprobación de DingTalk deben ser texto.
+Save or discard the edited rows before changing the view.,Guarde o descarte las filas editadas antes de cambiar de vista.
+Select a company and currency to record cash transactions.,Seleccione una empresa y una moneda para registrar movimientos de caja.
+No cash transactions yet. Click Add Row to begin.,No hay movimientos. Haga clic en Añadir fila para empezar.
+Could not load cash transactions. Please refresh and try again.,No se pudieron cargar los movimientos. Actualice e inténtelo de nuevo.
+"Enter a date, receipt or payment, and an amount greater than zero.","Indique una fecha, ingreso o gasto y un importe mayor que cero."
+Row not saved. Your edits have been kept; check the error and retry.,La fila no se guardó. Se conservaron los cambios; revise el error e inténtelo de nuevo.
+Add Row,Añadir fila
+Discard Changes,Descartar cambios
+Page {0},Página {0}
+Actions,Acciones
+Details,Detalles
+Save,Guardar
+Saved,Guardado

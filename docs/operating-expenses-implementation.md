@@ -191,3 +191,13 @@ CN 运营支出新增 `basis=cashier`（出纳办理日期）。从同一 OA 原
 这项统计不生成付款记录，不将出纳节点通过视为银行实付证明，不改写 `paid_amount` / `pending_amount` 或付款登记资格。原申请日期口径的“已核实付款 / 剩余待付”缺少实际付款依据时仍显示待核对，金额卡片的问号解释原因。出纳口径单独展示办理金额、办理申请数和公司归属，不把未知实付余额改成零。
 
 实现入口：`services/operating_cashier_reporting.py`、`operating_oa_workflow.py`、`operating_expenses.py`、`operating_expense_analysis.py` 与 `public/js/china_operating_expenses.js`。投影保存在原 `source_json.workflow_summary.cashier`，无需新增数据库字段；已有缓存缺少投影时由下一次正常同步的历史核对步骤补齐，不在页面读取时逐笔请求 OA。历史投影尚未补齐时，页面提示先同步，空统计显示破折号并暂不允许导出，避免将未同步数据误报为零。
+
+### CN 手工日记账
+
+CN 导航在“支出明细”后增加“日记账”，`china-cash-journal` 提供逐行编辑表格，主要列为日期、钉钉审批号、收入/支出、金额和说明；公司和币种在表格上方选择。账户不再要求填写，钉钉审批号与说明可留空。同一审批可登记多笔流水，因此审批号不设唯一约束，也不据此自动关联 OA。
+
+底层沿用 `CN Cash Journal Entry`，收入/支出使用稳定编码 `income` / `expense`。金额为最多两位小数的正数，阻止原生 Currency 序列化时会丢失分位的超大值；按所选币种记录，不执行换算。公司 Link 和原生读写 API 保留角色、公司用户权限及修改时间冲突校验。表格分页读取，原生保存保留原记录的附件、备注和其他未展示字段；失败保留输入，同一行保存期间阻止重复提交，未保存修改会阻止刷新/分页/筛选。
+
+这是可手工新增和修改的独立流水记录，不可提交；保存不会创建总账分录、凭证、OA 来源或付款事实，也不混入 OA 支出/预算统计。财务用户、财务经理和系统管理员可登记；删除仅授权财务经理/系统管理员。`track_changes` 保留修改记录；原生详情页继续支持附件、打印和导出。历史账户字段隐藏并保留数据。记录编号格式为 `CNCJ-{YYYY}-{#####}`。
+
+实现入口：`deeplinkerp_branding/doctype/cn_cash_journal_entry/` 的 JSON、Controller、表单与列表脚本，`deeplinkerp_branding/page/china_cash_journal/` 和 `public/js/cn_cash_journal.js`。`operating_navigation.ensure_cn_cash_journal_navigation` 在安装/迁移和 Budget 重建 CN 导航后，将旧原生列表入口替换为表格 Page，保留用户自定义过滤入口；DocType 或 Page 未同步时不添加死链接。发布需要同步新增字段、Page 并重建导航，不能仅更新前端资源。

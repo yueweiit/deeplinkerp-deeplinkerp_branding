@@ -2588,3 +2588,45 @@ Cashier Processing Month,Cashier Processing Month
 OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.,OA approval tasks do not provide actual payment amounts. Verified payments and remaining balances stay pending review until payment evidence is available; pending review does not mean zero or unpaid.
 Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.,Some cashier completion dates have not been synchronized. Use Synchronize Data to refresh them; current statistics include only applications with completion evidence.
 Cashier completion data is not synchronized. Synchronize data before exporting.,Cashier completion data is not synchronized. Synchronize data before exporting.
+CN Cash Journal Entry,Cash Journal
+Transaction Date,Transaction Date
+Receipt or Payment,Receipt or Payment
+income,Income
+Cash or Bank Account,Cash or Bank Account
+Choose an enabled cash or bank account belonging to the selected company.,Choose an enabled cash or bank account belonging to the selected company.
+Uses the account currency. No currency conversion is performed.,Uses the account currency. No currency conversion is performed.
+Transaction Details,Transaction Details
+Manually recorded receipts and payments. Saving does not create accounting entries or update OA payment statistics.,Manually recorded receipts and payments. Saving does not create accounting entries or update OA payment statistics.
+Summary,Summary
+Counterparty,Counterparty
+Bank Reference or Receipt Number,Bank Reference or Receipt Number
+Supporting Document,Supporting Document
+Choose whether this entry is a receipt or a payment.,Choose whether this entry is a receipt or a payment.
+A transaction summary is required.,A transaction summary is required.
+Amount must be greater than zero and have no more than two decimal places.,Amount must be greater than zero and have no more than two decimal places.
+The entry currency must match the selected account currency.,The entry currency must match the selected account currency.
+Remarks,Remarks
+Transaction Summary,Transaction Summary
+income,Income,CN Cash Journal Entry
+expense,Payment,CN Cash Journal Entry
+Journal Notes,Journal Notes
+DingTalk Approval Number,DingTalk Approval Number
+Journal Description,Journal Description
+Additional Details,Additional Details
+Amounts are recorded in the selected currency without conversion.,Amounts are recorded in the selected currency without conversion.
+Choose a non-group company for the cash journal.,Choose a non-group company for the cash journal.
+Choose a valid currency for the cash journal.,Choose a valid currency for the cash journal.
+Description and DingTalk approval number must be text.,Description and DingTalk approval number must be text.
+Save or discard the edited rows before changing the view.,Save or discard the edited rows before changing the view.
+Select a company and currency to record cash transactions.,Select a company and currency to record cash transactions.
+No cash transactions yet. Click Add Row to begin.,No cash transactions yet. Click Add Row to begin.
+Could not load cash transactions. Please refresh and try again.,Could not load cash transactions. Please refresh and try again.
+"Enter a date, receipt or payment, and an amount greater than zero.","Enter a date, receipt or payment, and an amount greater than zero."
+Row not saved. Your edits have been kept; check the error and retry.,Row not saved. Your edits have been kept; check the error and retry.
+Add Row,Add Row
+Discard Changes,Discard Changes
+Page {0},Page {0}
+Actions,Actions
+Details,Details
+Save,Save
+Saved,Saved

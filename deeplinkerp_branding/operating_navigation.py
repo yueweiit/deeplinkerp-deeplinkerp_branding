@@ -12,6 +12,29 @@ TARGETS = {"operating-expenses"}
 CN_PAGES = ("china-expenses", "china-expense-details", "china-expense-reports", "china-personnel-report", "china-expense-review")
 
 
+def ensure_cn_cash_journal_navigation():
+	"""Attach the manual cash book without replacing regional/custom navigation."""
+	target = "china-cash-journal"
+	if not (frappe.db.exists("DocType", "CN Cash Journal Entry") and frappe.db.exists("Page", target)
+			and frappe.db.exists("Workspace Sidebar", "China Operating Expenses")):
+		return False
+	doc = frappe.get_doc("Workspace Sidebar", "China Operating Expenses")
+	if doc.get("for_user") or doc.get("public") == 0:
+		return False
+	anchor = next((index + 1 for index, row in enumerate(doc.get("items") or [])
+		if row.get("link_to") == "china-expense-details"), len(doc.get("items") or []))
+	if not reconcile_links(doc, "items", entries=(("CN Cash Journal Entry", "Page", target, "book-open"),),
+			targets={target, "CN Cash Journal Entry"}, anchor=anchor, child=0):
+		return False
+	previous, developer_mode = frappe.flags.in_import, frappe.conf.developer_mode
+	frappe.flags.in_import, frappe.conf.developer_mode = True, False
+	try:
+		doc.save(ignore_permissions=True)
+	finally:
+		frappe.flags.in_import, frappe.conf.developer_mode = previous, developer_mode
+	return True
+
+
 def _remove_empty_expense_group(doc, table):
 	"""Only prune the now-empty owned group, never custom sibling links."""
 	group_type = "Section Break" if table == "items" else "Card Break"
@@ -63,9 +86,10 @@ def _anchor(doc, table):
 
 
 def ensure_operating_navigation():
+	journal_changed = ensure_cn_cash_journal_navigation()
 	if not frappe.db.exists("Page", "operating-expenses"):
 		return {"ok": False, "missing_page": "operating-expenses"}
-	changed = []
+	changed = [{"doctype": "Workspace Sidebar", "name": "China Operating Expenses"}] if journal_changed else []
 	cn_ready = frappe.db.exists("Workspace Sidebar", "China Operating Expenses") and all(
 		frappe.db.exists("Page", page) for page in CN_PAGES)
 	entries = () if cn_ready else ENTRIES
