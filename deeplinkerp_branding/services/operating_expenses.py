@@ -1221,9 +1221,11 @@ def _list_rows(filters=None, order_by="request_date desc", with_summary=False):
         rows = [row for row in rows if row["source_status"] == status]
     state = filters.get("approval_state")
     if state:
-        if state not in {"pending", "approved", "rejected", "terminated", "withdrawn", "unknown", "eligible", "blocked"}:
+        if state not in {"active", "pending", "approved", "rejected", "terminated", "withdrawn", "unknown", "eligible", "blocked"}:
             frappe.throw(_i18n("审批状态筛选无效"))
-        if state in {"eligible", "blocked"}:
+        if state == "active":
+            rows = [r for r in rows if r["approval_state"] not in {"rejected", "terminated", "withdrawn"} and not r.get("source_withdrawn")]
+        elif state in {"eligible", "blocked"}:
             rows = [r for r in rows if bool(r["payment_eligibility"]["can_register_payment"]) == (state == "eligible")]
         else:
             rows = [r for r in rows if r["approval_state"] == state]
@@ -1265,6 +1267,16 @@ def get_operating_expenses(filters=None, order_by="request_date desc", page_leng
     return {"rows": page, "total_count": len(rows), "currency_totals": totals, "tab_counts": counts,
             "company_overview": overview, "review_counts": review_counts,
             "source_scope": _list_source_scope()}
+
+
+@frappe.whitelist()
+def get_operating_expense_analysis(filters=None):
+    # The same native permissions, current company mapping and ERP payment
+    # overlay as the worklist/export. Never aggregate the raw cache directly.
+    from .operating_expense_analysis import summarize
+    result = summarize(_list_rows(filters))
+    result["source_scope"] = _list_source_scope()
+    return result
 
 
 def _enrich_page(rows):

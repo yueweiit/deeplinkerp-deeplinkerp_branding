@@ -33,18 +33,17 @@ test("CN preferences restore last dates and form, honor URL, and do not touch MX
     assert.equal(wb.filters.approval_type, "purchase");
     assert.deepEqual(api.validFilters({from_date:"2026-11-31", to_date:"2026-12-01", company:"MX A", approval_type:"expense", currency:"BAD"}, ["CN A"]), {});
 });
-test("CN only reads permission-filtered organization data, never MX or budget statistics", async () => {
+test("CN company options retain the existing operating service's native permitted scope", async () => {
     const calls=[];
     const {api}=environment({frappe:{call:async (request)=>{calls.push(request);return {message:[{name:"CN A"}]};}}});
     const wb=Object.create(api.Workbench.prototype);
-    await wb.loadCompanies();
-    assert.deepEqual(wb.companies,["CN A"]);
+    assert.deepEqual(await wb.loadCompanies(),["CN A"]);
     assert.equal(calls.length,1);
     assert.equal(calls[0].method,"frappe.client.get_list");
-    assert.deepEqual(calls[0].args.filters,{country:"China",is_group:0});
+    assert.equal(calls[0].args.filters,undefined, "do not silently hide existing legal assignments");
     assert(!("ignore_permissions" in calls[0].args));
 });
-test("all CN views explicitly show unconnected data rather than fabricated amounts", () => {
+test("unconnected CN views retain placeholders rather than fabricated amounts", () => {
     const {api}=environment();
     const wb=Object.create(api.Workbench.prototype);
     wb.filters=api.defaults("2026-11-18");wb.grouping="company";
@@ -70,4 +69,31 @@ test("CN breadcrumbs keep parent links and make the current page non-clickable",
     assert.equal(current.attrs["aria-current"],"page");assert.equal(current.tag,"span");
     assert.equal(current.textContent,"Personnel Analysis");
     route=["mexico-expenses"];breadcrumbs.set_custom_breadcrumbs({});assert.equal(delegated,1);
+});
+
+test("late initialization cannot consume the new route filters and returning retries", async () => {
+    let release, route="china-expenses";
+    const frappe={get_route:()=>[route],route_options:{cn_filters:JSON.stringify({status:"pending"})}};
+    const {api}=environment({frappe});
+    const wb=Object.create(api.Workbench.prototype);
+    Object.assign(wb,{wrapper:{page_name:route},filters:api.defaults("2026-11-19"),
+        loadCompanies:()=>new Promise(r=>{release=r;}),refresh:async()=>{},loadError:()=>assert.fail("stale error")});
+    const old=wb.initialize();route="china-expense-review";release(["A"]);await old;
+    assert.equal(wb.initialized,undefined);assert.ok(frappe.route_options.cn_filters);
+    route="china-expenses";wb.loadCompanies=async()=>["B"];wb.show();await wb.ready;
+    assert.equal(wb.filters.status,"pending");assert.equal(frappe.route_options.cn_filters,undefined);
+});
+test("superseded company load cannot overwrite current data or paint a late error", async () => {
+    let rejectOld;
+    const {api}=environment({frappe:{get_route:()=>["china-expenses"]}});
+    const wb=Object.create(api.Workbench.prototype);
+    Object.assign(wb,{wrapper:{page_name:"china-expenses"},loadCompanies:()=>new Promise((_,r)=>{rejectOld=r;}),
+        restore:()=>{},refresh:async()=>{},loadError:()=>assert.fail("stale error")});
+    const old=wb.initialize();wb.loadCompanies=async()=>["New"];
+    await wb.initialize();rejectOld(new Error("obsolete"));await old;assert.deepEqual(wb.companies,["New"]);
+});
+test("native double serialized route options restore directly from URL", () => {
+    const {api}=environment({location:{search:"?cn_filters="+encodeURIComponent(JSON.stringify(JSON.stringify({status:"pending"})))}});
+    const wb=Object.create(api.Workbench.prototype);
+    Object.assign(wb,{filters:api.defaults("2026-11-19"),companies:[]});wb.restore();assert.equal(wb.filters.status,"pending");
 });

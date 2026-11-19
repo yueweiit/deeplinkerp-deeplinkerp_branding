@@ -1130,3 +1130,25 @@ Budget Amount,预算金额
 Social Insurance,社保
 Subsidiary Expense Distribution,子公司支出分布
 Budget Management,预算管理
+"CN totals use application dates and original currencies. Verified payments are cumulative for the selected applications, not payments made during this period or posted expenses.",CN 按申请日期、原始币种统计。已核实付款为所选申请的累计付款，不代表本期支付或已入账费用。
+Pending Review,待核对
+Known subtotal,已知部分合计
+No matching applications,没有符合条件的申请
+Verified Payments,已核实付款
+Remaining to Pay,剩余待付
+Subsidiary Application and Payment Distribution,子公司申请与付款分布
+Attribution Pending Review,归属待核对
+Unconfirmed company amounts remain in a separate review group and are not assigned to a subsidiary.,公司归属未确认的金额单独列入待核对分组，不分配到任何子公司。
+Monthly Applications and Payments,月度申请与付款
+Application Type Composition,申请类型构成
+Search,搜索
+"Search approval number, applicant or description",搜索审批单号、申请人或摘要
+Company Review,公司归属核对
+All,全部
+Unmapped,未映射
+Needs Reconfirmation,需要重新确认
+Confirmed,已确认
+Export failed. Please retry.,导出失败，请重试。
+Original Currencies,按原币分列
+Only operating expenses are connected. Budget and purchase statistics are not included yet.,当前仅接入运营支出，预算和采购支出暂未纳入统计。
+Operating expenses could not be loaded,运营支出加载失败

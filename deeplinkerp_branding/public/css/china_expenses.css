@@ -1,0 +1,18 @@
+.cn-expenses .cn-money-values { margin-top: 18px; }
+.cn-expenses .mx-body > .mx-panel { margin-top: 18px; }
+.cn-expenses .cn-money-line { display: flex; justify-content: space-between; gap: 12px; margin: 8px 0; font-variant-numeric: tabular-nums; }
+.cn-expenses .cn-money-line strong { font-size: 20px; text-align: right; }
+.cn-expenses small { display: block; font-weight: normal; font-size: 11px; }
+.cn-expenses .cn-list-tools { display: flex; flex-wrap: wrap; align-items: end; gap: 14px; padding: 16px 20px; }
+.cn-expenses .cn-list-tools label { margin: 0; flex: 1; min-width: 200px; }
+.cn-expenses .cn-list-tools .mx-filter { min-width: 150px; }
+.cn-expenses .cn-operating-table table { min-width: 2350px; }
+.cn-expenses .cn-operating-table td { vertical-align: top; max-width: 310px; }
+.cn-expenses .cn-operating-table .dlp-operating-ellipsis { display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cn-expenses .cn-pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 16px 20px; }
+.cn-expenses .mx-analysis-group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cn-expenses .mx-filter select:disabled { opacity: .75; }
+@media (max-width: 600px) {
+    .cn-expenses .cn-list-tools { display: grid; grid-template-columns: 1fr; }
+    .cn-expenses .cn-pagination { flex-wrap: wrap; }
+}

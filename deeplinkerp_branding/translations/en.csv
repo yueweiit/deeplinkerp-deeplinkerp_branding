@@ -2531,3 +2531,25 @@ Budget Amount,Budget Amount
 Social Insurance,Social Insurance
 Subsidiary Expense Distribution,Subsidiary Expense Distribution
 Budget Management,Budget Management
+"CN totals use application dates and original currencies. Verified payments are cumulative for the selected applications, not payments made during this period or posted expenses.","CN uses application dates and original currencies. Verified payments are cumulative for the selected applications, not payments made during this period or posted expenses."
+Pending Review,Pending Review
+Known subtotal,Known subtotal
+No matching applications,No matching applications
+Verified Payments,Verified Payments
+Remaining to Pay,Remaining to Pay
+Subsidiary Application and Payment Distribution,Subsidiary Application and Payment Distribution
+Attribution Pending Review,Attribution Pending Review
+Unconfirmed company amounts remain in a separate review group and are not assigned to a subsidiary.,Unconfirmed company amounts remain in a separate review group and are not assigned to a subsidiary.
+Monthly Applications and Payments,Monthly Applications and Payments
+Application Type Composition,Application Type Composition
+Search,Search
+"Search approval number, applicant or description","Search approval number, applicant or description"
+Company Review,Company Review
+All,All
+Unmapped,Unmapped
+Needs Reconfirmation,Needs Reconfirmation
+Confirmed,Confirmed
+Export failed. Please retry.,Export failed. Please retry.
+Original Currencies,Original Currencies
+Only operating expenses are connected. Budget and purchase statistics are not included yet.,Only operating expenses are connected. Budget and purchase statistics are not included yet.
+Operating expenses could not be loaded,Operating expenses could not be loaded

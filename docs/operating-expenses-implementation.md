@@ -1,12 +1,16 @@
 # 运营费用接入实施与验收
 
-## CN 分析页面框架（2026-11-18）
+## CN 运营支出合并（2026-11-19）
 
-“运营支出（CN）”新增 `china-expenses`、`china-expense-details`、`china-expense-reports`、`china-personnel-report`、`china-expense-review` 五个 Page，复用 MX 页面样式及 `mexico_expenses.filterControls`、日期范围和 Tooltip 组件。原 `operating-expenses` 的财务办理逻辑和 API 保持不变，可从新页面菜单打开。
+“运营支出（CN）”的概览、明细、支出分析和数据核对已接入原中国财务入口使用的 `Operating Expense Source`。复用 `services/operating_expenses.py` 的权限过滤、当前公司归属、ERP 付款覆盖、导出与原办理抽屉；不复制来源数据，不自动确认公司、登记付款或生成凭证。旧 `operating-expenses` URL 保留兼容，CN 导航可用时从 Accounting/China Finance 移除系统管理的重复入口及空“支出管理”分组，保留用户自定义筛选链接；没有 CN 导航的独立安装保留原入口。
 
-本阶段仅完成页面和导航：审批表为运营支出／预算／采购支出，统计值显示待接入；没有 MX 数据复用、国内审批统计查询、金额换算、同步或财务写入。公司下拉使用原生 `frappe.client.get_list` 读取获授权的中国非集团公司；`cn_filters` 与用户偏好独立于 MX，默认当月及 CNY。所有页面沿用财务角色，并使用中英西翻译。导航与原预算入口由 `budget.setup` 维护，预算台账、看板和配置保留在预算管理分组，ERPNext 原生预算不变。
+- 运营支出及“全部审批表”读取同一套现有国内申请；“全部”明确提示预算、采购统计尚未接入。预算管理原页面保持不变，薪酬分析缺少可靠分类仍显示待接入，不从摘要猜测工资。
+- 日期口径使用申请日期，默认中国时区当月及全部审批状态；按原始币种分列，暂不套用 MX 的审批月汇率。已核实付款为所选申请累计付款，不代表本期支付或总账已入账费用。
+- 概览、分析按公司、申请月份、财务申请类型汇总；复用精确十进制汇总。未知付款保持待核对并显示可确定部分，负数异常不参与正常合计；未映射或过期归属单独列组，不计入具体子公司。
+- 明细每页 20 条，支持快捷状态、关键词、归属状态和申请类型；数据核对使用原 reconciliation 规则。查看审批、付款明细、公司复核均调用原抽屉，继续受后端财务权限与版本校验约束；保存后重读数据。导出使用同一筛选和原生导出权限，覆盖全部匹配记录。
+- `cn_filters`、日期与审批表偏好独立于 MX。公司选择与原运营服务一致，读取原生权限过滤的 Company 范围，不因国家或集团标记隐藏已有法律公司归属。预算、采购占位页面保留原显示方式。
 
-代码入口：`public/js/china_expenses.js`、`public/js/china_expenses_page.js`、`deeplinkerp_branding/page/china_*/`；交互回归见 `tests/china-expenses.test.js`。
+代码入口：`public/js/china_expenses.js`（生命周期与筛选）、`china_operating_expenses.js`（现有服务适配与展示）、`services/operating_expense_analysis.py`（纯汇总）、`operating_navigation.py`（导航合并）。`budget.setup.apply_budget_nav` 创建可用 CN 侧栏后再次调用合并，兼容首次安装顺序；`restore_budget_nav` 在移除 CN 侧栏后恢复尚存品牌 App 的备用入口，无需再执行迁移。公司选项初始化与数据刷新分别校验请求代次及当前路由，旧页面的延迟响应不能消耗新页面的 `cn_filters`，兼容原生路由二次序列化。相关回归：`tests/china-operating-expenses.test.js`、`tests/test_operating_expense_analysis.py`、`tests/test_operating_expense_navigation.py`。
 
 CN/MX 页面加载器向 `frappe.require` 传递不带查询参数的资源路径，由框架添加缓存版本；共用资源使用相同路径，避免重复执行。当前 Frappe 的资源类型识别不兼容手工 `?v=` 参数，会在页面初始化前抛错。原生加载链路及两种访问顺序的回归见 `tests/regional-expense-page-loading.test.js`。
 

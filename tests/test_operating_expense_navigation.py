@@ -16,6 +16,40 @@ MODULE = ROOT / "deeplinkerp_branding/operating_navigation.py"
 
 
 class OperatingNavigationTest(unittest.TestCase):
+	def test_cn_consolidation_removes_owned_finance_links_and_empty_group_idempotently(self):
+		sidebar = Doc(name="China Finance", flags=Row(), items=[
+			Row(name="expenses", type="Section Break", label="支出管理"),
+			Row(name="operating", type="Link", link_to="operating-expenses"),
+			Row(name="next", type="Section Break", label="历史"),
+		])
+		workspace = Doc(name="China Finance", public=1, flags=Row(), links=[
+			Row(name="expenses", type="Card Break", label="支出管理"),
+			Row(name="operating", type="Link", link_to="operating-expenses"),
+		], shortcuts=[], content=json.dumps([{"type": "card", "data": {"card_name": "支出管理"}}]))
+		fake = types.ModuleType("frappe")
+		fake.flags, fake.conf = Row(in_import=False), Row(developer_mode=True)
+		fake.db = types.SimpleNamespace(exists=lambda dt, name: dt == "Page" or name in {"China Finance", "China Operating Expenses"})
+		fake.get_doc = lambda dt, name: sidebar if dt == "Workspace Sidebar" else workspace
+		saved = []
+		sidebar.save = workspace.save = lambda **kw: saved.append(kw)
+		module = self.load_module(fake)
+		self.assertEqual(len(module.ensure_operating_navigation()["changed"]), 2)
+		self.assertEqual([row.name for row in sidebar["items"]], ["next"])
+		self.assertEqual(workspace.links, [])
+		self.assertEqual(json.loads(workspace.content), [])
+		self.assertEqual(module.ensure_operating_navigation()["changed"], [])
+		self.assertEqual(len(saved), 2)
+
+	def test_cn_removal_keeps_filtered_custom_links_and_their_group(self):
+		module = self.load_module(types.ModuleType("frappe"))
+		doc = Doc(items=[Row(type="Section Break", label="支出管理"),
+			Row(type="Link", link_to="operating-expenses"),
+			Row(type="Link", link_to="operating-expenses", filters="mine")])
+		navigation.reconcile_links(doc, "items", entries=(), targets=module.TARGETS)
+		self.assertFalse(module._remove_empty_expense_group(doc, "items"))
+		self.assertEqual(len(doc["items"]), 2)
+		self.assertEqual(doc["items"][1].filters, "mine")
+
 	def test_finance_expense_group_keeps_operating_entry_as_child_and_sync_is_idle(self):
 		sidebar = Doc(name="China Finance", flags=Row(), items=[
 			Row(name="account", link_to="Account", label="科目表"),

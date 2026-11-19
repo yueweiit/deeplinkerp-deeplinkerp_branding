@@ -4,6 +4,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
     "use strict";
     const shared = root.DeepLinkERPMexicoExpenses;
+    const operating = root.DeepLinkERPChinaOperatingExpenses;
     const t = (text) => root.__ ? root.__(text) : text;
     const esc = shared?.esc || ((value) => String(value ?? "").replace(/[&<>"']/g,
         (c) => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[c])));
@@ -16,7 +17,7 @@
     const forms = [["", "All Approval Forms"], ["operating", "Operating Expenses"], ["budget", "Budget"], ["purchase", "Purchase Expenses"]];
     const bases = [["period", "Expense Period"], ["request", "Application Date"], ["planned", "Planned Payment Date"]];
     const statuses = [["active", "Active Applications"], ["approved", "Approved"], ["pending", "In Approval"],
-        ["all", "All Statuses"], ["rejected", "Rejected"], ["terminated", "Terminated"]];
+        ["all", "All Statuses"], ["rejected", "Rejected"], ["terminated", "Terminated"], ["withdrawn", "Withdrawn"], ["unknown", "Pending Review"]];
     const pending = "CN statistics are not connected yet";
     const viewFor = (route) => Object.keys(routes).find((view) => routes[view] === route?.[0]);
     function today() {
@@ -26,16 +27,20 @@
         return `${values.year}-${values.month}-${values.day}`;
     }
     function defaults(day = today()) {
-        return {...shared.monthRange(day.slice(0, 7)), basis:"period", company:"", approval_type:"", currency:"CNY", status:"active"};
+        return {...shared.monthRange(day.slice(0, 7)), basis:"request", company:"", approval_type:"", currency:"CNY", status:"all",
+            quick_tab:"all", keyword:"", company_review:"", application_type:""};
     }
     function validFilters(values, companies) {
         if (!values || typeof values !== "object" || Array.isArray(values)) return {};
         const clean = {};
         if (shared.validDateRange(values)) Object.assign(clean, {from_date:values.from_date, to_date:values.to_date});
         for (const [key, allowed] of Object.entries({basis:bases.map(([id]) => id), company:["", ...companies],
-            approval_type:forms.map(([id]) => id), currency:["CNY", "USD", "MXN"], status:statuses.map(([id]) => id)})) {
+            approval_type:forms.map(([id]) => id), currency:["CNY", "USD", "MXN"], status:statuses.map(([id]) => id),
+            quick_tab:["all", "pending_work", "approvals_running", "paid", "reconciliation"],
+            company_review:["", "unmapped", "stale", "confirmed"], application_type:["", "payment", "reimbursement", "unclassified"]})) {
             if (allowed.includes(values[key])) clean[key] = values[key];
         }
+        if (typeof values.keyword === "string" && values.keyword.length <= 200) clean.keyword = values.keyword;
         return clean;
     }
     function installBreadcrumbs() {
@@ -67,6 +72,8 @@
             this.filters = defaults();
             this.companies = [];
             this.grouping = "company";
+            this.start = 0;
+            this.generation = 0;
             this.page = root.frappe.ui.make_app_page({parent:wrapper, title:t(titles[this.view]), single_column:true});
             this.el = root.document.createElement("div");
             this.el.className = "mx-expenses cn-expenses";
@@ -78,33 +85,60 @@
                 this.refresh();
             });
             this.el.addEventListener("click", (event) => {
-                const action = event.target.closest("[data-cn-action]")?.dataset.cnAction;
+                const source = event.target.closest(".dlp-operating-open");
+                if (source) return operating.openSource(source.dataset.source, source.dataset.tab, () => this.refresh());
+                const control = event.target.closest("[data-cn-action]");
+                const action = control?.dataset.cnAction;
                 if (action === "reset") this.filters = defaults();
                 else if (["company", "trend"].includes(action)) this.grouping = action;
+                else if (action === "review") return root.frappe.set_route(routes.review, {cn_filters:JSON.stringify({...this.filters, quick_tab:"all"})});
+                else if (action === "tab") this.filters.quick_tab = control.dataset.tab;
+                else if (["previous", "next"].includes(action)) {
+                    this.start = Math.max(0, this.start + (action === "next" ? 20 : -20));
+                    return this.refresh(false);
+                }
                 else if (action === "retry") return this.initialize().catch(() => this.loadError());
                 else if (!action) return;
                 this.refresh();
             });
             root.$(wrapper).on("hide.cn-expenses", () => this.dispose());
             this.page.add_inner_button(t("Refresh"), () => this.initialize().catch(() => this.loadError()));
-            this.page.add_inner_button(t("Export Excel"), () => {}).prop("disabled", true).attr("title", t(pending));
-            this.page.add_menu_item(t("Open Operating Workbench"), () => root.frappe.set_route("operating-expenses"));
+            this.exportButton = this.page.add_inner_button(t("Export Excel"), () => this.exportCurrent());
+            if (root.DeepLinkERPOperatingExpenseDrawer?.isManager?.()) {
+                this.page.add_menu_item(t("Operating Expense Sync Settings"), () =>
+                    root.DeepLinkERPOperatingExpenseDrawer.openSettings(() => this.refresh()));
+            }
             this.ready = this.initialize().catch(() => this.loadError());
         }
         async loadCompanies() {
-            // Native permission-filtered organization data only. No expense or budget statistics are queried.
+            // Same permitted legal-company scope as the existing operating service.
             const response = await root.frappe.call({method:"frappe.client.get_list", args:{
-                doctype:"Company", fields:["name"], filters:{country:"China", is_group:0}, limit_page_length:0, order_by:"name asc",
+                doctype:"Company", fields:["name"], limit_page_length:0, order_by:"name asc",
             }});
-            this.companies = response.message.map((row) => row.name);
+            return response.message.map((row) => row.name);
         }
         async initialize() {
-            await this.loadCompanies();
-            this.restore();
-            this.initialized = true;
-            this.refresh();
+            const id = this.initializationId = (this.initializationId || 0) + 1;
+            const current = () => id === this.initializationId && this.isCurrentRoute();
+            this.initializing = true;
+            try {
+                const companies = await this.loadCompanies();
+                if (!current()) return;
+                this.companies = companies;
+                this.restore();
+                this.initialized = true;
+                await this.refresh();
+            } catch (error) {
+                if (current()) this.loadError();
+            } finally {
+                if (id === this.initializationId) this.initializing = false;
+            }
         }
         loadError() {
+            this.generation++;
+            this.data = null;
+            this.loading = false;
+            this.exportButton?.prop("disabled", true);
             this.disposeFilterControls();
             this.el.innerHTML = `<div class="mx-empty">${esc(t("CN workspace could not be loaded"))}${button("Retry", "retry")}</div>`;
         }
@@ -119,8 +153,18 @@
                 if (saved) Object.assign(this.filters, validFilters(saved, this.companies));
             } catch { /* Optional browser preferences. */ }
             const params = new URLSearchParams(root.location?.search || "");
-            try { Object.assign(this.filters, validFilters(JSON.parse(params.get("cn_filters")), this.companies)); }
+            try {
+                let filters = JSON.parse(params.get("cn_filters"));
+                // Native routing can serialize the JSON route option once more.
+                if (typeof filters === "string") filters = JSON.parse(filters);
+                Object.assign(this.filters, validFilters(filters, this.companies));
+            }
             catch { /* Invalid links retain valid defaults. */ }
+            if (root.frappe.route_options?.cn_filters) {
+                try { Object.assign(this.filters, validFilters(JSON.parse(root.frappe.route_options.cn_filters), this.companies)); }
+                catch { /* Invalid navigation options retain valid filters. */ }
+                delete root.frappe.route_options.cn_filters;
+            }
             this.grouping = params.get("cn_group") === "trend" ? "trend" : "company";
         }
         remember() {
@@ -136,8 +180,15 @@
                 root.history.replaceState(root.history.state, "", url.pathname + url.search + url.hash);
             }
         }
-        show() { if (this.initialized) { this.restore(); this.refresh(); } }
+        show() {
+            if (this.initializing) return;
+            if (this.initialized) { this.restore(); this.refresh(); }
+            else this.ready = this.initialize();
+        }
         dispose() {
+            this.initializationId = (this.initializationId || 0) + 1;
+            this.initializing = false;
+            this.generation++;
             this.disposeFilterControls();
             clearTimeout(this.sidebarTimer);
             if (this.sidebarHandler) root.$(root.document).off("sidebar_setup.cn-expenses", this.sidebarHandler);
@@ -185,25 +236,61 @@
                 },
             });
         }
-        refresh() {
+        async exportCurrent() {
+            if (!operating?.connected(this.filters, this.view) || !this.data || this.loading) return;
+            this.exportButton.prop("disabled", true);
+            try { await operating.exportCurrent(this); }
+            catch (error) { root.frappe.msgprint(t("Export failed. Please retry.")); }
+            finally { this.exportButton.prop("disabled", !this.data || this.loading || !operating.connected(this.filters, this.view)); }
+        }
+        async refresh(resetPage = true) {
             if (!this.isCurrentRoute()) return;
+            const generation = ++this.generation;
+            if (resetPage) this.start = 0;
+            this.data = null;
             this.filters = {...defaults(), ...validFilters(this.filters, this.companies)};
             this.disposeFilterControls();
             const f = this.filters;
-            this.el.innerHTML = `<div class="mx-filters">${this.filter("basis", "Date Basis", bases.map(([id, label]) => [id, t(label)]))}
+            const live = operating?.connected(f, this.view);
+            if (live) f.basis = "request";
+            this.loading = !!live;
+            this.exportButton?.prop("disabled", true).attr("title", live ? "" : t(pending));
+            this.el.innerHTML = `<div class="mx-filters">${this.filter("basis", "Date Basis", (live ? [["request", "Application Date"]] : bases).map(([id, label]) => [id, t(label)]))}
                 <div class="mx-filter mx-date-range-filter"><span>${esc(t("Date Range"))}</span><div class="mx-date-range-control"></div></div>
                 ${this.filter("company", "Subsidiary", [["", t("All Subsidiaries")], ...this.companies.map((c) => [c, c])])}
-                ${this.filter("currency", "Reporting Currency", ["CNY", "USD", "MXN"].map((c) => [c, c]))}
+                ${live ? "" : this.filter("currency", "Reporting Currency", ["CNY", "USD", "MXN"].map((c) => [c, c]))}
                 ${this.filter("status", "Approval Status", statuses.map(([id, label]) => [id, t(label)]))}
                 <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset")}</div></div>
-                <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(t(forms.find(([id]) => id === f.approval_type)[1]))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(f.currency)}</span>${help("CN filters are ready; statistics and currency conversion will be connected later")}</div>
-                <div class="mx-notice">${esc(t(pending))}</div><div class="mx-body">${this.content()}</div>`;
+                <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(t(forms.find(([id]) => id === f.approval_type)[1]))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(live ? "Original Currencies" : f.currency))}</span>${help(live ? operating.scope : "CN filters are ready; statistics and currency conversion will be connected later")}</div>
+                ${!live || !f.approval_type ? `<div class="mx-notice">${esc(t(live ? "Only operating expenses are connected. Budget and purchase statistics are not included yet." : pending))}</div>` : ""}
+                <div class="mx-body">${live ? `<div class="mx-empty">${esc(t("Loading..."))}</div>` : this.content()}</div>`;
             this.mountDateControls();
             this.mountSelectControls();
             root.DeepLinkERPMexicoExpenseInsights?.mount(this.el);
             this.mountSidebar();
             this.remember();
             root.frappe.breadcrumbs.add({type:"Custom", label:t(titles[this.view])});
+            if (!live) return;
+            try {
+                const data = await operating.load(this);
+                if (generation !== this.generation || !this.isCurrentRoute()) return;
+                // A reconciliation can remove the last row on the current page.
+                if (["details", "review"].includes(this.view) && this.start && this.start >= data.total_count) {
+                    this.start = Math.max(0, Math.floor((data.total_count - 1) / 20) * 20);
+                    return this.refresh(false);
+                }
+                this.data = data;
+                this.el.querySelector(".mx-body").innerHTML = ["details", "review"].includes(this.view)
+                    ? operating.detail(data, this) : operating.dashboard(data, this.view, this.grouping);
+                shared.filterControls.mountSelectControls.call({el:this.el.querySelector(".mx-body")});
+                root.DeepLinkERPMexicoExpenseInsights?.mount(this.el);
+                this.exportButton.prop("disabled", false);
+            } catch (error) {
+                if (generation !== this.generation || !this.isCurrentRoute()) return;
+                this.el.querySelector(".mx-body").innerHTML = `<div class="mx-empty">${esc(t("Operating expenses could not be loaded"))}${button("Retry", "retry")}</div>`;
+            } finally {
+                if (generation === this.generation) this.loading = false;
+            }
         }
         cards(labels) {
             return `<div class="mx-cards">${labels.map((label, i) => `<div class="mx-card ${i === 0 ? "first" : ""}"><span>${esc(t(label))}</span><div class="mx-card-value">—</div><small>${esc(t("Awaiting data connection"))}</small></div>`).join("")}</div>`;

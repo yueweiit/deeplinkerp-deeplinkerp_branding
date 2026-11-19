@@ -2802,3 +2802,25 @@ Budget Amount,Importe del presupuesto
 Social Insurance,Seguridad social
 Subsidiary Expense Distribution,Distribución de gastos por filial
 Budget Management,Gestión presupuestaria
+"CN totals use application dates and original currencies. Verified payments are cumulative for the selected applications, not payments made during this period or posted expenses.",CN utiliza fechas de solicitud y monedas originales. Los pagos verificados son acumulados de las solicitudes seleccionadas; no representan pagos del período ni gastos contabilizados.
+Pending Review,Pendiente de revisión
+Known subtotal,Subtotal conocido
+No matching applications,No hay solicitudes que coincidan
+Verified Payments,Pagos verificados
+Remaining to Pay,Pendiente de pago
+Subsidiary Application and Payment Distribution,Distribución de solicitudes y pagos por filial
+Attribution Pending Review,Asignación pendiente de revisión
+Unconfirmed company amounts remain in a separate review group and are not assigned to a subsidiary.,Los importes sin empresa confirmada se muestran en un grupo de revisión separado y no se asignan a ninguna filial.
+Monthly Applications and Payments,Solicitudes y pagos mensuales
+Application Type Composition,Composición por tipo de solicitud
+Search,Buscar
+"Search approval number, applicant or description","Buscar número de aprobación, solicitante o descripción"
+Company Review,Revisión de asignación de empresa
+All,Todos
+Unmapped,Sin asignar
+Needs Reconfirmation,Requiere nueva confirmación
+Confirmed,Confirmado
+Export failed. Please retry.,Error al exportar. Inténtelo de nuevo.
+Original Currencies,Monedas originales por separado
+Only operating expenses are connected. Budget and purchase statistics are not included yet.,Solo están conectados los gastos operativos. Los presupuestos y las compras aún no se incluyen en las estadísticas.
+Operating expenses could not be loaded,No se pudieron cargar los gastos operativos
