@@ -12,6 +12,7 @@
  "field_order": [
   "enabled",
   "api_token",
+  "approval_templates",
   "company_mappings",
   "changed_since",
   "until",
@@ -32,6 +33,12 @@
    "label": "api token",
    "fieldtype": "Password",
    "read_only": 0
+  },
+  {
+   "fieldname": "approval_templates",
+   "label": "Approval Templates",
+   "fieldtype": "Table",
+   "options": "Operating Expense Approval Template"
   },
   {
    "fieldname": "company_mappings",

@@ -184,3 +184,23 @@ body.dlp-operating-expense-grid-active .dlp-po-grid-header { min-height: 36px; c
 		grid-template-columns: minmax(0, 1fr);
 	}
 }
+
+/* Match MX's native settings dialog, with independently collapsible aliases. */
+.dlp-operating-settings-dialog .modal-body { max-height: calc(100dvh - 180px); overflow-y: auto; }
+.dlp-operating-settings-dialog .dlp-operating-alias-group { border: 1px solid var(--border-color); border-radius: 8px; margin: 8px 0; padding: 10px; }
+.dlp-operating-settings-dialog .dlp-operating-alias-group summary { cursor: pointer; overflow-wrap: anywhere; }
+.dlp-operating-settings-dialog summary span { margin-inline-start: 12px; font-size: var(--text-sm); }
+.dlp-operating-settings-dialog .dlp-operating-alias-group table { margin: 12px 0 0; }
+.dlp-operating-settings-dialog .dlp-operating-alias-group td { vertical-align: top; }
+.dlp-operating-settings-dialog .dlp-operating-alias-group .form-group { margin-bottom: 0; }
+.dlp-operating-settings-dialog footer { position: sticky; bottom: -15px; background: var(--modal-bg); padding: 8px 0; }
+.dlp-operating-settings-dialog .grid-static-col { overflow-wrap: anywhere; }
+
+.dlp-operating-settings-dialog .dlp-operating-alias-group > .btn { margin-top: 8px; }
+.dlp-operating-settings-dialog .dlp-operating-footer { display: flex; justify-content: space-between; gap: 8px; }
+
+@media (max-width: 767.98px) {
+    .dlp-operating-settings-dialog .dlp-operating-templates .form-grid { overflow-x: auto; }
+    .dlp-operating-settings-dialog .dlp-operating-templates .grid-heading-row,
+    .dlp-operating-settings-dialog .dlp-operating-templates .grid-body { min-width: 680px; }
+}

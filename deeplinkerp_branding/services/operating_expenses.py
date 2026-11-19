@@ -26,6 +26,7 @@ from deeplinkerp_branding.services.operating_expense_contract import (
     SOURCE_SYSTEM, MAX_JSON_BYTES, attachment_path, digest, identifier,
     validate_source, money, expense_facts, event_fingerprint, payment_decision, payment_status, worklist_summary, company_overview, company_review_state, company_sync_needed, current_company_issues, QUICK_TABS,
 )
+from deeplinkerp_branding.services import operating_sync_config as sync_config
 from deeplinkerp_branding.services.purchase_payment_service import _require_fields
 from deeplinkerp_branding.services.unified_purchase_service import _require_export_permission
 
@@ -190,6 +191,10 @@ def _audit_financial(operation, source, document, amount, result, *, error=None,
     frappe.logger("operating_finance", allow_site=True).info(entry)
 
 
+def _sync_config_version(settings):
+    return digest({"company_mappings": _maps(settings), "approval_templates": sync_config.templates(settings)})
+
+
 @frappe.whitelist()
 def get_sync_settings():
     _manager()
@@ -198,11 +203,13 @@ def get_sync_settings():
     source_url, _ = oa_http.configuration()
     return {key: settings.get(key) for key in ("enabled", "changed_since", "until", "last_sync_at", "last_error", "preview_fingerprint")} | {
         "company_mappings": _maps(settings), "source_url": source_url, "source_mode": _source_mode(),
+        "approval_templates": sync_config.templates(settings), "config_version": _sync_config_version(settings),
+        "business_timezone": "Asia/Shanghai",
     }
 
 
 @frappe.whitelist(methods=["POST"])
-def save_sync_settings(company_mappings, api_token=None):
+def save_sync_settings(company_mappings, api_token=None, approval_templates=None, expected_config_version=None):
     _manager()
     values = frappe.parse_json(company_mappings)
     if not isinstance(values, dict) or len(values) > 200:
@@ -217,11 +224,20 @@ def save_sync_settings(company_mappings, api_token=None):
     if api_token:
         frappe.throw(_i18n("运营支出已改用 OA 接口，请刷新页面后重试"))
     settings = _settings(for_update=True)
+    if expected_config_version is not None and expected_config_version != _sync_config_version(settings):
+        frappe.throw(_i18n("Sync settings changed. Reload before saving."))
+    if approval_templates is not None:
+        try:
+            template_rows = sync_config.validate_templates(frappe.parse_json(approval_templates), sync_config.templates(settings))
+        except ValueError as error:
+            frappe.throw(str(error))
+        settings.set("approval_templates", template_rows)
     # The settings editor owns organization mappings, not per-application
     # decisions saved by another manager since that editor was opened.
     overrides = {raw: legal for raw, legal in _maps(settings).items() if raw.startswith("source:")}
     submitted = {row["source_company"]: row["company"] for row in rows}
-    if any(submitted.get(raw, legal) != legal for raw, legal in overrides.items()):
+    if (any(submitted.get(raw, legal) != legal for raw, legal in overrides.items())
+            or any(raw.startswith("source:") and raw not in overrides for raw in submitted)):
         frappe.throw(_i18n("单据法律公司请在对应申请中核对，不能通过同步设置覆盖"))
     submitted.update(overrides)
     settings.set("company_mappings", [{"source_company": raw, "company": legal} for raw, legal in submitted.items()])
@@ -250,7 +266,7 @@ def _oa_cached_identities():
     """Keep persisted exact OA identities and historical ERP document roots."""
     from deeplinkerp_branding.services import operating_oa_source as oa
     docs = frappe.get_all(SOURCE, filters={"source_system": ["in", [oa.SOURCE_SYSTEM, SOURCE_SYSTEM]]},
-                          fields=["name", "source_json", "source_version"], limit_page_length=20001)
+                          fields=["name", "source_json", "source_version", "company", "issues"], limit_page_length=20001)
     if len(docs) > 20000:
         frappe.throw(_i18n("运营来源核对超过本次上限，请管理员核查"))
     cached, roots = [], {}
@@ -280,37 +296,20 @@ def _oa_cached_identities():
     return cached, roots
 
 
-def _source_page(params):
-    _source_mode()
+def _oa_source_items(rows, url, codes, cached, roots, *, exact=False):
+    """Use the same projection for discovery and refresh of cached approvals."""
     from deeplinkerp_branding.services import operating_oa_source as oa
     from deeplinkerp_branding.services import operating_oa_http as oa_http
-    url, corps = oa_http.configuration()
-    until = params.get("until") or datetime.now(timezone.utc).isoformat()
-    if oa.timestamp(until) > datetime.now(timezone.utc):
-        frappe.throw(_i18n("来源快照时间无效"))
-    cached, roots = _oa_cached_identities()
     cached_raw = {doc.name: raw for doc, raw in cached}
-    identity = None
-    if params.get("source_id"):
-        identity = cached_raw.get(params["source_id"], {}).get("oa_identity")
-        if not identity:
-            return {"items": [], "end": True, "until": until, "next_cursor": None}
-    if any(raw["oa_identity"]["corp_id"] not in corps for _, raw in cached):
-        frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
-    rows, cursor = oa_http.read_page(url, corps, params.get("limit", 500), until,
-                                     cursor=params.get("cursor"), identity=identity)
-    selected = [row for row in rows if oa.in_scope(row)]
-    manifests = oa_http.attachment_manifests(url, selected, exact=bool(identity)) if selected else []
+    manifests = oa_http.attachment_manifests(url, rows, exact=exact) if rows else []
     manifests_by_identity = {}
     for manifest in manifests:
         manifests_by_identity.setdefault((manifest["corp_id"], manifest["process_instance_id"]), []).append(manifest)
     items = []
-    for row in selected:
-        item = oa.merge_application(row)
+    for row in rows:
+        item = oa.merge_application(row, process_codes=codes)
         item["attachments"] = oa.archive_attachments(row, manifests_by_identity.get((row["corp_id"], row["process_instance_id"]), ()))
         key = (item["oa_identity"]["corp_id"], item["oa_identity"]["process_instance_id"])
-        if identity and item["oa_identity"] != identity:
-            frappe.throw(_i18n("OA 返回身份不符，请管理员核查"))
         # Previously associated roots, finance mappings and local payments keep their identity.
         if key in roots:
             item["source_id"] = roots[key]
@@ -324,11 +323,40 @@ def _source_page(params):
                 frappe.throw(_i18n("运营来源标识与 OA 身份不符，请管理员核查"))
         item["version"] = digest({k: v for k, v in item.items() if k != "version"})
         items.append(item)
+    return items
+
+
+def _source_page(params):
+    _source_mode()
+    from deeplinkerp_branding.services import operating_oa_source as oa
+    from deeplinkerp_branding.services import operating_oa_http as oa_http
+    url, corps = oa_http.configuration()
+    until = params.get("until") or datetime.now(timezone.utc).isoformat()
+    if oa.timestamp(until) > datetime.now(timezone.utc):
+        frappe.throw(_i18n("来源快照时间无效"))
+    settings = _settings()
+    codes = sync_config.process_codes(settings)
+    active_codes = sync_config.process_codes(settings, enabled_only=True)
+    cached, roots = _oa_cached_identities()
+    cached_raw = {doc.name: raw for doc, raw in cached}
+    identity = None
+    if params.get("source_id"):
+        identity = cached_raw.get(params["source_id"], {}).get("oa_identity")
+        if not identity:
+            return {"items": [], "end": True, "until": until, "next_cursor": None}
+    if any(raw["oa_identity"]["corp_id"] not in corps for _, raw in cached):
+        frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
+    rows, cursor = oa_http.read_page(url, corps, params.get("limit", 500), until,
+                                     cursor=params.get("cursor"), identity=identity, process_codes=codes if identity else active_codes)
+    selected = [row for row in rows if oa.in_scope(row, process_codes=codes)]
+    items = _oa_source_items(selected, url, codes, cached, roots, exact=bool(identity))
+    if identity and any(item["oa_identity"] != identity for item in items):
+        frappe.throw(_i18n("OA 返回身份不符，请管理员核查"))
     # Previously cached applications removed from the accepted scope remain audit-visible
     # but blocked; an exact fresh read also refuses them rather than trusting old data.
     if not identity:
         for row in rows:
-            if oa.in_scope(row):
+            if oa.in_scope(row, process_codes=codes):
                 continue
             if oa.timestamp(row["updated_at"]) > oa.timestamp(until):
                 continue
@@ -340,13 +368,17 @@ def _source_page(params):
 
 
 def _reconcile_oa_cache(until, maps):
-    """Retain removed/out-of-scope sources as blocked audit rows, never stale payables."""
+    """Refresh disabled-template history and retain withdrawn sources for audit."""
     from deeplinkerp_branding.services import operating_oa_source as oa
     from deeplinkerp_branding.services import operating_oa_http as oa_http
-    cached, _ = _oa_cached_identities()
+    cached, roots = _oa_cached_identities()
     if not cached:
         return 0
     url, corps = oa_http.configuration()
+    # Disabled templates stop discovery, not verification of historical records.
+    settings = _settings()
+    codes = sync_config.process_codes(settings)
+    active_codes = set(sync_config.process_codes(settings, enabled_only=True))
     if any(raw["oa_identity"]["corp_id"] not in corps for _, raw in cached):
         frappe.throw(_i18n("运营支出 OA 企业 ID 配置缺少已缓存来源，请管理员核查"))
     # A complete HTTP rescan replaces the former single PostgreSQL bulk query.
@@ -356,7 +388,7 @@ def _reconcile_oa_cache(until, maps):
     originals = {}
     cursor = None
     for _ in range(10000):
-        rows, next_cursor = oa_http.read_page(url, corps, 200, until, cursor=cursor)
+        rows, next_cursor = oa_http.read_page(url, corps, 200, until, cursor=cursor, process_codes=codes)
         originals.update({(row["corp_id"], row["process_instance_id"]): row for row in rows
                           if (row["corp_id"], row["process_instance_id"]) in target_keys})
         if next_cursor is None:
@@ -379,24 +411,51 @@ def _reconcile_oa_cache(until, maps):
         if rows:
             originals[(identity["corp_id"], identity["process_instance_id"])] = rows[0]
     changed = 0
+    refresh_rows = []
     for doc, raw in cached:
         identity = raw["oa_identity"]
         row = originals.get((identity["corp_id"], identity["process_instance_id"]))
-        if row and (oa.timestamp(row["updated_at"]) > oa.timestamp(until)
-                    or (oa.in_scope(row) and not row.get("deleted_at"))):
+        if row and oa.timestamp(row["updated_at"]) > oa.timestamp(until):
+            continue
+        if row and oa.in_scope(row, process_codes=codes) and not row.get("deleted_at"):
+            if row["process_code"] not in active_codes:
+                refresh_rows.append(row)
             continue
         withdrawn = oa.withdrawn_source(raw, row)
         if withdrawn["version"] != doc.source_version:
             _upsert(withdrawn, maps)
             changed += 1
+    if refresh_rows:
+        # Only cached identities enter this path: disabled templates cannot
+        # import new applications. Batch attachments through the normal reader.
+        docs = {doc.name: doc for doc, _ in cached}
+        for item in _oa_source_items(refresh_rows, url, codes, cached, roots):
+            doc = docs[item["source_id"]]
+            if company_sync_needed(doc.source_version, doc.company, doc.issues,
+                                   item["version"], _mapped_company(item, maps)):
+                _upsert(item, maps)
+                changed += 1
     return changed
+
+
+def _prepare_sync_preview():
+    # Network reads do not hold the settings write lock. A concurrent settings
+    # edit invalidates the entire preview before its fingerprint can be saved.
+    before = _settings()
+    version = _sync_config_version(before)
+    if not sync_config.process_codes(before, enabled_only=True):
+        frappe.throw(_i18n("Enable at least one approval template before previewing sync."))
+    result = _source_page({"limit": 100})
+    current = _settings(for_update=True)
+    if version != _sync_config_version(current):
+        frappe.throw(_i18n("Sync settings changed. Reload before saving."))
+    return current, result
 
 
 @frappe.whitelist(methods=["POST"])
 def preview_sync():
     _manager()
-    result = _source_page({"limit": 100})
-    settings = _settings(for_update=True)
+    settings, result = _prepare_sync_preview()
     maps = _maps(settings)
     fingerprint = _sync_preview_fingerprint(settings, result)
     settings.preview_fingerprint = fingerprint
@@ -407,7 +466,7 @@ def preview_sync():
 def _sync_preview_fingerprint(settings, result):
     from . import operating_oa_http as oa_http
     return digest({"company_mappings": _maps(settings), "mode": _source_mode(),
-                   "oa_config": oa_http.configuration(),
+                   "oa_config": oa_http.configuration(), "approval_templates": sync_config.templates(settings),
                    "sources": [[i.get("source_id"), i.get("version")] for i in result["items"]],
                    "has_more": not result["end"]})
 
@@ -415,8 +474,7 @@ def _sync_preview_fingerprint(settings, result):
 @frappe.whitelist(methods=["POST"])
 def enable_sync(preview_fingerprint):
     _manager()
-    result = _source_page({"limit": 100})
-    settings = _settings(for_update=True)
+    settings, result = _prepare_sync_preview()
     expected = _sync_preview_fingerprint(settings, result)
     if (not settings.preview_fingerprint
             or preview_fingerprint != settings.preview_fingerprint or expected != preview_fingerprint):
@@ -1253,7 +1311,7 @@ def _list_source_scope():
     return {"mode": _source_mode(), "region": "CN",
             "start_date": oa.START.astimezone(china).date().isoformat(),
             "end_date": (oa.END - timedelta(microseconds=1)).astimezone(china).date().isoformat(),
-            "process_templates": len(oa.PROCESS_CODES)}
+            "process_templates": len(sync_config.process_codes(_settings()))}
 
 
 @frappe.whitelist()

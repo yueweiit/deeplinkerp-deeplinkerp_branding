@@ -1170,6 +1170,9 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 		$: (value) => new Surface(value),
 		DeepLinkERPOperatingExpenses:
 			require("../deeplinkerp_branding/public/js/operating_expenses.js")({}),
+		DeepLinkERPOperatingExpenseSettings: {
+			...require("../deeplinkerp_branding/public/js/operating_expense_settings.js")({}), createDialog: () => d,
+		},
 		DeepLinkERPPurchasePayments: {
 			createDrawer: () => d,
 			disposeControls: (items) => items.splice(0),
@@ -1333,6 +1336,9 @@ test("settings drawer uses a native Password input and an explicit preview confi
 			return button;
 		},
 		DeepLinkERPOperatingExpenses: { typeLabel: () => "付款申请" },
+		DeepLinkERPOperatingExpenseSettings: {
+			...require("../deeplinkerp_branding/public/js/operating_expense_settings.js")({}), createDialog: () => d,
+		},
 		DeepLinkERPPurchasePayments: {
 			createDrawer: () => d,
 			disposeControls: (controls) => controls.splice(0),
@@ -2231,4 +2237,24 @@ test("OA settings cannot preview or synchronize against an older cashier backend
         assert.equal(w.canPreview(), false);
         assert.equal(w.canSync(), false);
     }
+});
+
+test("template changes invalidate preview and save with the loaded configuration version", async () => {
+    const requests=[], templates=[{enabled:1,template_name:"Original",process_code:"PROC-A"}];
+    const h=host(async req=>{
+        requests.push(req);
+        return {message:req.method.endsWith("preview_sync") ? {preview_fingerprint:"p",sources:[]} :
+            {enabled:0,source_mode:"oa",company_mappings:{},approval_templates:templates,config_version:"v1"}};
+    });h.frappe.session={user:"Administrator"};
+    const a=create(h), w=a.settingsWorkflow(drawer());await w.load();await w.preview();w.confirm(true);
+    assert.equal(w.canEnable(),true);w.setTemplates([{...templates[0],enabled:0}]);
+    assert.equal(w.canEnable(),false);assert.equal(w.canPreview(),false);
+    await w.save();const req=requests.find(req=>req.method.endsWith("save_sync_settings"));
+    assert.equal(req.args.expected_config_version,"v1");assert.equal(JSON.parse(req.args.approval_templates)[0].enabled,0);
+});
+test("company history groups retain distinct original names and hide per-application decisions", () => {
+    const api=require("../deeplinkerp_branding/public/js/operating_expense_settings.js")({});
+    const groups=api.groups([{source_company:"Old name",company:"C"},{source_company:"New name",company:"C"},
+        {source_company:"source:private-application",company:"C"},{source_company:"Other",company:"D"}]);
+    assert.deepEqual(groups.map(g=>[g.company,g.aliases.map(a=>a.index)]),[["C",[0,1]],["D",[3]]]);
 });

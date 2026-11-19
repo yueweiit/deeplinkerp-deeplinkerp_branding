@@ -94,10 +94,10 @@ def normalized(value):
     return " ".join(str(value or "").split()).casefold()
 
 
-def in_scope(row, *, form=None):
+def in_scope(row, *, form=None, process_codes=PROCESS_CODES):
     form = fields(row) if form is None else form
     try:
-        return (row.get("process_code") in PROCESS_CODES and START <= timestamp(row.get("create_time")) < END
+        return (row.get("process_code") in process_codes and START <= timestamp(row.get("create_time")) < END
                 and normalized(form.get("region")) in {"中国", "中国china", "中国 china", "china"}
                 and normalized(form.get("type")) in TYPES)
     except (ValueError, TypeError):
@@ -186,11 +186,11 @@ def display_projection(form, form_conflicts):
     return {**values, "projection_sources": sources, "projection_conflicts": conflicts}
 
 
-def merge_application(row):
+def merge_application(row, *, process_codes=PROCESS_CODES):
     from .operating_oa_workflow import workflow
     form_conflicts = set()
     form = fields(row, conflicts=form_conflicts)
-    scoped = in_scope(row, form=form)
+    scoped = in_scope(row, form=form, process_codes=process_codes)
     amount, currency = exact_amount(form.get("amount")), CURRENCIES.get(normalized(form.get("currency")))
     approval = {"eligibility": "eligible" if row.get("status") == "COMPLETED" and row.get("result") == "agree"
                 and not row.get("deleted_at") and scoped else "blocked",

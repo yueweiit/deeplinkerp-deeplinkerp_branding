@@ -2824,3 +2824,15 @@ Export failed. Please retry.,Error al exportar. Inténtelo de nuevo.
 Original Currencies,Monedas originales por separado
 Only operating expenses are connected. Budget and purchase statistics are not included yet.,Solo están conectados los gastos operativos. Los presupuestos y las compras aún no se incluyen en las estadísticas.
 Operating expenses could not be loaded,No se pudieron cargar los gastos operativos
+Configure between 1 and 100 approval templates.,Configure entre 1 y 100 plantillas de aprobación.
+Invalid approval template.,La plantilla de aprobación no es válida.
+Template names and unique PROC codes are required.,Se requieren nombres de plantilla y códigos PROC únicos.
+Disable historical templates instead of deleting or replacing their process codes.,Desactive las plantillas históricas en lugar de eliminarlas o sustituir sus códigos de proceso.
+Sync settings changed. Reload before saving.,La configuración de sincronización ha cambiado. Vuelva a cargarla antes de guardar.
+Enable at least one approval template before previewing sync.,Active al menos una plantilla de aprobación antes de previsualizar la sincronización.
+CN operating templates accept China payment requests and reimbursements. Disable historical templates instead of deleting them.,Las plantillas operativas de CN solo incluyen solicitudes de pago y reembolsos de China. Desactive las plantillas históricas en lugar de eliminarlas.
+Company Historical Names,Nombres históricos de empresas
+{0} historical names,{0} nombres históricos
+Select Company,Seleccionar empresa
+Operating Expense Approval Template,Plantilla de aprobación de gastos operativos
+Add Historical Name,Añadir nombre histórico

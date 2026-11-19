@@ -38,6 +38,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         # These imports are unrelated to reconciliation and remain unused in these tests.
         frappe = ModuleType("frappe")
         frappe._ = lambda message: message
+        frappe.get_single = lambda doctype: {}
         frappe.whitelist = lambda **kwargs: lambda method: method
         modules = {"frappe": frappe, "requests": ModuleType("requests"),
             "frappe.utils": SimpleNamespace(now_datetime=None, getdate=None),
@@ -64,7 +65,7 @@ class OperatingCacheReconciliationTest(unittest.TestCase):
         pages = [originals[offset:offset + 100] for offset in range(0, len(originals), 100)] or [[]]
         reads = []
         exact = exact or {}
-        def read_page(url, corps, limit, until, cursor=None, identity=None):
+        def read_page(url, corps, limit, until, cursor=None, identity=None, **kwargs):
             if identity:
                 reads.append((url, corps, limit, until, "exact", dict(identity)))
                 found = exact.get((identity["corp_id"], identity["process_instance_id"]))

@@ -179,12 +179,12 @@ def attachment_row(item):
     return row
 
 
-def _encode_cursor(until, index, remote, corps):
-    data = [until, index, remote, list(corps)]
+def _encode_cursor(until, index, remote, corps, process_codes=oa.PROCESS_CODES):
+    data = [until, index, remote, list(corps), oa.digest(list(process_codes))]
     return base64.urlsafe_b64encode(json.dumps(data, separators=(",", ":")).encode()).decode()
 
 
-def _decode_cursor(value, until, corps, segment_count):
+def _decode_cursor(value, until, corps, segment_count, process_codes=oa.PROCESS_CODES):
     try:
         if not isinstance(value, str) or len(value) > 12000:
             raise ValueError()
@@ -193,17 +193,20 @@ def _decode_cursor(value, until, corps, segment_count):
             # The old PostgreSQL reader used a three-item cursor. A complete
             # HTTP rescan is safe and lets an in-progress sync migrate itself.
             return 0, None
-        if (not isinstance(data, list) or len(data) != 4 or data[0] != until
+        # Old HTTP cursors are safe only with the unchanged original sequence.
+        if isinstance(data, list) and len(data) == 4 and tuple(process_codes) == oa.PROCESS_CODES:
+            data.append(oa.digest(list(process_codes)))
+        if (not isinstance(data, list) or len(data) != 5 or data[0] != until
                 or type(data[1]) is not int or not 0 <= data[1] < segment_count
                 or data[2] is not None and (not isinstance(data[2], str) or len(data[2]) > 8000)
-                or data[3] != list(corps)):
+                or data[3] != list(corps) or data[4] not in (oa.digest(list(process_codes)), list(process_codes))):
             raise ValueError()
         return data[1], data[2]
     except (ValueError, TypeError, UnicodeError, binascii.Error):
         frappe.throw(_("运营支出 OA 分页游标无效，请重新开始同步"))
 
 
-def read_page(url, corps, limit, until, cursor=None, identity=None):
+def read_page(url, corps, limit, until, cursor=None, identity=None, *, process_codes=oa.PROCESS_CODES):
     """One remote page at a time; cursor covers every configured corp/process."""
     if identity:
         corp, instance = identity["corp_id"], identity["process_instance_id"]
@@ -215,8 +218,8 @@ def read_page(url, corps, limit, until, cursor=None, identity=None):
                 any(row["corp_id"] != corp or row["process_instance_id"] != instance for row in rows)):
             frappe.throw(_("运营支出 OA 精确查询身份不符，请管理员核查"))
         return rows, None
-    segments = [(corp, code) for corp in corps for code in oa.PROCESS_CODES]
-    index, remote = _decode_cursor(cursor, until, corps, len(segments)) if cursor else (0, None)
+    segments = [(corp, code) for corp in corps for code in process_codes]
+    index, remote = _decode_cursor(cursor, until, corps, len(segments), process_codes) if cursor else (0, None)
     limit = min(int(limit), 100)
     # Skip only a bounded number of empty segments in one RPC. An empty page
     # with hasMore still yields its cursor so a bad remote cannot spin here.
@@ -235,11 +238,11 @@ def read_page(url, corps, limit, until, cursor=None, identity=None):
             frappe.throw(_("运营支出 OA 分页未前进，请管理员核查"))
         next_index = index if page["hasMore"] else index + 1
         next_remote = page["nextCursor"] if page["hasMore"] else None
-        next_cursor = _encode_cursor(until, next_index, next_remote, corps) if next_index < len(segments) else None
+        next_cursor = _encode_cursor(until, next_index, next_remote, corps, process_codes) if next_index < len(segments) else None
         if rows or next_cursor is None or page["hasMore"]:
             return rows, next_cursor
         index, remote = next_index, next_remote
-    return [], _encode_cursor(until, index, remote, corps) if index < len(segments) else None
+    return [], _encode_cursor(until, index, remote, corps, process_codes) if index < len(segments) else None
 
 
 def attachment_manifests(url, rows, *, exact=False):

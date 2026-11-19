@@ -1152,3 +1152,15 @@ Export failed. Please retry.,导出失败，请重试。
 Original Currencies,按原币分列
 Only operating expenses are connected. Budget and purchase statistics are not included yet.,当前仅接入运营支出，预算和采购支出暂未纳入统计。
 Operating expenses could not be loaded,运营支出加载失败
+Configure between 1 and 100 approval templates.,请配置 1 至 100 个审批模板。
+Invalid approval template.,审批模板格式无效。
+Template names and unique PROC codes are required.,请填写模板名称和不重复的 PROC 流程编码。
+Disable historical templates instead of deleting or replacing their process codes.,历史模板请停用，不要删除或替换流程编码。
+Sync settings changed. Reload before saving.,同步设置已被修改，请重新加载后再保存。
+Enable at least one approval template before previewing sync.,请至少启用一个审批模板后再预览同步。
+CN operating templates accept China payment requests and reimbursements. Disable historical templates instead of deleting them.,CN 运营模板仅接入中国地区的付款申请和费用报销；历史模板请停用，不要删除。
+Company Historical Names,公司历史名称
+{0} historical names,{0} 个历史名称
+Select Company,选择公司
+Operating Expense Approval Template,运营支出审批模板
+Add Historical Name,添加历史名称

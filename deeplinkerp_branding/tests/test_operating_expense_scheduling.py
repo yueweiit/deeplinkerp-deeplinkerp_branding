@@ -176,7 +176,7 @@ class OperatingSourceReadRetryTests(unittest.TestCase):
 class OperatingExpenseSchedulingTests(unittest.TestCase):
     def setUp(self):
         self.db = Mock()
-        self.settings = SimpleNamespace(enabled=1, cursor="completed-page", last_error=None)
+        self.settings = frappe._dict(enabled=1, cursor="completed-page", last_error=None)
         self.db.set_single_value.side_effect = lambda doctype, field, value: setattr(self.settings, field, value)
         patches = [patch.object(frappe, "db", self.db),
                    patch.object(frappe, "flags", frappe._dict()),
@@ -330,7 +330,7 @@ class OperatingOAWithoutCashierTests(unittest.TestCase):
                 {"name": "收款人beneficiario", "value": "Vendor"},
             ],
         }
-        settings = SimpleNamespace(company_mappings=[], get_password=Mock(side_effect=AssertionError("credential read")))
+        settings = frappe._dict(company_mappings=[], get_password=Mock(side_effect=AssertionError("credential read")))
         db = Mock()
         db.exists.return_value = False
         with patch.object(frappe, "db", db), \

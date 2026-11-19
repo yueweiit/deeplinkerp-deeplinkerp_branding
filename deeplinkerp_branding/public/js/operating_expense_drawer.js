@@ -1359,6 +1359,7 @@
 		let revision = 0,
 			savedRevision = 0,
 			rows = [],
+			templates = [],
 			confirmed = false,
 			previewRevision = null;
 		const state = () => {
@@ -1369,12 +1370,16 @@
 				[
 					"enabled",
 					"company_mappings",
+					"approval_templates",
+					"config_version",
+					"business_timezone",
 					"source_mode",
 					"source_url",
 					"last_sync_at",
 					"last_error",
 				].map((field) => [field, settings[field]])
 			);
+			templates = clone(settings.approval_templates || []);
 			rows = Object.entries(settings.company_mappings || {}).map(
 				([source_company, company]) => ({ source_company, company })
 			);
@@ -1386,12 +1391,14 @@
 			if (!isManager()) throw new Error(t("仅系统管理员可管理同步"));
 			return uiTask(drawer, fn);
 		}
-		async function saveValues(mappings) {
+		async function saveValues(mappings, templateRows = templates) {
 			const start = revision;
 			w.invalidate();
 			return task(async (current) => {
 				const result = await call("save_sync_settings", {
 					company_mappings: JSON.stringify(mappings),
+					...(w.settings.approval_templates ? {approval_templates:JSON.stringify(templateRows)} : {}),
+					...(w.settings.config_version ? {expected_config_version:w.settings.config_version} : {}),
 				});
 				if (!current() || start !== revision) return;
 				reset(result);
@@ -1405,6 +1412,13 @@
 			previewResult: null,
 			get rows() {
 				return clone(rows);
+			},
+			get templates() { return clone(templates); },
+			setTemplates(values) {
+				const next = values.map(({enabled, template_name, process_code}) => ({enabled:boolean(enabled) ? 1 : 0, template_name, process_code}));
+				if (JSON.stringify(next) === JSON.stringify(templates)) return;
+				templates = clone(next);
+				this.changed();
 			},
 			dirty: () => revision !== savedRevision,
 			invalidate() {
@@ -1425,9 +1439,9 @@
 				rows[index][field] = next;
 				this.changed();
 			},
-			addMap() {
+			addMap(company = "") {
 				if (rows.length >= 200) throw new Error(t("最多 200 行公司映射"));
-				rows.push({ source_company: "", company: "" });
+				rows.push({ source_company: "", company });
 				this.changed();
 			},
 			removeMap(index) {
@@ -1466,7 +1480,7 @@
 				return saveValues(mappings);
 			},
 			disable() {
-				return saveValues(this.settings.company_mappings || {});
+				return saveValues(this.settings.company_mappings || {}, this.settings.approval_templates || []);
 			},
 			canPreview() {
 				return Boolean(this.settings?.source_mode === "oa" && !this.dirty());
@@ -1529,11 +1543,12 @@
 	}
 	async function openSettings(onRefresh = () => {}) {
 		if (!isManager()) throw new Error(t("仅系统管理员可管理同步"));
-		const drawer = root.DeepLinkERPPurchasePayments.createDrawer(t("运营支出同步设置"), true);
+		const drawer = root.DeepLinkERPOperatingExpenseSettings.createDialog(t("运营支出同步设置"));
 		if (!drawer) return;
 		configureDrawer(drawer);
 		let w,
 			confirmControl,
+			templateControl,
 			lastSync = "";
 		function paintPreview(result) {
 			const pendingCompanyCount = result.sources.filter((source) => !source.company).length;
@@ -1593,6 +1608,7 @@
 			root.DeepLinkERPPurchasePayments.disposeControls(drawer.controls);
 			drawer.actions = [];
 			confirmControl = null;
+			templateControl = null;
 			drawer.panel
 				.find(".dlp-payment-body")
 				.html(
@@ -1602,31 +1618,57 @@
 						settings.source_url || "—"
 					)}</div><div>${esc(t("上次同步"))} · ${display(
 						settings.last_sync_at
-					)}</div></div>${
+					)}</div><div>${esc(t("Business Timezone"))} · ${display(settings.business_timezone || "Asia/Shanghai")}</div></div>${
 						settings.last_error
 							? `<p class="text-warning">${display(settings.last_error)}</p>`
 							: ""
 					}<p class="text-muted">${esc(
 						t("保存设置会停用同步，并使已有同步预览失效。")
-					)}</p></section><section class="dlp-operating-section"><strong>${esc(
-						t("来源法律标识 → ERP 法律公司")
+					)}</p></section><section class="dlp-operating-section"><div class="dlp-operating-templates"></div></section><section class="dlp-operating-section"><strong>${esc(
+						t("Company Historical Names")
 					)}</strong><p class="text-muted">${esc(
 						t("业务单元和归档表不代表法律公司，请明确映射。")
-					)}</p><div class="dlp-operating-table-wrap"><table class="table table-bordered"><thead><tr><th>${esc(
-						t("来源法律标识")
-					)}</th><th>${esc(t("法律公司"))}</th><th>${esc(
-						t("操作")
-					)}</th></tr></thead><tbody class="dlp-operating-company-maps"></tbody></table></div><div class="dlp-operating-map-actions dlp-operating-actions"></div></section><div class="dlp-operating-settings-actions dlp-operating-actions"></div><div class="dlp-operating-sync-preview"></div><div class="dlp-operating-sync-confirm"></div><div class="dlp-operating-sync-actions dlp-operating-actions"></div><p class="dlp-operating-sync-result" role="status">${esc(
+					)}</p><div class="dlp-operating-company-groups"></div><div class="dlp-operating-map-actions dlp-operating-actions"></div></section><div class="dlp-operating-settings-actions dlp-operating-actions"></div><div class="dlp-operating-sync-preview"></div><div class="dlp-operating-sync-confirm"></div><div class="dlp-operating-sync-actions dlp-operating-actions"></div><p class="dlp-operating-sync-result" role="status">${esc(
 						lastSync
 					)}</p><div class="dlp-error text-danger" role="alert"></div>`
 				);
+			if (settings.approval_templates) {
+				templateControl = await makeControl(drawer, drawer.panel.find(".dlp-operating-templates"), {
+					fieldname:"approval_templates", fieldtype:"Table", label:t("Approval Templates"),
+					description:t("CN operating templates accept China payment requests and reimbursements. Disable historical templates instead of deleting them."),
+					in_place_edit:true, data:w.templates,
+					fields:[
+						{fieldname:"enabled", fieldtype:"Check", label:t("Enabled"), in_list_view:1, columns:1, default:1},
+						{fieldname:"template_name", fieldtype:"Data", label:t("Template Name"), in_list_view:1, columns:3, reqd:1},
+						{fieldname:"process_code", fieldtype:"Data", label:t("Process Code"), in_list_view:1, columns:6, reqd:1},
+					],
+				}, w.templates, values => w.setTemplates(values || []));
+				const generation = drawer.operatingControlGeneration;
+				const changed = () => {
+					if (drawer.alive() && load === drawer.loadId && generation === drawer.operatingControlGeneration && templateControl)
+						w.setTemplates(templateControl.get_value() || []);
+				};
+				templateControl?.grid?.wrapper.on("change.cnSync", changed);
+				for (const field of templateControl?.df.fields || []) field.onchange = changed;
+			}
+			const groupHolders = new Map();
+			for (const group of root.DeepLinkERPOperatingExpenseSettings.groups(w.rows)) {
+				const holder = root.$(`<details class="dlp-operating-alias-group" ${group.aliases.some(({row})=>!row.source_company) ? "open" : ""}><summary>${esc(group.company || t("Select Company"))}<span class="text-muted">${esc(t("{0} historical names", [group.aliases.length]))}</span></summary><div class="dlp-operating-table-wrap"><table class="table table-bordered"><thead><tr><th>${esc(t("来源法律标识"))}</th><th>${esc(t("法律公司"))}</th><th>${esc(t("操作"))}</th></tr></thead><tbody></tbody></table></div></details>`).appendTo(drawer.panel.find(".dlp-operating-company-groups"));
+				for (const {index} of group.aliases) groupHolders.set(index, holder.find("tbody"));
+				if (group.company) action(drawer, holder, "Add Historical Name", async () => {
+					w.addMap(group.company);
+					await uiTask(drawer, renderSettings);
+				}, () => w.rows.length < 200);
+			}
 			for (const [index, row] of w.rows.entries()) {
+				// Per-application legal decisions remain owned by the application drawer.
+				if (row.source_company.startsWith("source:")) continue;
 				if (!drawer.alive() || load !== drawer.loadId) return;
 				const holder = root
 					.$(
 						'<tr><td class="dlp-operating-map-source"></td><td class="dlp-operating-map-company"></td><td class="dlp-operating-map-remove"></td></tr>'
 					)
-					.appendTo(drawer.panel.find(".dlp-operating-company-maps"));
+					.appendTo(groupHolders.get(index));
 				for (const [field, type, options, label, selector] of [
 					["source_company", "Data", null, "来源法律标识", ".dlp-operating-map-source"],
 					["company", "Link", "Company", "法律公司", ".dlp-operating-map-company"],
@@ -1661,11 +1703,14 @@
 				},
 				() => w.rows.length < 200
 			);
-			action(
+			const saveButton = action(
 				drawer,
 				drawer.panel.find(".dlp-operating-settings-actions"),
 				"保存设置并停用同步",
-				() => w.save(),
+				() => {
+					if (templateControl) w.setTemplates(templateControl.get_value() || []);
+					return w.save();
+				},
 				() => true,
 				true
 			);
@@ -1722,6 +1767,7 @@
 				.$('<div class="dlp-operating-footer"></div>')
 				.appendTo(drawer.panel.find("footer"));
 			action(drawer, footer, "刷新设置", () => w.load());
+			saveButton.appendTo(footer);
 			drawer.refreshEligibility();
 		}
 		w = settingsWorkflow(drawer, {

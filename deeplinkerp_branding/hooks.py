@@ -29,7 +29,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/deeplinkerp_navigation.css?v=0.0.14",
 	"/assets/deeplinkerp_branding/css/purchase_payments.css?v=0.0.10",
 	"/assets/deeplinkerp_branding/css/purchase_order_list.css?v=0.0.29",
-    "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.9",
+    "/assets/deeplinkerp_branding/css/operating_expenses.css?v=0.0.10",
 	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
@@ -42,7 +42,8 @@ app_include_js = [
 	"/assets/deeplinkerp_branding/js/purchase_source.js?v=0.0.4",
 	"/assets/deeplinkerp_branding/js/oa_purchase_request.js?v=0.0.1",
     "/assets/deeplinkerp_branding/js/operating_payment_panel.js?v=0.0.8",
-    "/assets/deeplinkerp_branding/js/operating_expense_drawer.js?v=0.0.23",
+    "/assets/deeplinkerp_branding/js/operating_expense_settings.js?v=0.0.2",
+    "/assets/deeplinkerp_branding/js/operating_expense_drawer.js?v=0.0.24",
     "/assets/deeplinkerp_branding/js/operating_expenses.js?v=0.0.13",
 	"/assets/deeplinkerp_branding/js/unified_purchase_list.js?v=0.0.14",
 	"/assets/deeplinkerp_branding/js/deeplinkerp_navigation.js?v=0.0.24",
@@ -170,6 +171,7 @@ after_migrate = [
 	"deeplinkerp_branding.purchase_reversal_install.after_migrate",
 	"deeplinkerp_branding.operating_navigation.ensure_operating_navigation",
 	"deeplinkerp_branding.mexico_expense_install.after_migrate",
+	"deeplinkerp_branding.operating_expense_install.ensure_sync_templates",
 ]
 
 permission_query_conditions = {

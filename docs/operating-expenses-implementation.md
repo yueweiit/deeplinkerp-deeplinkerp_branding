@@ -14,6 +14,20 @@
 
 CN/MX 页面加载器向 `frappe.require` 传递不带查询参数的资源路径，由框架添加缓存版本；共用资源使用相同路径，避免重复执行。当前 Frappe 的资源类型识别不兼容手工 `?v=` 参数，会在页面初始化前抛错。原生加载链路及两种访问顺序的回归见 `tests/regional-expense-page-loading.test.js`。
 
+## CN 同步设置（2026-11-19）
+
+复用原运营同步服务与 `settingsWorkflow`，使用原生居中 Dialog；MX 模板字段映射、财务节点与地区排除规则不套用到 CN。前端入口为 `public/js/operating_expense_settings.js`、`operating_expense_drawer.js`，两个运营入口共用同一弹窗。
+
+- `Operating Expense Sync Settings.approval_templates` 使用子表 `Operating Expense Approval Template`，维护启用状态、模板名称和唯一 `PROC-…` 流程编码，上限 100 行。首次迁移保留原七个模板及其顺序、公司映射和同步开关；初始化钩子在原生索引等元数据钩子之后执行，避免数据写入干扰后续 DDL 校验。
+- 已保存的流程编码不能删除或替换，历史模板使用停用。停用只停止导入新申请；同步完成时，历史核查仍按原身份刷新已有申请的审批状态、金额和附件，并保留付款关联及来源变化后的财务复核规则。复用 `services/operating_expenses.py::_oa_source_items` 统一解析，附件按模板批量读取，未变化的记录不重复写入；来源撤回、移出范围及快照时间边界校验继续生效，不因模板停用而批量撤回。中国地区、2026 年申请窗口和付款申请／费用报销类型校验保持原状，新增模板需沿用现有字段契约；预算与采购数据未在此接入。业务时区仍为只读 `Asia/Shanghai`。
+- 公司历史名称按 ERP 法律公司折叠显示，可在公司组内添加别名。名称仅作明确映射，不模糊猜测归属；单据级 `source:` 覆盖不进入历史名称编辑，保存时保留，新增或变更必须从对应申请核对。既有财务确认及其公司保护不变。
+- `get_sync_settings` 新增 `approval_templates`、`config_version`、`business_timezone`；`save_sync_settings` 增加可选模板参数和预期配置版本，旧调用保持兼容。新界面每次保存携带版本，发生并发更改时拒绝覆盖。保存仍停用同步、清空游标和预览，必须重新预览并显式确认启用，不自动同步或生成财务单据。
+- 模板和公司配置均进入预览指纹；远程预览期间不持有配置写锁，返回后锁定并核对配置版本。HTTP 分页游标绑定企业与模板顺序指纹；旧 HTTP 游标仅在原默认模板顺序下兼容，原 PostgreSQL 游标从头重扫。
+- 设置弹窗的关闭按钮与 Escape 共用未保存确认；移除原生按钮的自动 dismiss，取消关闭保留输入，确认后才销毁控件，保存期间不能关闭。
+- 核心实现：`services/operating_sync_config.py`、`operating_expenses.py`、`operating_oa_http.py`、`operating_oa_source.py`。共享 OA 解析函数保留原默认参数，采购旧调用不变。新增界面与校验文案覆盖中、英、西语。
+
+本地 `dev.localhost` 已备份并迁移；回归覆盖配置冲突、历史模板停用、国家/类型隔离、旧游标及公司覆盖保护。浏览器真实读取现有设置，模板保存／预览／启用使用模拟响应验收，未为测试执行 OA 同步或改变现有同步开关。生产尚未部署。
+
 ## 已确认边界
 
 - 保留请款网站，ERP 只同步运营付款申请、费用报销和付款依据。

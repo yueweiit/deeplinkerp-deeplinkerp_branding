@@ -2553,3 +2553,15 @@ Export failed. Please retry.,Export failed. Please retry.
 Original Currencies,Original Currencies
 Only operating expenses are connected. Budget and purchase statistics are not included yet.,Only operating expenses are connected. Budget and purchase statistics are not included yet.
 Operating expenses could not be loaded,Operating expenses could not be loaded
+Configure between 1 and 100 approval templates.,Configure between 1 and 100 approval templates.
+Invalid approval template.,Invalid approval template.
+Template names and unique PROC codes are required.,Template names and unique PROC codes are required.
+Disable historical templates instead of deleting or replacing their process codes.,Disable historical templates instead of deleting or replacing their process codes.
+Sync settings changed. Reload before saving.,Sync settings changed. Reload before saving.
+Enable at least one approval template before previewing sync.,Enable at least one approval template before previewing sync.
+CN operating templates accept China payment requests and reimbursements. Disable historical templates instead of deleting them.,CN operating templates accept China payment requests and reimbursements. Disable historical templates instead of deleting them.
+Company Historical Names,Company Historical Names
+{0} historical names,{0} historical names
+Select Company,Select Company
+Operating Expense Approval Template,Operating Expense Approval Template
+Add Historical Name,Add Historical Name
