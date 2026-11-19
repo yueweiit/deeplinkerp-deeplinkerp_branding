@@ -2836,3 +2836,7 @@ Company Historical Names,Nombres históricos de empresas
 Select Company,Seleccionar empresa
 Operating Expense Approval Template,Plantilla de aprobación de gastos operativos
 Add Historical Name,Añadir nombre histórico
+Synchronize Data,Sincronizar datos
+Operating Expense Synchronization,Sincronización de gastos operativos
+Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data.,Guardar la configuración pausa la sincronización. Revise y active la configuración actualizada en Sincronizar datos.
+Settings saved. Continue in Synchronize Data.,Configuración guardada. Continúe en Sincronizar datos.

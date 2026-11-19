@@ -1099,6 +1099,7 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 	const controls = [],
 		buttons = new Map(),
 		saved = [],
+		requests = [],
 		errors = [];
 	class Surface {
 		constructor(html = "") {
@@ -1181,6 +1182,7 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 			...host().frappe,
 			session: { user: "Administrator" },
 			call: async (req) => {
+				requests.push(req.method.split(".").at(-1));
 				if (req.method.endsWith("save_sync_settings")) {
 					const mappings = JSON.parse(req.args.company_mappings);
 					saved.push(mappings);
@@ -1213,12 +1215,14 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 		controls.filter((control) => control.df.fieldname === name).at(-1);
 	const click = async (label) => buttons.get(label).at(-1).handlers["click.dlpDrawer"]();
 	await a.openSettings();
+	for (const label of ["停用同步", "预览来源与公司映射", "确认启用同步", "Synchronize Now"]) assert.equal(buttons.has(label), false);
+	assert.equal(lastControl("confirm_sync_preview"), undefined);
 	const deletedLink = lastControl("company_map_0_company");
 	await buttons.get("移除")[0].handlers["click.dlpDrawer"]();
 	assert.equal(d.busy, false);
 	assert.equal(lastControl("company_map_0_company").get_value(), "CompanyB");
 	deletedLink.df.change();
-	await click("保存设置并停用同步");
+	await click("Save Settings");
 	assert.equal(d.busy, false);
 	assert.deepEqual(
 		saved.at(-1),
@@ -1239,12 +1243,12 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 	addedSource.df.change();
 	await addedLink.set_value("CompanyC");
 	addedLink.df.change();
-	await click("保存设置并停用同步");
+	await click("Save Settings");
 	assert.equal(d.busy, false);
 	assert.deepEqual(saved.at(-1), { LegalB: "CompanyB2", LegalC: "CompanyC" });
 	await addedLink.set_value("CompanyA");
 	addedLink.df.change();
-	await click("保存设置并停用同步");
+	await click("Save Settings");
 	assert.equal(d.busy, false);
 	assert.deepEqual(
 		saved.at(-1),
@@ -1252,6 +1256,8 @@ test("every settings controls rebuild isolates deleted added and saved native Li
 		"A save rebuild also rejects old Link callbacks"
 	);
 	assert.deepEqual(errors, []);
+	assert.deepEqual(requests, ["get_sync_settings", "save_sync_settings", "save_sync_settings", "save_sync_settings"],
+		"opening and saving configuration must not preview, enable or run synchronization");
 });
 test("settlement terms stay unavailable until the mapping has a saved explicit payable rate", () => {
 	assert.equal(typeof api.canEditPayment, "function");
@@ -1263,7 +1269,7 @@ test("settlement terms stay unavailable until the mapping has a saved explicit p
 	s.touch("payable_exchange_rate", "7.123456");
 	assert.throws(() => s.touchPayment("pay:1", "bank_amount", "10"), /保存/);
 });
-test("settings drawer uses a native Password input and an explicit preview confirmation Check", async () => {
+test("separate sync dialog keeps the explicit preview confirmation and no editable configuration", async () => {
 	const defs = [],
 		html = [],
 		buttons = new Map();
@@ -1376,9 +1382,12 @@ test("settings drawer uses a native Password input and an explicit preview confi
 			},
 		},
 	});
-	assert.equal(typeof a.openSettings, "function");
-	await a.openSettings();
+	assert.equal(typeof a.openSync, "function");
+	await a.openSync();
 	assert.equal(defs.find((df) => df.fieldname === "api_token"), undefined);
+	assert.equal(defs.find((df) => df.fieldname === "approval_templates"), undefined);
+	assert.equal(buttons.has("Save Settings"), false);
+	assert.equal(buttons.has("Synchronize Now"), true);
 	assert.equal(defs.find((df) => df.fieldname === "confirm_sync_preview").fieldtype, "Check");
 	assert.match(defs.find((df) => df.fieldname === "confirm_sync_preview").label, /未映射来源仅以待核对状态导入/);
 	assert.match(html.join(""), /当前来源模式.*OA 审批接口/);
@@ -1386,7 +1395,7 @@ test("settings drawer uses a native Password input and an explicit preview confi
 	assert.doesNotMatch(html.join(""), /name="source_url"/);
 	sourceMode = "oa";
 	sourceUrl = "http://8.135.70.130:3005";
-	await a.openSettings();
+	await a.openSync();
 	assert.match(html.at(-1), /当前来源模式.*OA 审批接口/);
 	assert.match(html.at(-1), /OA 审批接口地址.*8\.135\.70\.130:3005/);
 	assert.doesNotMatch(html.at(-1), /payment\.yueweiportal\.com/);
@@ -2257,4 +2266,10 @@ test("company history groups retain distinct original names and hide per-applica
     const groups=api.groups([{source_company:"Old name",company:"C"},{source_company:"New name",company:"C"},
         {source_company:"source:private-application",company:"C"},{source_company:"Other",company:"D"}]);
     assert.deepEqual(groups.map(g=>[g.company,g.aliases.map(a=>a.index)]),[["C",[0,1]],["D",[3]]]);
+});
+
+test("both configuration and synchronization dialogs require a system manager before any request", async () => {
+    const a = create(host(() => assert.fail("unauthorized settings request")));
+    await assert.rejects(() => a.openSettings(), /仅系统管理员/);
+    await assert.rejects(() => a.openSync(), /仅系统管理员/);
 });

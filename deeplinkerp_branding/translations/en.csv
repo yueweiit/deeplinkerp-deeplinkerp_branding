@@ -2565,3 +2565,7 @@ Company Historical Names,Company Historical Names
 Select Company,Select Company
 Operating Expense Approval Template,Operating Expense Approval Template
 Add Historical Name,Add Historical Name
+Synchronize Data,Synchronize Data
+Operating Expense Synchronization,Operating Expense Synchronization
+Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data.,Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data.
+Settings saved. Continue in Synchronize Data.,Settings saved. Continue in Synchronize Data.

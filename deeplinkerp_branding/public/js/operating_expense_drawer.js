@@ -1541,9 +1541,11 @@
 		};
 		return w;
 	}
-	async function openSettings(onRefresh = () => {}) {
+	async function openSettings(onRefresh = () => {}, mode = "settings") {
 		if (!isManager()) throw new Error(t("仅系统管理员可管理同步"));
-		const drawer = root.DeepLinkERPOperatingExpenseSettings.createDialog(t("运营支出同步设置"));
+		const drawer = root.DeepLinkERPOperatingExpenseSettings.createDialog(
+			t(mode === "sync" ? "Operating Expense Synchronization" : "运营支出同步设置")
+		);
 		if (!drawer) return;
 		configureDrawer(drawer);
 		let w,
@@ -1598,40 +1600,32 @@
 			confirmControl?.set_value(0);
 			drawer.panel.find(".dlp-operating-sync-confirm").show();
 		}
+		function statusHTML(settings) {
+			const modeLabel = settings.source_mode === "oa" ? t("OA 审批接口") : t("未返回，请核对部署版本");
+			return `<section class="dlp-operating-section"><div class="dlp-operating-facts">
+				<div>${esc(t("同步状态"))} · ${esc(t(settings.enabled ? "已启用" : "未启用"))}</div>
+				<div>${esc(t("当前来源模式"))} · ${esc(modeLabel)}</div>
+				<div>${esc(t("OA 审批接口地址"))} · ${display(settings.source_url || "—")}</div>
+				<div>${esc(t("上次同步"))} · ${display(settings.last_sync_at)}</div>
+				<div>${esc(t("Business Timezone"))} · ${display(settings.business_timezone || "Asia/Shanghai")}</div>
+			</div>${settings.last_error ? `<p class="text-warning">${display(settings.last_error)}</p>` : ""}</section>`;
+		}
 		async function renderSettings() {
 			drawer.operatingControlGeneration = (drawer.operatingControlGeneration || 0) + 1;
-			const load = drawer.loadId,
-				settings = w.settings,
-				mode = settings.source_mode,
-				modeLabel = mode === "oa" ? t("OA 审批接口") : t("未返回，请核对部署版本"),
-				urlLabel = t("OA 审批接口地址");
+			const load = drawer.loadId, settings = w.settings;
 			root.DeepLinkERPPurchasePayments.disposeControls(drawer.controls);
 			drawer.actions = [];
 			confirmControl = null;
 			templateControl = null;
-			drawer.panel
-				.find(".dlp-payment-body")
-				.html(
-					`<section class="dlp-operating-section"><div class="dlp-operating-facts"><div>${esc(
-						t("同步状态")
-					)} · ${esc(t(settings.enabled ? "已启用" : "未启用"))}</div><div>${esc(t("当前来源模式"))} · ${esc(modeLabel)}</div><div>${esc(urlLabel)} · ${display(
-						settings.source_url || "—"
-					)}</div><div>${esc(t("上次同步"))} · ${display(
-						settings.last_sync_at
-					)}</div><div>${esc(t("Business Timezone"))} · ${display(settings.business_timezone || "Asia/Shanghai")}</div></div>${
-						settings.last_error
-							? `<p class="text-warning">${display(settings.last_error)}</p>`
-							: ""
-					}<p class="text-muted">${esc(
-						t("保存设置会停用同步，并使已有同步预览失效。")
-					)}</p></section><section class="dlp-operating-section"><div class="dlp-operating-templates"></div></section><section class="dlp-operating-section"><strong>${esc(
-						t("Company Historical Names")
-					)}</strong><p class="text-muted">${esc(
-						t("业务单元和归档表不代表法律公司，请明确映射。")
-					)}</p><div class="dlp-operating-company-groups"></div><div class="dlp-operating-map-actions dlp-operating-actions"></div></section><div class="dlp-operating-settings-actions dlp-operating-actions"></div><div class="dlp-operating-sync-preview"></div><div class="dlp-operating-sync-confirm"></div><div class="dlp-operating-sync-actions dlp-operating-actions"></div><p class="dlp-operating-sync-result" role="status">${esc(
-						lastSync
-					)}</p><div class="dlp-error text-danger" role="alert"></div>`
-				);
+			drawer.panel.find(".dlp-payment-body").html(
+				`${statusHTML(settings)}<p class="text-muted">${esc(t("Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data."))}</p>
+				<section class="dlp-operating-section"><div class="dlp-operating-templates"></div></section>
+				<section class="dlp-operating-section"><strong>${esc(t("Company Historical Names"))}</strong>
+				<p class="text-muted">${esc(t("业务单元和归档表不代表法律公司，请明确映射。"))}</p>
+				<div class="dlp-operating-company-groups"></div><div class="dlp-operating-map-actions dlp-operating-actions"></div></section>
+				<div class="dlp-error text-danger" role="alert"></div>`
+			);
+
 			if (settings.approval_templates) {
 				templateControl = await makeControl(drawer, drawer.panel.find(".dlp-operating-templates"), {
 					fieldname:"approval_templates", fieldtype:"Table", label:t("Approval Templates"),
@@ -1703,17 +1697,32 @@
 				},
 				() => w.rows.length < 200
 			);
-			const saveButton = action(
-				drawer,
-				drawer.panel.find(".dlp-operating-settings-actions"),
-				"保存设置并停用同步",
-				() => {
-					if (templateControl) w.setTemplates(templateControl.get_value() || []);
-					return w.save();
-				},
-				() => true,
-				true
+			drawer.panel.find("footer .dlp-operating-footer").remove();
+			const footer = root.$('<div class="dlp-operating-footer justify-content-end"></div>')
+				.appendTo(drawer.panel.find("footer"));
+			action(drawer, footer, "Save Settings", async () => {
+				if (templateControl) w.setTemplates(templateControl.get_value() || []);
+				const result = await w.save();
+				if (result && drawer.alive()) {
+					root.frappe.show_alert?.({message:t("Settings saved. Continue in Synchronize Data."), indicator:"green"});
+					await onRefresh();
+					await drawer.dialog?.hide();
+				}
+			}, () => true, true);
+			drawer.refreshEligibility();
+		}
+		async function renderSync() {
+			drawer.operatingControlGeneration = (drawer.operatingControlGeneration || 0) + 1;
+			root.DeepLinkERPPurchasePayments.disposeControls(drawer.controls);
+			drawer.actions = [];
+			confirmControl = null;
+			drawer.panel.find(".dlp-payment-body").html(
+				`${statusHTML(w.settings)}<div class="dlp-operating-settings-actions dlp-operating-actions"></div>
+				<div class="dlp-operating-sync-preview"></div><div class="dlp-operating-sync-confirm"></div>
+				<div class="dlp-operating-sync-actions dlp-operating-actions"></div>
+				<p class="dlp-operating-sync-result" role="status">${esc(lastSync)}</p><div class="dlp-error text-danger" role="alert"></div>`
 			);
+
 			action(
 				drawer,
 				drawer.panel.find(".dlp-operating-settings-actions"),
@@ -1746,13 +1755,12 @@
 				drawer.panel.find(".dlp-operating-sync-actions"),
 				"确认启用同步",
 				() => w.enable(),
-				() => w.canEnable(),
-				true
+				() => w.canEnable()
 			);
-			action(
+			const syncButton = action(
 				drawer,
 				drawer.panel.find(".dlp-operating-sync-actions"),
-				"手动同步并刷新",
+				"Synchronize Now",
 				async () => {
 					const result = await w.sync();
 					if (result && drawer.alive()) {
@@ -1760,18 +1768,19 @@
 						await onRefresh();
 					}
 				},
-				() => w.canSync()
+				() => w.canSync(),
+				true
 			);
 			drawer.panel.find("footer .dlp-operating-footer").remove();
 			const footer = root
 				.$('<div class="dlp-operating-footer"></div>')
 				.appendTo(drawer.panel.find("footer"));
-			action(drawer, footer, "刷新设置", () => w.load());
-			saveButton.appendTo(footer);
+			action(drawer, footer, "Refresh", () => w.load());
+			syncButton.appendTo(footer);
 			drawer.refreshEligibility();
 		}
 		w = settingsWorkflow(drawer, {
-			onSettings: renderSettings,
+			onSettings: mode === "sync" ? renderSync : renderSettings,
 			onPreview: paintPreview,
 			onState: () => {
 				if (!drawer.alive()) return;
@@ -1825,5 +1834,6 @@
 		downloadAttachment,
 		settingsWorkflow,
 		openSettings,
+		openSync: (onRefresh) => openSettings(onRefresh, "sync"),
 	};
 });

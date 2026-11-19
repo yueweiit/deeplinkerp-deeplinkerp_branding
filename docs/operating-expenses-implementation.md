@@ -16,7 +16,9 @@ CN/MX 页面加载器向 `frappe.require` 传递不带查询参数的资源路�
 
 ## CN 同步设置（2026-11-19）
 
-复用原运营同步服务与 `settingsWorkflow`，使用原生居中 Dialog；MX 模板字段映射、财务节点与地区排除规则不套用到 CN。前端入口为 `public/js/operating_expense_settings.js`、`operating_expense_drawer.js`，两个运营入口共用同一弹窗。
+复用原运营同步服务与 `settingsWorkflow`，使用原生居中 Dialog；MX 模板字段映射、财务节点与地区排除规则不套用到 CN。前端入口为 `public/js/operating_expense_settings.js`、`operating_expense_drawer.js`，CN 页面与旧运营页面共用“同步设置”和“同步数据”两个独立入口。
+
+- 设置弹窗只编辑审批模板和公司历史名称，底部仅保留“保存设置”，保存成功后关闭并刷新页面。页面独立“同步数据”按钮打开只读同步控制窗口，承载预览、明确确认启用、停用及“立即同步”；两个入口均仅供系统管理员使用，打开窗口不会自动请求 OA 或导入数据。
 
 - `Operating Expense Sync Settings.approval_templates` 使用子表 `Operating Expense Approval Template`，维护启用状态、模板名称和唯一 `PROC-…` 流程编码，上限 100 行。首次迁移保留原七个模板及其顺序、公司映射和同步开关；初始化钩子在原生索引等元数据钩子之后执行，避免数据写入干扰后续 DDL 校验。
 - 已保存的流程编码不能删除或替换，历史模板使用停用。停用只停止导入新申请；同步完成时，历史核查仍按原身份刷新已有申请的审批状态、金额和附件，并保留付款关联及来源变化后的财务复核规则。复用 `services/operating_expenses.py::_oa_source_items` 统一解析，附件按模板批量读取，未变化的记录不重复写入；来源撤回、移出范围及快照时间边界校验继续生效，不因模板停用而批量撤回。中国地区、2026 年申请窗口和付款申请／费用报销类型校验保持原状，新增模板需沿用现有字段契约；预算与采购数据未在此接入。业务时区仍为只读 `Asia/Shanghai`。

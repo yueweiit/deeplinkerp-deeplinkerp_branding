@@ -1164,3 +1164,7 @@ Company Historical Names,公司历史名称
 Select Company,选择公司
 Operating Expense Approval Template,运营支出审批模板
 Add Historical Name,添加历史名称
+Synchronize Data,同步数据
+Operating Expense Synchronization,运营支出同步
+Saving settings pauses synchronization. Review and enable the updated configuration in Synchronize Data.,保存设置后同步会暂停，请在“同步数据”中核对并启用新配置。
+Settings saved. Continue in Synchronize Data.,设置已保存，请在“同步数据”中继续操作。

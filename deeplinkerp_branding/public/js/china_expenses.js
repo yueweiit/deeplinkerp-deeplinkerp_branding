@@ -107,6 +107,8 @@
             if (root.DeepLinkERPOperatingExpenseDrawer?.isManager?.()) {
                 this.page.add_menu_item(t("Operating Expense Sync Settings"), () =>
                     root.DeepLinkERPOperatingExpenseDrawer.openSettings(() => this.refresh()));
+                this.page.add_inner_button(t("Synchronize Data"), () =>
+                    root.DeepLinkERPOperatingExpenseDrawer.openSync(() => this.refresh()));
             }
             this.ready = this.initialize().catch(() => this.loadError());
         }

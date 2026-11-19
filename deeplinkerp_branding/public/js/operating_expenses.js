@@ -246,7 +246,7 @@
 		)
 			.appendTo(c.$toolbar)
 			.on("click.dlpOperating", () => c.clearQuickFilters());
-		if (root.DeepLinkERPOperatingExpenseDrawer.isManager())
+		if (root.DeepLinkERPOperatingExpenseDrawer.isManager()) {
 			root.$(
 				`<button type="button" class="btn btn-default btn-sm">${esc(
 					t("同步设置")
@@ -256,6 +256,12 @@
 				.on("click.dlpOperating", () =>
 					root.DeepLinkERPOperatingExpenseDrawer.openSettings(() => c.refresh())
 				);
+			root.$(`<button type="button" class="btn btn-default btn-sm">${esc(t("Synchronize Data"))}</button>`)
+				.appendTo(c.$toolbar)
+				.on("click.dlpOperating", () =>
+					root.DeepLinkERPOperatingExpenseDrawer.openSync(() => c.refresh())
+				);
+		}
 		c.list.$result
 			.off(".dlpOperating")
 			.on("click.dlpOperating", ".dlp-operating-open", (event) =>
