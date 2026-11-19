@@ -280,7 +280,7 @@
             this.budgetReport?.dispose(); this.budgetReport = null;
             if (this.view === "budget_analysis") this.filters.approval_type = "budget";
             const isBudget = this.filters.approval_type === "budget";
-            this.syncButton?.text(t(isBudget ? "Synchronize Budget Ledger" : "Synchronize Data"))
+            this.syncButton?.text(t(isBudget ? "Synchronize Budget Data" : "Synchronize Data"))
                 .prop("disabled", !["", "operating", "budget"].includes(this.filters.approval_type));
             this.syncSettingsItem?.text(t(isBudget ? "Budget Sync Settings" : "Sync Settings"));
             if (this.filters.approval_type === "budget" && root.CNBudget) {
