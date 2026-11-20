@@ -21,6 +21,11 @@ def ensure_cn_cash_journal_navigation():
 	doc = frappe.get_doc("Workspace Sidebar", "China Operating Expenses")
 	if doc.get("for_user") or doc.get("public") == 0:
 		return False
+	# Budget's redesigned approval workspace is read-only. Its owned navigation
+	# deliberately omits manual bookkeeping; standalone finance routes still exist.
+	if any(row.get("link_to") == "china-expenses" and row.get("label") in ("Approval Overview", "Management Overview")
+			for row in doc.get("items") or []):
+		return False
 	anchor = next((index + 1 for index, row in enumerate(doc.get("items") or [])
 		if row.get("link_to") == "china-expense-details"), len(doc.get("items") or []))
 	if not reconcile_links(doc, "items", entries=(("CN Cash Journal Entry", "Page", target, "book-open"),),

@@ -44,6 +44,18 @@ class OperatingNavigationTest(unittest.TestCase):
 		fake.db.exists = lambda dt, name: dt != "Page"
 		self.assertFalse(module.ensure_cn_cash_journal_navigation())
 
+	def test_read_only_approval_workspace_does_not_gain_a_bookkeeping_action(self):
+		doc = Doc(name="China Operating Expenses", items=[
+			Row(link_to="china-expenses", label="Approval Overview"),
+			Row(link_to="china-expense-details", label="Approval Register"),
+		])
+		fake = types.ModuleType("frappe")
+		fake.db = types.SimpleNamespace(exists=lambda *args: True)
+		fake.get_doc = lambda *args: doc
+		module = self.load_module(fake)
+		self.assertFalse(module.ensure_cn_cash_journal_navigation())
+		self.assertEqual(len(doc["items"]), 2)
+
 	def test_cn_consolidation_removes_owned_finance_links_and_empty_group_idempotently(self):
 		sidebar = Doc(name="China Finance", flags=Row(), items=[
 			Row(name="expenses", type="Section Break", label="支出管理"),

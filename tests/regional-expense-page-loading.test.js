@@ -83,3 +83,18 @@ test("native loader initializes MX and CN in either order and shares assets", {
         assert(root.DeepLinkERPChinaExpenses);
     }
 });
+
+test("CN approval workspace shares range controls and defers mounting after route leave",()=>{
+ const pending=[],assets=[],instances=[];let route='china-expenses';
+ const root={frappe:{boot:{cn_budget_workbench:true},pages:{'china-expenses':{}},get_route:()=>[route],require(paths,done){assets.push(...paths);pending.push(done)}},CNApprovalWorkbench:{Workbench:class{constructor(wrapper,name){this.shown=0;this.hidden=0;instances.push(name)}show(){this.shown++}hide(){this.hidden++}}}};
+ const context=vm.createContext(root);
+ vm.runInContext(fs.readFileSync(path.join(publicDir,'js/china_expenses_page.js'),'utf8'),context);
+ root.DeepLinkERPChinaExpensesPage.register(route);
+ const wrapper={},page=root.frappe.pages[route];page.on_page_load(wrapper);page.on_page_show(wrapper);
+ assert.equal(instances.length,0);
+ route='mexico-expenses';pending.shift()();assert.equal(instances.length,0);
+ route='china-expenses';page.on_page_show(wrapper);assert.deepEqual(instances,['china-expenses']);
+ page.on_page_hide(wrapper);assert.equal(wrapper.cn_expenses.hidden,1);
+ page.on_page_show(wrapper);assert.equal(wrapper.cn_expenses.shown,1);
+ assert.deepEqual(assets,['/assets/deeplinkerp_branding/css/mexico_expenses.css','/assets/deeplinkerp_branding/js/mexico_expense_date_range.js','/assets/deeplinkerp_branding/js/mexico_expense_money.js','/assets/budget/css/cn_approval_workbench.css','/assets/budget/js/cn_approval_workbench.js','/assets/budget/js/cn_approval_management.js']);
+});

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { presetRange, RangePicker, calendarMonths } =
+const { presetRange, RangePicker, calendarMonths, wholeMonths } =
 	require("../deeplinkerp_branding/public/js/mexico_expense_date_range.js")({});
 
 test("today is an inclusive single-day range", () => {
@@ -128,4 +128,32 @@ test("calendar panels stay inside the supported year boundaries", () => {
 });
 test("empty dates default both panels around the business month", () => {
 	assert.deepEqual(monthLabels({}), ["2026-10", "2026-11"]);
+});
+
+test("month presets use complete months, including cross-year and leap-month boundaries", () => {
+	assert.deepEqual(presetRange("quarter", "2027-01-17", "month"), {from_date:"2026-11-01",to_date:"2027-01-31"});
+	assert.deepEqual(presetRange("last-month", "2027-01-17", "month"), {from_date:"2026-12-01",to_date:"2026-12-31"});
+	assert.deepEqual(presetRange("last-month", "2024-03-31", "month"), {from_date:"2024-02-01",to_date:"2024-02-29"});
+	assert.deepEqual(presetRange("month", "2024-02-10", "month"), {from_date:"2024-02-01",to_date:"2024-02-29"});
+	assert.deepEqual(presetRange("year", "2026-11-20", "month"), {from_date:"2026-01-01",to_date:"2026-12-31"});
+	assert.throws(()=>presetRange("today", "2026-11-20", "month"));
+});
+
+test("month calendars show endpoint years without exceeding supported boundaries", () => {
+	const years=(from,to)=>calendarMonths({from_date:from,to_date:to},"2026-11-20","month").map(d=>d.getFullYear());
+	assert.deepEqual(years("2026-02-01","2026-11-30"),[2025,2026]);
+	assert.deepEqual(years("2024-12-01","2026-02-28"),[2024,2026]);
+	assert.deepEqual(years("1900-01-01","1900-01-31"),[1900,1900]);
+	assert.deepEqual(years("2200-12-01","2200-12-31"),[2199,2200]);
+});
+
+test("month selection waits for two endpoints and normalizes reverse and same-month selections", () => {
+	const values=[],picker=Object.create(RangePicker.prototype);
+	Object.assign(picker,{mode:"month",request:0,status:{},sync(){},commit(value){values.push(value);}});
+	picker.select([new Date(2026,10,1)]);assert.equal(values.length,0);
+	picker.select([new Date(2027,0,1),new Date(2026,10,1)]);
+	assert.deepEqual(values.pop(),{from_date:"2026-11-01",to_date:"2027-01-31"});
+	picker.select([new Date(2024,1,1),new Date(2024,1,1)]);
+	assert.deepEqual(values.pop(),{from_date:"2024-02-01",to_date:"2024-02-29"});
+	assert.deepEqual(wholeMonths("2026-11","2027-02"),{from_date:"2026-11-01",to_date:"2027-02-28"});
 });
