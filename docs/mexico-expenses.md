@@ -141,7 +141,7 @@
 | `Mexico Expense Template` | 模板子表；启停、审批表、名称、企业/模板、财务节点规则、字段映射及独立同步状态 |
 | `Mexico Expense Company Map` | 设置子表；主体原名、类型 `entity/department` 与 Company、支出范围及说明，保留人工作出的明确映射 |
 
-业务时区默认 `America/Mexico_City`，可在设置中更改；原申请时刻及财务通过时刻 `finance_approved_at` 以带 `Z` 的 UTC 字符串保存；来源和明细均保存按业务时区计算的 `finance_approved_date`，避免 Frappe Datetime 的站点时区语义误读；审批进度按 ERP 用户时区展示。金额为 Frappe Currency 字段且精度 2，原文单独保存。复合索引覆盖公司/币种/期间或日期、来源/活动状态和映射版本/核对状态，迁移入口为 `mexico_expense_install.after_migrate()`；导航在左侧主导航及首页提供统一的“运营支出（MX）”入口（英文 Operating Expenses (MX)，西文 Gastos operativos (MX)），左侧固定排在“海外成本核算”之后；Accounting 内的页面链接继续保留。入口采用标准 `Desktop Icon` 和包含七个 Page 链接的 `Workspace Sidebar`；七个页面使用一致的财务角色，由原生 Page 权限逐项过滤，图标不授予额外数据权限。已有首页布局缺少新图标时，仅在内存中补入当前用户已获授权的该图标，保留其他图标、文件夹和隐藏选择，不自动保存或重置用户布局。
+业务时区默认 `America/Mexico_City`，可在设置中更改；原申请时刻及财务通过时刻 `finance_approved_at` 以带 `Z` 的 UTC 字符串保存；来源和明细均保存按业务时区计算的 `finance_approved_date`，避免 Frappe Datetime 的站点时区语义误读；审批进度按 ERP 用户时区展示。金额为 Frappe Currency 字段且精度 2，原文单独保存。复合索引覆盖公司/币种/期间或日期、来源/活动状态和映射版本/核对状态，迁移入口为 `mexico_expense_install.after_migrate()`；导航在左侧主导航及首页提供统一的“支出（MX）”入口（英文 Expenses (MX)，西文 Gastos (MX)），左侧固定排在“海外成本核算”之后；Accounting 内的页面链接继续保留。入口采用标准 `Desktop Icon` 和包含七个 Page 链接的 `Workspace Sidebar`；七个页面使用一致的财务角色，由原生 Page 权限逐项过滤，图标不授予额外数据权限。已有首页布局缺少新图标时，仅在内存中补入当前用户已获授权的该图标，保留其他图标、文件夹和隐藏选择，不自动保存或重置用户布局。
 
 | 层次 | 入口 |
 | --- | --- |
@@ -167,7 +167,7 @@
 | 历史月度趋势入口（重定向） | `/desk/mexico-expense-trend` → `/desk/mexico-expense-reports?mx_group=trend` |
 | 数据核对 | `/desk/mexico-expense-review` |
 
-原生侧栏按独立路径选中对应菜单。报表页的面包屑为“首页 → 运营支出（MX）→ 统计报表 → 当前报表”；统计报表上级可点击返回支出分析，当前报表名称不可点击。两个分析入口复用同一 Workbench、API、筛选和权限，各自保存页面查询状态；异步处理按完整页面路由核对，防止同属 reports 视图的其他页面读取当前页的 URL 筛选。工作台通过路由表生成“首页 → 运营支出（MX）→ 当前页面”面包屑；首页和模块上级可点击，当前页使用带 `aria-current="page"` 的文本。复用 Frappe 面包屑更新生命周期，仅扩展墨西哥费用页面，其余页面沿用原有行为。
+原生侧栏按独立路径选中对应菜单。报表页的面包屑为“首页 → 支出（MX）→ 统计报表 → 当前报表”；统计报表上级可点击返回支出分析，当前报表名称不可点击。两个分析入口复用同一 Workbench、API、筛选和权限，各自保存页面查询状态；异步处理按完整页面路由核对，防止同属 reports 视图的其他页面读取当前页的 URL 筛选。工作台通过路由表生成“首页 → 支出（MX）→ 当前页面”面包屑；首页和模块上级可点击，当前页使用带 `aria-current="page"` 的文本。复用 Frappe 面包屑更新生命周期，仅扩展墨西哥费用页面，其余页面沿用原有行为。
 
 每页保留自己的查询状态；概览和报表下钻到明细时将筛选以 `mx_filters` 参数传入目标地址，直接打开、刷新和历史导航可恢复该筛选。业务筛选仍由后端检查权限与合法性。页面标题、侧栏标签和面包屑复用现有中英西翻译。
 

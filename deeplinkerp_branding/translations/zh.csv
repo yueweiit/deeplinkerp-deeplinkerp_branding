@@ -802,7 +802,7 @@ Mexico Expense Source,墨西哥费用审批来源
 Mexico Expense Sync Failed,墨西哥费用同步失败
 Mexico Expense Synchronization,墨西哥费用同步设置
 Mexico Expense Trend,月度支出趋势
-Mexico Expenses,运营支出（MX）
+Mexico Expenses,支出（MX）
 Mexico Personnel Expenses,薪酬人事分析
 Mexico Subsidiary Expenses,子公司支出对比
 Mexico approval scan exceeds the configured page limit,墨西哥审批扫描超过配置的分页上限
@@ -1101,7 +1101,7 @@ Expenditure Analysis,支出分析
 Analysis Dimension,分析维度
 By Subsidiary,按子公司
 By Month,按月份
-China Operating Expenses,运营支出（CN）
+China Operating Expenses,支出（CN）
 Expense Scope,支出归属范围
 Scope Reason,归属说明
 Non-Mexico Expenses,非墨西哥支出

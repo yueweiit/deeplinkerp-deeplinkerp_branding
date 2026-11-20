@@ -2201,7 +2201,7 @@ Mexico Expense Source,Mexico Expense Source
 Mexico Expense Sync Failed,Mexico Expense Sync Failed
 Mexico Expense Synchronization,Mexico Expense Synchronization
 Mexico Expense Trend,Monthly Expenditure Trend
-Mexico Expenses,Operating Expenses (MX)
+Mexico Expenses,Expenses (MX)
 Mexico Personnel Expenses,Personnel Expense Analysis
 Mexico Subsidiary Expenses,Subsidiary Expenditure Comparison
 Mexico approval scan exceeds the configured page limit,Mexico approval scan exceeds the configured page limit
@@ -2502,7 +2502,7 @@ Expenditure Analysis,Expenditure Analysis
 Analysis Dimension,Analysis Dimension
 By Subsidiary,By Subsidiary
 By Month,By Month
-China Operating Expenses,Operating Expenses (CN)
+China Operating Expenses,Expenses (CN)
 Expense Scope,Expense Scope
 Scope Reason,Scope Reason
 Non-Mexico Expenses,Non-Mexico Expenses
