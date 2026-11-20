@@ -1,5 +1,11 @@
 # 运营费用接入实施与验收
 
+## CN 只读审批工作台（2026-11-20）
+
+与新版 Budget 联合安装时，CN 的总览、台账、分类分析及核对页面由 `budget/public/js/cn_approval_workbench.js` 实现，统一读取共享审批 HTTP 接口中的预算、运营和采购数据。品牌 App 仅通过 `public/js/china_expenses_page.js` 选择资产、处理路由切换，并提供现有 HTTP、字段、分类及原审批链接工具；MX 页面和服务未改动。新只读导航不会被 `operating_navigation.ensure_cn_cash_journal_navigation` 自动插入记账入口。四个现有 Page 路由继续使用，旧薪酬路由显示分类分析。
+
+范围、权限、统计口径和配置以 [Budget 工作台文档](../../budget/README.md#cn-只读审批工作台2026-11-20) 为单一入口。以下原运营办理、预算台账与日记账说明属于保留的独立服务/旧页面兼容能力，新工作台不再调用其付款办理和台账同步 UI。回归入口：`tests/regional-expense-page-loading.test.js`、`tests/test_operating_expense_navigation.py`；同步和办理服务仍按原权限执行。
+
 ## CN 运营支出合并（2026-11-19）
 
 “运营支出（CN）”的概览、明细、支出分析和数据核对已接入原中国财务入口使用的 `Operating Expense Source`。复用 `services/operating_expenses.py` 的权限过滤、当前公司归属、ERP 付款覆盖、导出与原办理抽屉；不复制来源数据，不自动确认公司、登记付款或生成凭证。旧 `operating-expenses` URL 保留兼容，CN 导航可用时从 Accounting/China Finance 移除系统管理的重复入口及空“支出管理”分组，保留用户自定义筛选链接；没有 CN 导航的独立安装保留原入口。
