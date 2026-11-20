@@ -153,6 +153,8 @@
 | 安装、索引与 hooks | `mexico_expense_install.py`、`hooks.py` |
 | 语言 | `translations/en.csv`、`zh.csv`、`es.csv`；UI 沿用 Frappe `__()`，后端 `_()`；分类和状态编码不随语言变化 |
 
+共享范围组件 `public/js/mexico_expense_date_range.js` 的 `RangePicker` 默认保留 MX 的按天模式；CN 通过可选 `mode: "month"` 使用月份选择与完整月份快捷范围，并在页面适配层转换为 CN 的 `from_month/to_month`。两个模式共用弹层定位、取消、键盘操作和销毁机制，不共享筛选状态；月份模式不改变 MX 的快捷日期算法。
+
 ### 页面路由与面包屑
 
 | 左侧入口 | Desk 路径 |

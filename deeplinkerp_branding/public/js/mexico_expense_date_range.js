@@ -14,11 +14,15 @@
 		const [y, m, d] = value.split("-").map(Number);
 		return new Date(y, m - 1, d);
 	};
-	function calendarMonths(value, today) {
+	function calendarMonths(value, today, mode = "day") {
 		const start = localDate(value.from_date || today);
 		const end = localDate(value.to_date || value.from_date || today);
 		const left = new Date(start.getFullYear(), start.getMonth(), 1);
 		const right = new Date(end.getFullYear(), end.getMonth(), 1);
+		if (mode === "month") {
+			if (left.getFullYear() === right.getFullYear() && left.getFullYear() > 1900) left.setFullYear(left.getFullYear() - 1);
+			return [left, right];
+		}
 		// The right panel always contains the selected end date. Avoid duplicate
 		// months for a same-month range, except at the supported lower boundary.
 		if (left.getTime() === right.getTime() && iso(left) > "1900-01-01") {
@@ -26,8 +30,19 @@
 		}
 		return [left, right];
 	}
-	function presetRange(kind, today) {
+	function wholeMonths(from, to) {
+		const [year, month] = to.slice(0, 7).split("-").map(Number);
+		return { from_date: from.slice(0, 7) + "-01", to_date: iso(new Date(year, month, 0)) };
+	}
+	function presetRange(kind, today, mode = "day") {
 		const [y, m, d] = today.split("-").map(Number);
+		if (mode === "month") {
+			if (kind === "month") return wholeMonths(today, today);
+			if (kind === "last-month") {const previous = iso(new Date(y, m - 2, 1));return wholeMonths(previous, previous);}
+			if (kind === "quarter") return wholeMonths(iso(new Date(y, m - 3, 1)), today);
+			if (kind === "year") return wholeMonths(`${y}-01-01`, `${y}-12-01`);
+			throw new Error("Unknown month range preset");
+		}
 		const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
 		if (kind === "today") return { from_date: today, to_date: today };
 		if (kind === "month") return { from_date: today.slice(0, 7) + "-01", to_date: end };
@@ -48,8 +63,10 @@
 		throw new Error("Unknown date range preset");
 	}
 	class RangePicker {
-		constructor({ parent, value, today, getToday, onChange }) {
+		constructor({ parent, value, today, getToday, onChange, mode = "day" }) {
 			Object.assign(this, {
+				mode,
+				label: mode === "month" ? "Month Range" : "Date Range",
 				parent,
 				value: { ...value },
 				today,
@@ -69,6 +86,11 @@
 				this.popup ? this.close() : this.open()
 			);
 		}
+		formatValue(value) {
+			if (this.mode !== "month") return root.frappe.datetime.str_to_user(value);
+			const locale = (root.frappe.boot?.lang || root.frappe.boot?.user?.language || "en").replace("_", "-");
+			return new Intl.DateTimeFormat(locale, {year:"numeric", month:"short"}).format(localDate(value));
+		}
 		renderValue() {
 			this.trigger.replaceChildren();
 			for (const [index, value] of [this.value.from_date, this.value.to_date].entries()) {
@@ -80,8 +102,8 @@
 				}
 				const text = root.document.createElement("span");
 				text.textContent = value
-					? root.frappe.datetime.str_to_user(value)
-					: t(index ? "End Date" : "Start Date");
+					? this.formatValue(value)
+					: t(this.mode === "month" ? (index ? "End Month" : "Start Month") : (index ? "End Date" : "Start Date"));
 				this.trigger.appendChild(text);
 			}
 			const icon = root.document.createElement("span");
@@ -91,7 +113,7 @@
 			this.trigger.appendChild(icon);
 			this.trigger.setAttribute(
 				"aria-label",
-				`${t("Date Range")}: ${this.trigger.textContent}`
+				`${t(this.label)}: ${this.trigger.textContent}`
 			);
 		}
 		open() {
@@ -99,7 +121,8 @@
 			const popup = root.document.createElement("div");
 			popup.className = "mx-range-popup";
 			popup.setAttribute("role", "dialog");
-			popup.setAttribute("aria-label", t("Date Range"));
+			popup.setAttribute("aria-label", t(this.label));
+			if (this.mode === "month") popup.classList.add("mx-month-range-popup");
 			this.popup = popup;
 			this.trigger.setAttribute("aria-expanded", "true");
 			const calendars = root.document.createElement("div");
@@ -111,12 +134,14 @@
 			popup.appendChild(this.status);
 			const footer = root.document.createElement("div");
 			footer.className = "mx-range-shortcuts";
-			for (const [id, label] of [
+			for (const [id, label] of (this.mode === "month" ? [
+				["month", "This Month"], ["last-month", "Last Month"], ["quarter", "Last 3 Months"], ["year", "This Year"],
+			] : [
 				["today", "Today"],
 				["month", "This Month"],
 				["quarter", "Last 3 Months"],
 				["180-days", "Last 180 Days"],
-			]) {
+			])) {
 				const button = root.document.createElement("button");
 				button.type = "button";
 				button.dataset.rangePreset = id;
@@ -132,7 +157,7 @@
 			footer.appendChild(cancel);
 			popup.appendChild(footer);
 			root.document.body.appendChild(popup);
-			const months = calendarMonths(this.value, this.today);
+			const months = calendarMonths(this.value, this.today, this.mode);
 			let language = root.frappe.boot?.user?.language || "en";
 			if (!root.$.fn.datepicker.language[language]) language = "en";
 			for (let index = 0; index < 2; index++) {
@@ -141,6 +166,8 @@
 				calendars.appendChild(holder);
 				root.$(holder).datepicker({
 					inline: true,
+					view: this.mode === "month" ? "months" : "days",
+					minView: this.mode === "month" ? "months" : "days",
 					range: true,
 					autoClose: false,
 					toggleSelected: false,
@@ -162,24 +189,26 @@
 					"click",
 					(event) => {
 						const cell = event.target.closest(
-							".datepicker--cell-day:not(.-disabled-)"
+							this.mode === "month" ? ".datepicker--cell-month:not(.-disabled-)" : ".datepicker--cell-day:not(.-disabled-)"
 						);
 						if (!cell) return;
 						event.stopImmediatePropagation();
 						event.preventDefault();
-						const { year, month, date } = cell.dataset;
-						picker.selectDate(new Date(+year, +month, +date));
+						const { month } = cell.dataset;
+						const year = this.mode === "month" ? picker.date.getFullYear() : +cell.dataset.year;
+						const date = this.mode === "month" ? 1 : +cell.dataset.date;
+						picker.selectDate(new Date(year, +month, date));
 						this.makeAccessible();
 						holder
 							.querySelector(
-								`[data-date="${date}"][data-month="${month}"][data-year="${year}"]`
+								this.mode === "month" ? `.datepicker--cell-month[data-month="${month}"]` : `[data-date="${date}"][data-month="${month}"][data-year="${year}"]`
 							)
 							?.focus();
 					},
 					true
 				);
 			}
-			this.sync([this.value.from_date, this.value.to_date].filter(Boolean).map(localDate));
+			this.sync([this.value.from_date, this.value.to_date].filter(Boolean).map(value => localDate(this.mode === "month" ? value.slice(0, 7) + "-01" : value)));
 			this.makeAccessible();
 			this.position();
 			this.outside = (event) => {
@@ -201,7 +230,7 @@
 			this.observer.observe(calendars, { childList: true, subtree: true });
 			popup
 				.querySelector(
-					".datepicker--cell-day.-selected-:not(.-other-month-), .datepicker--cell-day:not(.-other-month-):not(.-disabled-)"
+					this.mode === "month" ? ".datepicker--cell-month.-selected-, .datepicker--cell-month:not(.-disabled-)" : ".datepicker--cell-day.-selected-:not(.-other-month-), .datepicker--cell-day:not(.-other-month-):not(.-disabled-)"
 				)
 				?.focus();
 		}
@@ -224,14 +253,14 @@
 			this.status.textContent = "";
 			if (dates.length === 1) return;
 			const values = dates.map(iso).sort();
-			this.commit({ from_date: values[0], to_date: values[1] });
+			this.commit(this.mode === "month" ? wholeMonths(values[0], values[1]) : { from_date: values[0], to_date: values[1] });
 		}
 		async choosePreset(kind) {
 			const request = ++this.request;
 			try {
 				const today = await this.getToday();
 				if (!this.popup || request !== this.request) return;
-				this.commit(presetRange(kind, today));
+				this.commit(presetRange(kind, today, this.mode));
 			} catch (_) {
 				if (this.popup && request === this.request)
 					this.status.textContent = t(
@@ -278,6 +307,10 @@
 							"aria-pressed",
 							String(cell.classList.contains("-selected-"))
 						);
+					} else if (this.mode === "month" && cell.classList.contains("datepicker--cell-month")) {
+						const picker = root.$(cell.closest(".mx-range-calendar")).data("datepicker");
+						cell.setAttribute("aria-label", this.formatValue(iso(new Date(picker.date.getFullYear(), +cell.dataset.month, 1))));
+						cell.setAttribute("aria-pressed", String(cell.classList.contains("-selected-")));
 					} else if (cell.dataset.action)
 						cell.setAttribute(
 							"aria-label",
@@ -298,6 +331,17 @@
 			if (cell && ["Enter", " "].includes(event.key)) {
 				event.preventDefault();
 				cell.click();
+			}
+			if (this.mode === "month" && cell?.classList.contains("datepicker--cell-month") && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) {
+				event.preventDefault();
+				const holder = cell.closest(".mx-range-calendar"), picker = root.$(holder).data("datepicker");
+				const delta = {ArrowLeft:-1, ArrowRight:1, ArrowUp:-3, ArrowDown:3}[event.key];
+				const next = new Date(picker.date.getFullYear(), +cell.dataset.month + delta, 1);
+				if (next.getFullYear() < 1900 || next.getFullYear() > 2200) return;
+				picker.date = next;
+				this.makeAccessible();
+				holder.querySelector(`.datepicker--cell-month[data-month="${next.getMonth()}"]`)?.focus();
+				return;
 			}
 			if (
 				cell?.classList.contains("datepicker--cell-day") &&
@@ -358,5 +402,5 @@
 			this.trigger.remove();
 		}
 	}
-	return { RangePicker, presetRange, calendarMonths };
+	return { RangePicker, presetRange, calendarMonths, wholeMonths };
 });
