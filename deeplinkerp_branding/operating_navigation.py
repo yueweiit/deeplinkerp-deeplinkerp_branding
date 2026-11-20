@@ -23,7 +23,7 @@ def ensure_cn_cash_journal_navigation():
 		return False
 	# Budget's redesigned approval workspace is read-only. Its owned navigation
 	# deliberately omits manual bookkeeping; standalone finance routes still exist.
-	if any(row.get("link_to") == "china-expenses" and row.get("label") == "Approval Overview"
+	if any(row.get("link_to") == "china-expenses" and row.get("label") in ("Approval Overview", "Management Overview")
 			for row in doc.get("items") or []):
 		return False
 	anchor = next((index + 1 for index, row in enumerate(doc.get("items") or [])

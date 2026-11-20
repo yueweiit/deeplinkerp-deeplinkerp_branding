@@ -13,8 +13,12 @@
             frappe.pages[route].on_page_load = function (wrapper) {
                 if (redesigned) {
                     frappe.require([
+                        "/assets/deeplinkerp_branding/css/mexico_expenses.css",
+                        "/assets/deeplinkerp_branding/js/mexico_expense_date_range.js",
+                        "/assets/deeplinkerp_branding/js/mexico_expense_money.js",
                         "/assets/budget/css/cn_approval_workbench.css",
                         "/assets/budget/js/cn_approval_workbench.js",
+                        "/assets/budget/js/cn_approval_management.js",
                     ], () => { wrapper.cn_assets_ready = true; if (!wrapper.cn_expenses) mount(wrapper); });
                     return;
                 }
