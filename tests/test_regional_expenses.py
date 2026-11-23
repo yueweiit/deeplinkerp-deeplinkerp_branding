@@ -257,6 +257,7 @@ def test_cross_connection_records_fail_closed(monkeypatch):
 
 
 def test_mx_original_and_attachments_require_target_cn_company_permission(monkeypatch):
+    monkeypatch.setattr(mx, "_mapping_version", lambda settings: settings.mapping_version or "")
     monkeypatch.setattr(s, "installed", lambda: True)
     monkeypatch.setattr(s, "allowed_companies", lambda *a: {"Mexico B"})
     monkeypatch.setattr(mx, "_companies", lambda *a: ["Mexico B"])
@@ -289,6 +290,7 @@ def test_materialization_replaces_native_lines_and_replays_idempotently(monkeypa
     """Exercise the actual MX writer over an isolated document store."""
     record, source, lines = make_record(origin)
     source.update(source_version="v2", request_date="2026-11-02")
+    lines[0]["_source_entity_id"] = "organization-id"
     allocations = c.allocated_lines(source, lines, s.decode(record.allocations_json), valid=True)
 
     class Doc(frappe._dict):
@@ -296,12 +298,14 @@ def test_materialization_replaces_native_lines_and_replays_idempotently(monkeypa
             return not self.get("name")
 
     store = {mx.SOURCE: {}, mx.LINE: {"old-native": Doc(name="old-native", source="source", is_active=1, amount="100.00")}}
+    writes = []
     source.update(corp_id="corp", process_code="PROC-test")
     def get_doc(doctype, name, **kwargs):
         return store[doctype][name]
     def save(doc):
         doc.name = doc.get("name") or doc.get("line_key") or doc.get("source_key")
         store[doc.doctype][doc.name] = doc
+        writes.append(doc.name)
     store[mx.LINE]["old-native"].doctype = mx.LINE
     monkeypatch.setattr(frappe, "db", SimpleNamespace(exists=lambda doctype, name: name in store[doctype]))
     monkeypatch.setattr(frappe, "get_doc", get_doc)
@@ -311,13 +315,16 @@ def test_materialization_replaces_native_lines_and_replays_idempotently(monkeypa
     monkeypatch.setattr(mx, "_template", lambda *a: {})
     monkeypatch.setattr(s, "project_for_mx", lambda *a, **kw: (deepcopy(source), deepcopy(allocations)))
     settings = Doc(company_mappings=[], mapping_version="v1", business_timezone="America/Mexico_City")
-    for _ in range(2):
-        mx._upsert({}, settings, regional_origin=origin)
+    mx._upsert({}, settings, regional_origin=origin)
+    first_writes = list(writes)
+    mx._upsert({}, settings, regional_origin=origin)
+    assert writes == first_writes
     active = [line for line in store[mx.LINE].values() if line.is_active]
     assert len(active) == 2 and not store[mx.LINE]["old-native"].is_active
     assert sum(float(line.amount) for line in active) == 100
     assert [line.amount for line in active if line.expense_scope == "mx"] == ["70.00"]
     assert [line.regional_company for line in active if line.expense_scope == "non_mx"] == ["China A"]
+    assert all("_source_entity_id" not in line for line in active)
 
 
 def test_allocation_save_binds_revision_before_publishing_both_sides(monkeypatch):

@@ -5,12 +5,22 @@ allocation is a partition of source lines, never an additional expense.
 """
 from copy import deepcopy
 from decimal import Decimal
+import json
 
 from .operating_expense_contract import digest
 from .mexico_expense_contract import exact_amount
 
 REGIONS = ("cn", "mx", "other", "pending")
 BLOCKING = {"amount", "total", "currency", "structure", "identity"}
+
+
+def management_path(line):
+    """Use the same stable full path for CN mapping suggestions and lookup.
+
+    Labels here are stored source/parser labels, never runtime translations.
+    Keep translated-root nodes too: existing saved mappings include them.
+    """
+    return [node.get("label", "") for node in json.loads(line.get("classification_path") or "[]")]
 
 
 def fingerprint(source, lines):
@@ -69,7 +79,7 @@ def allocated_lines(source, lines, allocations, *, valid, note="", reviewer=None
         line.update(line_key=digest([source["source_key"], "regional", index]),
             amount=entry["amount"], amount_raw=entry["amount"],
             company=entry["company"] if entry["region"] == "mx" else "",
-            regional_company=entry["company"],
+            regional_company=entry["company"] or entry.get("matched_company", ""),
             company_basis="manual", expense_scope="mx" if entry["region"] == "mx" or (entry["region"] == "pending" and origin == "mx") else "non_mx",
             scope_reason=note, review_note=note, reviewed_by=reviewer, reviewed_at=reviewed_at,
             reviewed_fingerprint=line.get("row_fingerprint"), mapping_version="")

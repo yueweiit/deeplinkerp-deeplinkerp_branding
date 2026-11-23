@@ -1,4 +1,4 @@
-"""Explicit, audited CN/MX allocations over local OA snapshots only.
+"""Automatic ownership and audited exceptions over local OA snapshots only.
 
 The initiating feed owns refreshes. Its record overrides that approval in both
 workbenches, including when both template lists contain the same OA approval.
@@ -230,24 +230,13 @@ def get_editor(origin=None, key=None, allocation=None):
         template = decode(record.template_json)
     else:
         source, lines = facts(raw, template, mx._settings().business_timezone or "America/Mexico_City", origin == "cn")
-        entries = []
-        if origin == "cn":
-            from budget.services import cn_approval_workbench as cn
-            from budget.services.cn_approval_management import company_for
-            context = cn.access_context()
-        for line in lines:
-            if origin == "mx":
-                old = frappe.db.get_value(mx.LINE, line["line_key"], ["company", "expense_scope"], as_dict=True) or {}
-                company = old.get("company") or ""
-                region = "other" if old.get("expense_scope") == "non_mx" else "mx" if company else "pending"
-            else:
-                company = company_for({"corp_id": raw["corp_id"], "entity": line["source_entity"]}, context)
-                region = "cn" if company else "pending"
-            entries.append({"line_key": line["line_key"], "region": region, "company": company,
-                "amount": line["amount"], "management_category": ""})
+        from . import regional_expense_automatic as automatic
+        entries, _state = automatic.plan(source, lines, automatic.configuration(mx._settings()))
+    from .regional_expense_automatic import is_automatic
     return {"name": record.name if record else None, "origin": origin, "key": key,
         "revision": str(record.modified) if record else "", "fingerprint": contract.fingerprint(source, lines),
         "number": source.get("approval_no"), "state": record.state if record else "new",
+        "assignment_mode": "automatic" if is_automatic(entries) else "manual",
         "companies": companies, "categories": categories(), "allocations": entries,
         "finance_activity_ids": template.get("finance_activity_ids") or "", "finance_node_names": template.get("finance_node_names") or "",
         "note": record.review_note if record else "", "lines": [{field: line.get(field) for field in
@@ -314,27 +303,69 @@ def template_for(row, configured=()):
     return decode(record.template_json) if record else None
 
 
-def project_for_mx(row, template, settings, origin="mx"):
+def project_for_mx(row, template, settings, origin="mx", source_available=True):
+    from . import regional_expense_automatic as automatic
     record = record_for(row, lock=True)
-    if not record:
+    if not record and not installed():
         return None
     template = template_values(template)
     # The opposite feed may be older or use a different parsing configuration.
     # It must not overwrite the allocation's authoritative source.
-    if record.origin != origin:
+    entries = decode(record.allocations_json) if record else []
+    auto = not record or automatic.is_automatic(entries)
+    if record and record.origin != origin:
         row, template = decode(record.source_json), decode(record.template_json)
-    elif record.origin == "cn":
+        source_available = all(entry.get("source_available", True) for entry in entries)
+    elif record and record.origin == "cn":
         previous_template = decode(record.template_json)
         template = {**template, **{key: previous_template.get(key, "") for key in ("finance_activity_ids", "finance_node_names")}}
-    source, lines = facts(row, template, settings.business_timezone or "America/Mexico_City", record.origin == "cn")
+    owner = record.origin if record else origin
+    if not record:
+        # Existing per-line reviews are deliberate exceptions. Do not silently
+        # discard them when first enabling automatic ownership.
+        from . import mexico_expenses as mx
+        source_key = digest([row.get("corp_id"), row.get("process_instance_id")])
+        if frappe.get_all(mx.LINE, filters={"source": source_key, "is_active": 1,
+                "company_basis": "manual"}, pluck="name", limit_page_length=1):
+            return None
+    if auto and owner == "cn":
+        match = next((item for item in settings.get("templates") or [] if
+            item.get("corp_id") == row.get("corp_id") and item.get("process_code") == row.get("process_code")), None)
+        template.update({key: (match.get(key) if match else "") or ""
+            for key in ("finance_activity_ids", "finance_node_names")})
+    source, lines = facts(row, template, settings.business_timezone or "America/Mexico_City", owner == "cn")
+    if auto and not lines:
+        # Do not make existing allocations disappear on a malformed refresh.
+        if not record:
+            return None
+        source_available = False
     stamp = contract.fingerprint(source, lines)
-    state = "confirmed" if record.state == "confirmed" and stamp == record.reviewed_fingerprint else "stale"
+    if auto:
+        context = automatic.configuration(settings)
+        if lines:
+            entries, state = automatic.plan(source, lines, context, available=source_available)
+        else:
+            state = "stale"
+            entries = [{**entry, "source_available": False} for entry in entries]
+        if not record:
+            record = frappe.new_doc(DOCTYPE)
+            record.update({"source_key": source["source_key"], "corp_id": row["corp_id"],
+                "process_code": row["process_code"], "process_instance_id": row["process_instance_id"],
+                "approval_no": source.get("approval_no"), "origin": owner, "connection_fingerprint": connection_key()})
+    else:
+        state = "confirmed" if record.state == "confirmed" and stamp == record.reviewed_fingerprint else "stale"
     values = {"source_json": encode(row), "template_json": encode(template), "facts_json": fact_payload(source, lines), "state": state}
+    if auto:
+        values.update(allocations_json=encode(entries), reviewed_fingerprint=stamp,
+            review_note="", reviewed_by=None, reviewed_at=None)
     if any(record.get(key) != value for key, value in values.items()):
         record.update(values)
         save_record(record)
     routed = contract.allocated_lines(source, lines, decode(record.allocations_json), valid=state == "confirmed",
         note=record.review_note, reviewer=record.reviewed_by, reviewed_at=record.reviewed_at, origin=record.origin)
+    if auto:
+        for line in routed:
+            line.update(company_basis="mapping", mapping_version=automatic.mapping_version(settings))
     # This is an internal source annotation, not a Mexico Expense Source field.
     source.pop("cn_application_date", None)
     source.pop("cn_project", None)
@@ -348,34 +379,51 @@ def refresh_cn(rows, templates):
     settings = mx._settings(lock=True)
     active = {(template["corp_id"], template["process_code"]) for template in templates}
     incoming = {(row["corp_id"], row["process_instance_id"]): row for row in rows}
-    for record in records():
+    existing = records()
+    processed = set()
+    for record in existing:
         if record.origin != "cn" or (record.corp_id, record.process_code) not in active:
             continue
         row = incoming.get((record.corp_id, record.process_instance_id))
         if row and row.get("_routing_source"):
             mx._upsert(row["_routing_source"]["row"], settings, regional_origin="cn", regional_template=row["_routing_source"]["template"])
+            processed.add((record.corp_id, record.process_instance_id))
         else:
             doc = frappe.get_doc(DOCTYPE, record.name, for_update=True)
             doc.state = "stale"
             save_record(doc)
-            mx._upsert(decode(doc.source_json), settings, regional_origin="cn")
+            mx._upsert(decode(doc.source_json), settings, regional_origin="cn", regional_available=False)
+    identities = {(record.corp_id, record.process_instance_id) for record in existing}
+    for identity, row in incoming.items():
+        if identity not in processed and identity not in identities and row.get("_routing_source") and row.get("kind") != "budget":
+            mx._upsert(row["_routing_source"]["row"], settings, regional_origin="cn", regional_template=row["_routing_source"]["template"])
 
 
 def cn_projection(context):
     """Read allocations once; permissions apply before returning any line."""
     from budget.services.cn_approval_management_rules import CATEGORIES
-    output, identities = [], set()
+    from . import regional_expense_automatic as automatic
+    output, identities = [], automatic.legacy_manual_identities()
+    current_version = None
     for record in records():
         identities.add((record.corp_id, record.process_instance_id))
         source, lines = decode(record.facts_json)
         originals = {line["line_key"]: line for line in lines}
         entries = decode(record.allocations_json)
+        auto = automatic.is_automatic(entries)
+        if auto and current_version is None:
+            from .mexico_expenses import _settings
+            current_version = automatic.configuration(_settings())["version"]
         for index, entry in enumerate(entries):
             pending = entry["region"] == "pending" and record.origin == "cn" and context.get("manager")
+            if pending and entry.get("matched_company") and entry["matched_company"] not in context["companies"]:
+                continue
             if not pending and (entry["region"] != "cn" or entry["company"] not in context["companies"]):
                 continue
             original = originals.get(entry["line_key"], {})
             valid = record.state == "confirmed" and bool(original) and not pending
+            if auto:
+                valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
             applied = source.get("cn_application_date")
             issues = [] if valid else ["regional_allocation"]
             if pending:
@@ -384,7 +432,7 @@ def cn_projection(context):
                 issues.append("period")
             if entry["management_category"] not in CATEGORIES:
                 issues.append("management_category")
-            path = [node.get("label", "") for node in decode(original.get("classification_path") or "[]")]
+            path = contract.management_path(original)
             output.append({"key": digest([record.name, "regional-cn", index]), "source_key": record.name,
                 "corp_id": record.corp_id, "process_code": record.process_code, "process_instance_id": record.process_instance_id,
                 "kind": "purchase" if source.get("approval_type") == "purchase" else "operating",
@@ -411,7 +459,8 @@ def cn_detail(line, context):
     record = frappe.get_doc(DOCTYPE, line["regional_allocation"])
     entries = decode(record.allocations_json)
     # Even a CN company reader must not obtain the other side's raw approval.
-    full = context["manager"] and all(entry["company"] in context["companies"] for entry in entries if entry["company"])
+    full = context["manager"] and all((entry["company"] or entry.get("matched_company")) in context["companies"]
+        for entry in entries if entry["company"] or entry.get("matched_company"))
     return {"facts": [{"label": "Approval source", "value": record.origin.upper()}], "tables": [],
         "attachments": [], "budget_snapshot": {}, "detail_total": None, "detail_currency": None,
         "approval_url": _dingtalk_url(record) if full else ""}

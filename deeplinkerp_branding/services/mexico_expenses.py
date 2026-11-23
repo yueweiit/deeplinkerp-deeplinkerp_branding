@@ -136,7 +136,7 @@ def permission_query_conditions(user=None):
     if not clauses:
         return scope
     if not _manager(user):
-        version = frappe.db.escape(_settings().mapping_version or "")
+        version = frappe.db.escape(_mapping_version(_settings()))
         scope += f" AND (company_basis = 'manual' OR mapping_version = {version})"
     from .regional_expenses import company_condition
     scope += " AND " + company_condition(user)
@@ -156,7 +156,7 @@ def has_permission(doc, user=None, ptype=None):
         return _manager(user)
     if doc.company not in _companies(user):
         return False
-    return _manager(user) or doc.company_basis == "manual" or doc.mapping_version == (_settings().mapping_version or "")
+    return _manager(user) or doc.company_basis == "manual" or doc.mapping_version == (_mapping_version(_settings()))
 
 
 def source_permission_query_conditions(user=None):
@@ -167,7 +167,7 @@ def source_permission_query_conditions(user=None):
     values = ",".join(frappe.db.escape(c) for c in companies)
     unauthorized = f"mx.company NOT IN ({values})" if companies else "1=1"
     quote = '"' if frappe.db.db_type == "postgres" else "`"
-    version = frappe.db.escape(_settings().mapping_version or "")
+    version = frappe.db.escape(_mapping_version(_settings()))
     stale = f"mx.is_active = 1 AND COALESCE(mx.company_basis, '') <> 'manual' AND COALESCE(mx.mapping_version, '') <> {version}"
     from .regional_expenses import company_condition
     regional = company_condition(user, alias="mx")
@@ -183,7 +183,7 @@ def source_has_permission(doc, user=None, ptype=None):
     if not doc or not doc.get("name"):
         return True
     allowed = set(_companies(user))
-    version = _settings().mapping_version or ""
+    version = _mapping_version(_settings())
     from .regional_expenses import membership_fields, allowed_companies
     extra = membership_fields()
     regional_allowed = allowed_companies(user) if extra else set()
@@ -221,10 +221,19 @@ def _maps(settings):
     } for r in settings.company_mappings or []}
 
 
-def _upsert(row, settings, regional_origin="mx", regional_template=None):
+def _mapping_version(settings):
+    from .regional_expense_automatic import mapping_version
+    return mapping_version(settings)
+
+
+def _upsert(row, settings, regional_origin="mx", regional_template=None, regional_available=True):
     from .regional_expenses import project_for_mx
     template = regional_template or _template(row, settings)
-    regional = project_for_mx(row, template, settings, origin=regional_origin)
+    regional = project_for_mx(row, template, settings, origin=regional_origin, source_available=regional_available)
+    if regional_origin == "cn" and regional is None:
+        # A legacy MX manual exception must not be overwritten by the other
+        # feed merely because its approval is also present in a CN snapshot.
+        return
     source, projected = regional or projection.project(row, template, settings.business_timezone or "America/Mexico_City")
     existing = frappe.db.exists(SOURCE, source["source_key"])
     doc = frappe.get_doc(SOURCE, source["source_key"], for_update=True) if existing else frappe.new_doc(SOURCE)
@@ -236,9 +245,12 @@ def _upsert(row, settings, regional_origin="mx", regional_template=None):
     mappings = _maps(settings)
     for raw in projected:
         old = previous.get(raw["line_key"])
+        # Organization IDs belong to shared facts_json, not the native line
+        # schema or manual-review fingerprint. Avoid perpetual no-op writes.
+        raw.pop("_source_entity_id", None)
         legacy_fingerprint = raw.pop("_legacy_row_fingerprint", None)
         prior_review = projection.compatible_previous_review(old, raw, source["source_version"], legacy_fingerprint)
-        line = dict(raw) if regional else contract.apply_review(raw, prior_review, mappings, settings.mapping_version or "")
+        line = dict(raw) if regional else contract.apply_review(raw, prior_review, mappings, _mapping_version(settings))
         # An ordinary MX line has no cross-region permission owner. Explicit
         # blank prevents Frappe from inserting the user's default Company.
         line.setdefault("regional_company", "")
@@ -265,6 +277,8 @@ def _connection():
 def get_context():
     _finance()
     settings = _settings()
+    from .regional_expense_automatic import ensure_rebuild
+    allocation_rebuilding = ensure_rebuild(settings)
     result = {"companies": _companies(), "can_review": _manager() or "Accounts Manager" in frappe.get_roles(),
         "can_manage": _can_manage_settings(settings), "can_assign_company": _manager(), "categories": [{"id": code, "label": _(label), "color": color}
             for code, label, color in contract.CATEGORIES],
@@ -273,7 +287,8 @@ def get_context():
         "subcategories": [{"id": code, "category": info[0], "label": _(info[1])} for code, info in contract.SUBCATEGORIES.items()],
         "issue_labels": {key: _(text) for key, text in contract.ISSUES.items()},
         "last_sync_at": settings.last_sync_at, "last_error": settings.last_error if _manager() else None,
-        "enabled": bool(settings.enabled), "today": datetime.now(ZoneInfo(settings.business_timezone or "America/Mexico_City")).date().isoformat()}
+        "enabled": bool(settings.enabled), "allocation_rebuilding": allocation_rebuilding,
+        "today": datetime.now(ZoneInfo(settings.business_timezone or "America/Mexico_City")).date().isoformat()}
     if result["can_manage"]:
         result["settings"] = {"config_version": settings.config_version or "", "business_timezone": settings.business_timezone or "America/Mexico_City",
             "templates": [{k: t.get(k) for k in (*templates.CONFIG_FIELDS, *templates.STATE_FIELDS)} for t in _templates(settings)],
@@ -297,7 +312,7 @@ def get_unmapped_entities(start=0):
     table = frappe.qb.DocType(LINE)
     query = frappe.qb.get_query(LINE, fields=[table.source_entity, table.entity_kind,
         Count(table.name).as_("line_count")], filters=[["is_active", "=", 1]], ignore_permissions=False)
-    mapping_current = (Coalesce(table.company_basis, "") == "manual") | (Coalesce(table.mapping_version, "") == (settings.mapping_version or ""))
+    mapping_current = (Coalesce(table.company_basis, "") == "manual") | (Coalesce(table.mapping_version, "") == (_mapping_version(settings)))
     excluded = (Coalesce(table.expense_scope, "mx") == "non_mx") & mapping_current & (Coalesce(table.period_version, "") == _period_version(settings))
     rows = (query.where(Coalesce(table.company, "") == "").where(~excluded)
         .groupby(table.source_entity, table.entity_kind)
@@ -390,8 +405,14 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
         "mapping_version": mapping_version, "config_version": digest([mapping_version, business_timezone, enabled, [{k: t.get(k) for k in templates.CONFIG_FIELDS} for t in _templates(settings)]])})
     _save(settings)
     if changed:
-        frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.reproject_cache", projection_version=_projection_version(settings),
-            enqueue_after_commit=True, queue="long", timeout=180)
+        from .regional_expense_automatic import invalidate_configuration, enqueue_rebuild
+        from .regional_expenses import installed
+        invalidate_configuration()
+        if installed():
+            enqueue_rebuild()
+        else:
+            frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.reproject_cache", projection_version=_projection_version(settings),
+                enqueue_after_commit=True, queue="long", timeout=180)
     return {"ok": True}
 
 
@@ -403,7 +424,7 @@ def _period_version(settings):
 
 def _projection_version(settings):
     # Sync scheduling does not change cached business facts.
-    return digest(["mx-review-v2", settings.mapping_version or "", _period_version(settings)])
+    return digest(["mx-review-v2", _mapping_version(settings), _period_version(settings)])
 
 
 def reproject_cache(projection_version, start=0):
@@ -417,6 +438,13 @@ def reproject_cache(projection_version, start=0):
     if len(names) == 50:
         frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.reproject_cache", projection_version=projection_version,
             start=int(start) + 50, enqueue_after_commit=True, queue="long", timeout=180)
+    else:
+        from .regional_expense_automatic import refresh_cn_local
+        from .regional_expenses import installed
+        if installed():
+            refresh_cn_local()
+            from .regional_expense_automatic import rebuild_completed
+            rebuild_completed(projection_version)
 
 
 @frappe.whitelist(methods=["POST"])
@@ -603,7 +631,10 @@ def _query(values, fields, *, confirmed=False, review=False):
         filters.append(["approval_status", "=", status])
     settings = _settings()
     period_current = Coalesce(table.period_version, "") == _period_version(settings)
-    mapping_current = (table.company_basis == "manual") | (Coalesce(table.mapping_version, "") == (settings.mapping_version or ""))
+    from .regional_expense_automatic import ensure_rebuild
+    if not review and ensure_rebuild(settings):
+        frappe.throw(_("Expense ownership is being updated automatically. Please wait."))
+    mapping_current = (table.company_basis == "manual") | (Coalesce(table.mapping_version, "") == (_mapping_version(settings)))
     excluded = (Coalesce(table.expense_scope, "mx") == "non_mx") & mapping_current & period_current
     excluded_view = values.get("expense_scope") == "non_mx" and not confirmed
     currency_scope = table.currency == values["currency"]
@@ -712,7 +743,7 @@ def _aggregates(values, groups=(), conversion=None, **kwargs):
 def _public_lines(rows):
     settings = _settings()
     period_version = _period_version(settings)
-    return [_public_line(row, settings.mapping_version or "", period_version) for row in rows]
+    return [_public_line(row, _mapping_version(settings), period_version) for row in rows]
 
 
 def _public_line(row, mapping_version, period_version):
@@ -978,7 +1009,7 @@ def _whole_source_allowed(source):
     regional_allowed = allowed_companies() if extra else set()
     docs = frappe.get_all(LINE, filters={"source": source}, fields=["name", "company", "is_active", "company_basis", "mapping_version"] + extra)
     companies, manager = set(_companies()), _manager()
-    version = _settings().mapping_version or ""
+    version = _mapping_version(_settings())
     return bool(docs) and all(
         ((not row.company and manager) or row.company in companies)
         and (not row.get("regional_company") or row.regional_company in regional_allowed)
@@ -1024,7 +1055,7 @@ def get_detail(line_key, reporting_currency=None):
     if len(siblings) > 2000:
         frappe.throw(_("Too many source lines; use the filtered expense list"))
     settings = _settings()
-    mapping_version, period_version = settings.mapping_version or "", _period_version(settings)
+    mapping_version, period_version = _mapping_version(settings), _period_version(settings)
     visible = [_public_line(row, mapping_version, period_version) for row in siblings]
     result = {"line": _public_line({field: doc.get(field) for field in FIELDS}, mapping_version, period_version), "lines": visible,
         "whole_source": whole}
@@ -1032,6 +1063,8 @@ def get_detail(line_key, reporting_currency=None):
     allocation = record_for(source)
     result["regional_allocation"] = allocation.name if allocation else None
     result["allocation_origin"] = allocation.origin if allocation else None
+    from .regional_expense_automatic import is_automatic
+    result["assignment_mode"] = ("automatic" if is_automatic(json.loads(allocation.allocations_json)) else "manual") if allocation else None
     if reporting_currency:
         conversion = fx.Conversion(reporting_currency)
         result["line"] = conversion.line(result["line"])
@@ -1110,7 +1143,7 @@ def review_line(line_key, expected_source_version, expected_modified, month=None
         problems.append("period")
     if not doc.company:
         problems.append("company")
-    if doc.company_basis != "manual" and doc.mapping_version != (settings.mapping_version or ""):
+    if doc.company_basis != "manual" and doc.mapping_version != (_mapping_version(settings)):
         problems.append("stale")
     doc.issues = json.dumps(sorted(set(problems)))
     doc.review_state = "excluded" if scope == "non_mx" else ("confirmed" if not problems else "needs_review")

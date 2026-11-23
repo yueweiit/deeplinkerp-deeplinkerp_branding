@@ -196,6 +196,7 @@ doc_events = {
     "File": {"validate": "deeplinkerp_branding.services.operating_payment_service.validate_payment_file", "on_trash": "deeplinkerp_branding.services.operating_payment_service.validate_payment_file"},
 }
 doc_events["OA Purchase Request"] = {"validate":"deeplinkerp_branding.services.purchase_source_service.validate_managed_source","before_rename":"deeplinkerp_branding.services.purchase_source_service.protect_managed_source_identity","on_trash":"deeplinkerp_branding.services.purchase_source_service.protect_managed_source_identity"}
+doc_events["Company"] = {"on_update": "deeplinkerp_branding.services.regional_expense_automatic.company_changed"}
 doc_events["Purchase Order"] = {"validate":"deeplinkerp_branding.services.purchase_source_service.validate_managed_order","before_submit":"deeplinkerp_branding.services.purchase_source_service.validate_source_before_submit"}
 for procurement_doctype in ("Purchase Order", "Purchase Receipt", "Purchase Invoice", "Payment Entry"):
     events = doc_events.setdefault(procurement_doctype, {})

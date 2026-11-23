@@ -71,8 +71,8 @@ def _project(row, template, business_timezone, *, ignore_region=False):
     path += [text(f.get('value')) for f in components if f.get('id') in category_ids and f.get('value')]
     business_category=' / '.join(dict.fromkeys(path))
     source_key=c.digest([row['corp_id'],row['process_instance_id']]);lines=[];seen=set();details=[]
-    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None):
-        owner,multi=c._entity(owner);problems=list(errors)
+    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None,owner_id=''):
+        owner,multi=c._entity(owner);problems=[issue for issue in errors if issue != 'allocation' or table_id == 'header']
         if multi:problems.append('allocation')
         parsed=c.exact_amount(raw_amount)
         if parsed is None:problems.append('amount')
@@ -83,7 +83,7 @@ def _project(row, template, business_timezone, *, ignore_region=False):
         facts=dict(source_entity=owner,entity_kind=kind,entity_key=c.entity_key(kind,owner),category=c.SUBCATEGORIES[selected][0] if selected else None,
             subcategory=selected,amount_raw=str(raw_amount if raw_amount is not None else ''),amount=parsed,currency=currency,description=text(description),
             table_id=table_id,source_row_id=str(row_id),approval_type=family,business_category=business_category,salary_type=text(value('salary_type')))
-        lines.append(dict(facts,**period,line_key=c.digest([source_key,table_id,row_id]),row_fingerprint=c.digest(facts),base_issues=problems,source=source_key))
+        lines.append(dict(facts,**period,line_key=c.digest([source_key,table_id,row_id]),row_fingerprint=c.digest(facts),base_issues=problems,source=source_key,_source_entity_id=owner_id))
     known_tables={f.get('id'):k for k,f in fields.items() if k.endswith('_table') and f}
     for f in components:
         if f.get('componentType')!='TableField' or not f.get('value'):continue
@@ -102,11 +102,12 @@ def _project(row, template, business_timezone, *, ignore_region=False):
                 if not row_id or row_id in seen_rows:errors.append('identity')
                 seen_rows.add(row_id)
                 # Exact ID first; exact label aliases for historical copies only.
-                def cell(ids=(),labels=()):
+                def cell_field(ids=(),labels=()):
                     matches=[v for v in cells if v.get('key') in ids]
                     if not matches:matches=[v for v in cells if c.normalized(v.get('label')) in {c.normalized(x) for x in labels}]
-                    if len(matches)!=1:return None
-                    return matches[0].get('value')
+                    return matches[0] if len(matches)==1 else {}
+                def cell(ids=(),labels=()):
+                    return cell_field(ids,labels).get('value')
                 total=cell(('CalculateField_1D7YT3J5Z4YO0','CalculateField_FV6G9ZJPPEG0','MoneyField_X5KBWAODJ1S0'),('总金额Monto Total','总金额（元）Importe Total (CNY)','金额（元）Monto (yuan)'))
                 parsed=c.exact_amount(total);totals.append(parsed)
                 if family=='purchase' and kind in ('items_table','processors_table'):
@@ -120,16 +121,18 @@ def _project(row, template, business_timezone, *, ignore_region=False):
                     except (InvalidOperation,ValueError):errors.append('amount')
                 table_rows.append({'row_id':str(row_id or ''),'cells':[{'label':str(v.get('label') or v.get('key') or ''),'value':text(v.get('value'))} for v in cells if v.get('value') not in (None,'') and not str(v.get('key','')).startswith(('DDPhoto','DDAttachment')) and '电话' not in str(v.get('label',''))]})
                 if family=='operating' and kind in ('salary_table','social_table','office_table'):
-                    owner=cell(labels=('部门Departamento',)) if kind!='office_table' else entity
-                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos')), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None)
+                    owner_field=cell_field(labels=('部门Departamento',)) if kind!='office_table' else fields.get('entity',{})
+                    owner=owner_field.get('value') if kind!='office_table' else entity
+                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos')), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None, c.organization_id(owner_field))
             details.append({'label':str(f.get('name') or table_id),'rows':table_rows})
             if family=='purchase' and kind in ('items_table','processors_table'):
                 if any(v is None for v in totals) or amount is not None and sum((Decimal(v) for v in totals if v is not None),Decimal(0))!=Decimal(amount):errors.append('total')
         except (ValueError,TypeError,KeyError):errors.append('structure')
-    if not lines:add('header','header',entity,value('amount'),value('description'))
+    if not lines:add('header','header',entity,value('amount'),value('description'),owner_id=c.organization_id(fields.get('entity',{})))
     if family=='operating' and amount is not None and (any(l['amount'] is None for l in lines) or sum((Decimal(l['amount']) for l in lines if l['amount'] is not None),Decimal(0))!=Decimal(amount)):errors.append('total')
     for line in lines:
-        line['base_issues']=sorted(set(line['base_issues']+errors));line['row_fingerprint']=c.digest([line['row_fingerprint'],line['base_issues'],amount])
+        inherited=[issue for issue in errors if issue != 'allocation' or line['table_id'] == 'header']
+        line['base_issues']=sorted(set(line['base_issues']+inherited));line['row_fingerprint']=c.digest([line['row_fingerprint'],line['base_issues'],amount])
     source=dict(source_key=source_key,corp_id=row['corp_id'],process_code=row['process_code'],process_instance_id=row['process_instance_id'],approval_no=row.get('business_id'),
         applicant=row.get('originator_user_name') or row.get('originator_user_id'),approval_status=status,
         applied_at=created.astimezone(timezone.utc).isoformat().replace('+00:00','Z'),request_date=created.astimezone(ZoneInfo(business_timezone)).date().isoformat(),

@@ -101,6 +101,18 @@ def _text(value):
     return value.strip() if isinstance(value, str) else ""
 
 
+def organization_id(field):
+    """Read one explicit OA organization ID; names and paths are not IDs."""
+    try:
+        value = _json(field.get("extValue"))
+    except (ValueError, TypeError):
+        return ""
+    if isinstance(value, list) and len(value) == 1:
+        value = value[0]
+    value = (value.get("code") or value.get("id")) if isinstance(value, dict) else None
+    return str(value).strip() if isinstance(value, (str, int)) and not isinstance(value, bool) else ""
+
+
 def _entity(value):
     """Preserve explicit entity/department labels; never infer an ERP company."""
     if isinstance(value, str):
@@ -325,7 +337,7 @@ def project(row, business_timezone="America/Mexico_City", template=None):
         "finance_approved_at": period["finance_approved_at"], "finance_approved_date": period["finance_approved_date"]}
     lines, seen = [], set()
 
-    def add(table_id, row_number, entity, amount, description, forced_sub, kind, extra=()):
+    def add(table_id, row_number, entity, amount, description, forced_sub, kind, extra=(), owner_id=""):
         entity, multiple = _entity(entity)
         selected_sub = forced_sub or sub
         selected_category = SUBCATEGORIES[selected_sub][0] if selected_sub else main
@@ -353,7 +365,8 @@ def project(row, business_timezone="America/Mexico_City", template=None):
             "amount": parsed, "currency": currency, "description": _text(description),
             "table_id": table_id, "source_row_id": str(row_number)}
         lines.append({**facts, **period, "line_key": digest([source_key, table_id, row_number]),
-            "row_fingerprint": digest(facts), "base_issues": sorted(set(problems)), "source": source_key})
+            "row_fingerprint": digest(facts), "base_issues": sorted(set(problems)), "source": source_key,
+            "_source_entity_id": owner_id})
 
     for component in components:
         if not isinstance(component, dict) or component.get("componentType") != "TableField" or not component.get("value"):
@@ -374,13 +387,15 @@ def project(row, business_timezone="America/Mexico_City", template=None):
                 if not isinstance(entry, dict) or not isinstance(entry.get("rowValue"), list):
                     errors.append("structure")
                     continue
-                cells, duplicates = {}, False
+                cells, duplicates, owner_id = {}, False, ""
                 for cell in entry["rowValue"]:
                     if not isinstance(cell, dict) or cell.get("key") in cells:
                         duplicates = True
                         continue
                     cells[cell.get("key")] = cell.get("value")
-                add(key, entry.get("rowNumber"), cells.get(entity_field), cells.get(amount_field), cells.get(text_field), fixed_sub, kind, ("structure",) if duplicates else ())
+                    if cell.get("key") == entity_field:
+                        owner_id = organization_id(cell)
+                add(key, entry.get("rowNumber"), cells.get(entity_field), cells.get(amount_field), cells.get(text_field), fixed_sub, kind, ("structure",) if duplicates else (), owner_id)
         except (ValueError, TypeError):
             errors.append("structure")
     if "amount" in overrides:
@@ -394,7 +409,7 @@ def project(row, business_timezone="America/Mexico_City", template=None):
         errors.append("amount")
     if not lines:
         add("header", "header", value("DDMultiSelectField_RWULY2WAUCG0"), header_amount,
-            value("TextareaField_70ISZLEAO8G0"), None, "entity")
+            value("TextareaField_70ISZLEAO8G0"), None, "entity", owner_id=organization_id(by_id.get("DDMultiSelectField_RWULY2WAUCG0", {})))
     if header_amount not in (None, "") and (header_total is None or any(l["amount"] is None for l in lines)
             or sum((Decimal(l["amount"]) for l in lines if l["amount"] is not None), Decimal(0)) != Decimal(header_total or 0)):
         errors.append("total")
