@@ -97,7 +97,8 @@ def records():
 def revision():
     if not installed():
         return ""
-    values = frappe.get_all(DOCTYPE, fields=["max(modified) as latest", "count(name) as total"])
+    values = frappe.get_all(DOCTYPE,
+        fields=[{"MAX": "modified", "as": "latest"}, {"COUNT": "name", "as": "total"}], order_by=None)
     return digest([str(values[0].latest or ""), values[0].total]) if values else ""
 
 

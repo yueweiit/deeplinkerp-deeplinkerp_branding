@@ -32,6 +32,48 @@ def translations(monkeypatch):
     monkeypatch.setattr(frappe, "throw", lambda text, *args: (_ for _ in ()).throw(ValueError(text)))
 
 
+def test_installed_allocation_revision_uses_frappe_query_parser_and_tracks_changes(monkeypatch):
+    import sqlite3
+    from datetime import datetime
+    from pypika import Query, Table
+    from frappe.database import query as frappe_query
+    from budget.services import cn_approval_sync as sync
+
+    # Do not replace the aggregate result: compile the actual requested fields
+    # with Frappe's validator and execute them against a real in-memory table.
+    db = sqlite3.connect(":memory:")
+    db.row_factory = sqlite3.Row
+    db.execute('CREATE TABLE "tabRegional Expense Allocation" (name TEXT, modified TEXT)')
+    def get_all(doctype, *, fields, order_by=None):
+        engine = frappe_query.Engine()
+        engine.doctype, engine.table = doctype, Table("tab" + doctype)
+        engine.function_aliases = set()
+        engine.apply_permissions = False  # frappe.get_all's existing contract
+        query = Query.from_(engine.table).select(*engine.parse_fields(fields))
+        return [frappe._dict(dict(row)) for row in db.execute(query.get_sql()).fetchall()]
+    monkeypatch.setattr(s, "installed", lambda: True)
+    monkeypatch.setattr(frappe_query, "_", lambda value: value)
+    monkeypatch.setattr(frappe, "get_all", get_all)
+    monkeypatch.setattr(sync.settings, "sync_options", lambda: {"enabled": False})
+    monkeypatch.setattr(sync, "now_datetime", lambda: datetime(2026, 11, 23))
+    try:
+        empty = s.revision()
+        assert empty and sync.status()["allocation_revision"] == empty
+        db.execute('INSERT INTO "tabRegional Expense Allocation" VALUES (?, ?)', ("a", "2026-11-23 10:00:00"))
+        inserted = s.revision()
+        assert inserted != empty and sync.status()["allocation_revision"] == inserted
+        db.execute('UPDATE "tabRegional Expense Allocation" SET modified=? WHERE name=?', ("2026-11-23 11:00:00", "a"))
+        updated = s.revision()
+        assert updated != inserted
+        db.execute('INSERT INTO "tabRegional Expense Allocation" VALUES (?, ?)', ("b", "2026-11-22 10:00:00"))
+        assert s.revision() != updated
+        assert sync.status()["allocation_revision"] == s.revision()
+        db.execute('DELETE FROM "tabRegional Expense Allocation" WHERE name=?', ("b",))
+        assert s.revision() == updated
+    finally:
+        db.close()
+
+
 def test_split_preserves_exact_original_amounts_and_excludes_cn_from_mx():
     source, lines, entries = sample()
     validated = c.validate_allocations(entries, lines, {"China A": "China", "Mexico B": "Mexico"}, {"service"})
