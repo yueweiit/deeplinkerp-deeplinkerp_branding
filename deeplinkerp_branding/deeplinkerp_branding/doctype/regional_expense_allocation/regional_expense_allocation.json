@@ -1,0 +1,132 @@
+{
+ "doctype": "DocType",
+ "name": "Regional Expense Allocation",
+ "module": "Deeplinkerp Branding",
+ "custom": 0,
+ "engine": "InnoDB",
+ "autoname": "field:source_key",
+ "track_changes": 1,
+ "allow_rename": 0,
+ "field_order": [
+  "source_key",
+  "corp_id",
+  "process_code",
+  "process_instance_id",
+  "approval_no",
+  "origin",
+  "state",
+  "source_json",
+  "template_json",
+  "facts_json",
+  "allocations_json",
+  "reviewed_fingerprint",
+  "review_note",
+  "reviewed_by",
+  "reviewed_at",
+  "connection_fingerprint"
+ ],
+ "fields": [
+  {
+   "fieldname": "source_key",
+   "label": "Approval Source Key",
+   "fieldtype": "Data",
+   "read_only": 1,
+   "unique": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "corp_id",
+   "label": "Source Corporation ID",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "process_code",
+   "label": "Process Code",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "process_instance_id",
+   "label": "Approval Instance ID",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "approval_no",
+   "label": "Approval Number",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "origin",
+   "label": "Approval source",
+   "fieldtype": "Select",
+   "read_only": 1,
+   "options": "cn\nmx"
+  },
+  {
+   "fieldname": "state",
+   "label": "Allocation State",
+   "fieldtype": "Select",
+   "read_only": 1,
+   "options": "confirmed\nstale"
+  },
+  {
+   "fieldname": "source_json",
+   "label": "Source Snapshot",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "template_json",
+   "label": "Template Snapshot",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "facts_json",
+   "label": "Expense Facts",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "allocations_json",
+   "label": "Expense Allocations",
+   "fieldtype": "Long Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_fingerprint",
+   "label": "Reviewed Source Fingerprint",
+   "fieldtype": "Data",
+   "read_only": 1
+  },
+  {
+   "fieldname": "review_note",
+   "label": "Review Note",
+   "fieldtype": "Small Text",
+   "read_only": 1
+  },
+  {
+   "fieldname": "reviewed_by",
+   "label": "Reviewed By",
+   "fieldtype": "Link",
+   "read_only": 1,
+   "options": "User"
+  },
+  {
+   "fieldname": "reviewed_at",
+   "label": "Reviewed At",
+   "fieldtype": "Datetime",
+   "read_only": 1
+  },
+  {
+   "fieldname": "connection_fingerprint",
+   "label": "OA Connection Fingerprint",
+   "fieldtype": "Data",
+   "read_only": 1
+  }
+ ],
+ "permissions": []
+}

@@ -14,6 +14,17 @@ from deeplinkerp_branding.services import mexico_expenses as s
 
 
 class MexicoQueryTests(unittest.TestCase):
+    def test_routed_approval_type_is_visible_without_an_mx_sync_template(self):
+        from deeplinkerp_branding.services import regional_expenses as regional
+        self.db.execute('CREATE TABLE "tabRegional Expense Allocation" (name TEXT)')
+        self.db.execute('INSERT INTO "tabRegional Expense Allocation" VALUES (?)', ('shared',))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET approval_type=? WHERE source=?', ('operating', 'shared'))
+        with patch.object(regional, "installed", return_value=True), patch.object(s, "_templates", return_value=[]):
+            self.db.execute('UPDATE "tabMexico Expense Line" SET period_version=? WHERE source=?', (s._period_version(s._settings()), 'shared'))
+            rows = s._query({**self.filters, "approval_type": "operating"}, ["name", "amount"]).run(as_dict=True)
+        self.assertEqual({row.name for row in rows}, {"a1", "a2"})
+        self.assertEqual(sum(row.amount for row in rows), 30)
+
     def setUp(self):
         self.db=sqlite3.connect(":memory:")
         self.addCleanup(self.db.close)

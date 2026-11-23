@@ -54,7 +54,8 @@
   "classification_path",
   "classification_key",
   "expense_scope",
-  "scope_reason"
+  "scope_reason",
+  "regional_company"
  ],
  "fields": [
   {
@@ -350,6 +351,14 @@
    "label": "Scope Reason",
    "fieldtype": "Small Text",
    "read_only": 1
+  },
+  {
+   "fieldname": "regional_company",
+   "label": "Allocated Subsidiary",
+   "fieldtype": "Link",
+   "options": "Company",
+   "read_only": 1,
+   "hidden": 1
   }
  ],
  "permissions": [

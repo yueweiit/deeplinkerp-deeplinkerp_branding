@@ -251,6 +251,10 @@
 			this.page.add_menu_item(t("Calculation Basis"), () => this.showCriteria());
 			if (this.context.can_manage) {
 				this.page.add_menu_item(t("Synchronization Settings"), () => this.settings());
+                this.page.add_menu_item(t("Cross-region expense allocation"), async () => {
+                    await root.frappe.require("/assets/deeplinkerp_branding/js/regional_expenses.js");
+                    await root.RegionalExpenses.list(() => this.refresh());
+                });
 				this.page.add_menu_item(t("Synchronize Now"), () => this.synchronize());
 			}
 			this.applyRouteFilters();
@@ -1101,7 +1105,7 @@
 			const data = await call("get_detail", { line_key: lineKey, reporting_currency: this.filters.currency });
 			if (request !== this.detailEpoch || !this.isCurrentRoute()) return;
 			const r = data.line,
-				canReview = this.context.can_review;
+				canReview = this.context.can_review && !data.regional_allocation;
 			const dialog = new root.frappe.ui.Dialog({
 				title: t("Expense Application Details"),
 				size: "large",
@@ -1110,11 +1114,12 @@
 			dialog.$wrapper.addClass("mx-detail-dialog");
 			const detail = (label, value) =>
 				`<div><dt>${esc(t(label))}</dt><dd>${value}</dd></div>`;
-			const sourceLink = data.whole_source && data.dingtalk_url
+			const allocationButton = (data.allocation_origin ? `<p>${esc(t("Approval source"))}: ${esc(data.allocation_origin.toUpperCase())}</p>` : "") + (this.context.can_manage && data.whole_source ? `<div class="mx-detail-actions">${button("Cross-region expense allocation", "regional")}</div>` : "");
+            const sourceLink = data.whole_source && data.dingtalk_url
 				? `<div class="mx-detail-source"><a class="mx-button" href="${esc(data.dingtalk_url)}" rel="noopener noreferrer">${esc(t("Open Original in DingTalk"))}</a></div>`
 				: "";
 			dialog
-				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${sourceLink}${r.expense_scope !== "non_mx" && r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(data.visible_currency || r.currency || "—")}</span><strong>${money(data.visible_amount, data.visible_currency || r.currency)}</strong></div>${data.lines.some((l) => l.expense_scope === "non_mx") ? `<div class="mx-notice">${esc(t("MX Scope Amount"))}: ${money(data.mx_amount, data.visible_currency || r.currency)} · ${esc(t("Non-Mexico Amount"))}: ${money(data.excluded_amount, data.visible_currency || r.currency)}</div>` : ""}<dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.expense_scope === "non_mx" ? t("Non-Mexico Expenses") : (r.company || t("Not Mapped"))))}${detail("Expense Scope", esc(t(r.expense_scope === "non_mx" ? "Non-Mexico Expenses" : "Mexico Expenses")))}${r.scope_reason ? detail("Scope Reason",esc(r.scope_reason)) : ""}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
+				.fields_dict.content.$wrapper.html(`<div class="mx-expenses mx-drawer-content">${allocationButton}${sourceLink}${r.expense_scope !== "non_mx" && r.issues.length ? `<div class="mx-notice mx-warning">${r.issues.map((i) => esc(this.context.issue_labels[i] || i)).join(" · ")}</div>` : ""}<div class="mx-detail-amount"><span>${esc(t("Visible Expense Amount"))} · ${esc(data.visible_currency || r.currency || "—")}</span><strong>${money(data.visible_amount, data.visible_currency || r.currency)}</strong></div>${data.lines.some((l) => l.expense_scope === "non_mx") ? `<div class="mx-notice">${esc(t("MX Scope Amount"))}: ${money(data.mx_amount, data.visible_currency || r.currency)} · ${esc(t("Non-Mexico Amount"))}: ${money(data.excluded_amount, data.visible_currency || r.currency)}</div>` : ""}<dl class="mx-detail-grid">${detail("Approval Number", esc(r.approval_no || "—"))}${detail("Approval Form", esc(this.form(r.approval_type)))}${detail("Business Category", esc(r.business_category || "—"))}${detail("Salary Type", esc(r.salary_type || "—"))}${detail("Approval Status", pill(r.approval_status))}${detail("Subsidiary", esc(r.expense_scope === "non_mx" ? t("Non-Mexico Expenses") : (r.company || t("Not Mapped"))))}${detail("Expense Scope", esc(t(r.expense_scope === "non_mx" ? "Non-Mexico Expenses" : "Mexico Expenses")))}${r.scope_reason ? detail("Scope Reason",esc(r.scope_reason)) : ""}${detail("Source Entity", esc(r.source_entity))}${detail("Expense Category", esc(this.cat(r.category)?.label || t("Unclassified")))}${detail("Expense Subcategory", esc(this.sub(r.subcategory)?.label || t("Unclassified")))}${detail("Application Date", date(r.request_date))}${detail("Planned Payment Date", date(r.planned_payment_date))}${detail("MX Finance Approval Date", date(r.finance_approved_date))}${detail("Reporting Month", esc(String(r.period_month || t("Not Confirmed")).slice(0, r.period_month ? 7 : 200)))}${detail("Expense Period", r.period_start ? `${date(r.period_start)} – ${date(r.period_end)}` : esc(t("Not Confirmed")))}</dl>
                 ${data.whole_source ? `<dl class="mx-detail-grid">${Object.entries(data.details?.fields || {}).filter(([, value]) => value).map(([label, value]) => detail(label, esc(value))).join("")}</dl>${(data.details?.tables || []).map((table) => {
                     const labels = [...new Set(table.rows.flatMap((row) => row.cells.map((cell) => cell.label)))];
                     return `<h3>${esc(table.label)}</h3><p class="mx-help">${esc(t("Supporting item details; amounts are not added again"))}</p><div class="mx-scroll"><table><thead><tr>${labels.map((label) => `<th>${esc(label)}</th>`).join("")}</tr></thead><tbody>${table.rows.map((row) => `<tr>${labels.map((label) => `<td>${esc(row.cells.find((cell) => cell.label === label)?.value || "—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
@@ -1171,7 +1176,12 @@
 				}</div>`);
 			dialog.fields_dict.content.$wrapper.on("click", "[data-action]", async (event) => {
 				const action = event.currentTarget.dataset.action;
-				if (action === "confirm") return this.review(data.line, dialog);
+				if (action === "regional") {
+                    await root.frappe.require("/assets/deeplinkerp_branding/js/regional_expenses.js");
+                    dialog.hide();
+                    return root.RegionalExpenses.open({origin: "mx", key: r.source}, () => this.refresh());
+                }
+                if (action === "confirm") return this.review(data.line, dialog);
 				if (action === "attachments") {
 					const area = dialog.fields_dict.content.$wrapper.find(".mx-attachments");
 					area.text(t("Loading"));

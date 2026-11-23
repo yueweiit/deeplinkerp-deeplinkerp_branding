@@ -2636,3 +2636,53 @@ Start Month,Start Month
 End Month,End Month
 Last Month,Last Month
 This Year,This Year
+Cross-region expense allocation,Cross-region expense allocation
+CN Expenses,CN Expenses
+MX Expenses,MX Expenses
+Other scope,Other scope
+Awaiting allocation,Awaiting allocation
+Original expense line,Original expense line
+Statistical scope,Statistical scope
+Allocated original amount,Allocated original amount
+CN management category,CN management category
+Save allocation,Save allocation
+Rebuild from current source lines,Rebuild from current source lines
+Cross-region allocation requires review,Cross-region allocation requires review
+Open an expense approval to create its cross-region allocation.,Open an expense approval to create its cross-region allocation.
+Allocate every original line in its original currency. Split a line by adding rows; its allocated amounts must equal its original amount. CN uses the application month; MX requires its finance approval date. Approval does not confirm payment.,Allocate every original line in its original currency. Split a line by adding rows; its allocated amounts must equal its original amount. CN uses the application month; MX requires its finance approval date. Approval does not confirm payment.
+Invalid expense allocation,Invalid expense allocation
+Correct source amounts and line identities before allocating expenses,Correct source amounts and line identities before allocating expenses
+Select an authorized subsidiary for the allocation,Select an authorized subsidiary for the allocation
+Select a management category for CN allocations,Select a management category for CN allocations
+Other and pending allocations must not specify a subsidiary or category,Other and pending allocations must not specify a subsidiary or category
+Management categories apply only to CN allocations,Management categories apply only to CN allocations
+Allocated amounts must equal each original line amount,Allocated amounts must equal each original line amount
+Cross-region allocations require access to every subsidiary,Cross-region allocations require access to every subsidiary
+Expense allocation storage is not installed. Run the application migration.,Expense allocation storage is not installed. Run the application migration.
+Expense allocation limit exceeded,Expense allocation limit exceeded
+Expense approval is unavailable,Expense approval is unavailable
+Refresh approvals before allocating this source,Refresh approvals before allocating this source
+Expense allocation changed; reload and review again,Expense allocation changed; reload and review again
+Use cross-region allocation to review this approval,Use cross-region allocation to review this approval
+Expense allocations can only be changed through the workbench,Expense allocations can only be changed through the workbench
+Expense allocations cannot be deleted; update the allocation instead,Expense allocations cannot be deleted; update the allocation instead
+Expense allocation belongs to another OA connection; restore or reconcile the source first,Expense allocation belongs to another OA connection; restore or reconcile the source first
+Approval source,Approval source
+Allocation State,Allocation State
+Expense Facts,Expense Facts
+Expense Allocations,Expense Allocations
+Template Snapshot,Template Snapshot
+OA Connection Fingerprint,OA Connection Fingerprint
+MX Finance approval,MX Finance approval
+MX finance activity IDs,MX finance activity IDs
+MX finance node names,MX finance node names
+Use exact node names or activity IDs from the approval. Leave empty to keep MX allocations awaiting finance confirmation.,Use exact node names or activity IDs from the approval. Leave empty to keep MX allocations awaiting finance confirmation.
+Invalid finance node configuration,Invalid finance node configuration
+Allocated Subsidiary,Allocated Subsidiary
+Approval Source Key,Approval Source Key
+Source Corporation ID,Source Corporation ID
+Source Snapshot,Source Snapshot
+Regional Expense Allocation,Regional Expense Allocation
+Detail row,Detail row
+Open,Open
+CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,CN management analysis exceeds 50000 detail lines. Narrow the configured scope.

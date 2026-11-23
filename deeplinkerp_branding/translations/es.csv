@@ -2907,3 +2907,53 @@ Start Month,Mes inicial
 End Month,Mes final
 Last Month,Mes pasado
 This Year,Este año
+Cross-region expense allocation,Asignación de gastos entre regiones
+CN Expenses,Gastos (CN)
+MX Expenses,Gastos (MX)
+Other scope,Otro ámbito
+Awaiting allocation,Pendiente de asignación
+Original expense line,Línea de gasto original
+Statistical scope,Ámbito estadístico
+Allocated original amount,Importe asignado en moneda original
+CN management category,Categoría de gestión CN
+Save allocation,Guardar asignación
+Rebuild from current source lines,Restablecer con las líneas actuales
+Cross-region allocation requires review,La asignación entre regiones requiere revisión
+Open an expense approval to create its cross-region allocation.,Abra una solicitud de gasto para crear su asignación entre regiones.
+Allocate every original line in its original currency. Split a line by adding rows; its allocated amounts must equal its original amount. CN uses the application month; MX requires its finance approval date. Approval does not confirm payment.,Asigne cada línea en su moneda original. Añada filas para dividirla; la suma debe coincidir con su importe original. CN usa el mes de solicitud; MX requiere la fecha de aprobación financiera. La aprobación no confirma el pago.
+Invalid expense allocation,Asignación de gastos no válida
+Correct source amounts and line identities before allocating expenses,Corrija los importes e identificadores de origen antes de asignar gastos
+Select an authorized subsidiary for the allocation,Seleccione una filial autorizada; MX solo admite empresas de México
+Select a management category for CN allocations,Seleccione una categoría de gestión para los gastos de CN
+Other and pending allocations must not specify a subsidiary or category,Las asignaciones a otro ámbito o pendientes no deben indicar filial ni categoría
+Management categories apply only to CN allocations,Las categorías de gestión solo se aplican a gastos de CN
+Allocated amounts must equal each original line amount,La suma asignada debe coincidir con el importe de cada línea original
+Cross-region allocations require access to every subsidiary,La asignación entre regiones requiere acceso a todas las filiales
+Expense allocation storage is not installed. Run the application migration.,El almacenamiento de asignaciones no está instalado. Ejecute la migración de la aplicación.
+Expense allocation limit exceeded,Se superó el límite de asignaciones de gastos
+Expense approval is unavailable,La solicitud de gasto no está disponible
+Refresh approvals before allocating this source,Actualice las solicitudes antes de asignar este origen
+Expense allocation changed; reload and review again,La asignación ha cambiado; vuelva a cargarla y revisarla
+Use cross-region allocation to review this approval,Revise esta solicitud mediante la asignación entre regiones
+Expense allocations can only be changed through the workbench,Las asignaciones solo se pueden modificar desde el área de trabajo
+Expense allocations cannot be deleted; update the allocation instead,Las asignaciones no se pueden eliminar; actualícelas
+Expense allocation belongs to another OA connection; restore or reconcile the source first,La asignación pertenece a otra conexión OA; restaure o concilie primero el origen
+Approval source,Origen de aprobación
+Allocation State,Estado de asignación
+Expense Facts,Datos de origen del gasto
+Expense Allocations,Asignaciones de gastos
+Template Snapshot,Instantánea de plantilla
+OA Connection Fingerprint,Huella de conexión OA
+MX Finance approval,Aprobación financiera MX
+MX finance activity IDs,Identificadores de actividad financiera MX
+MX finance node names,Nombres de nodos financieros MX
+Use exact node names or activity IDs from the approval. Leave empty to keep MX allocations awaiting finance confirmation.,"Use los nombres o identificadores exactos de los nodos de la solicitud. Si se dejan vacíos, los gastos MX seguirán pendientes de confirmación financiera."
+Invalid finance node configuration,Configuración del nodo financiero no válida
+Allocated Subsidiary,Filial asignada
+Approval Source Key,Identificador de origen de aprobación
+Source Corporation ID,ID de empresa de origen
+Source Snapshot,Instantánea de origen
+Regional Expense Allocation,Asignación de gastos entre regiones
+Detail row,Línea de detalle
+Open,Abrir
+CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,El análisis de gestión CN supera las 50000 líneas. Reduzca el ámbito configurado.

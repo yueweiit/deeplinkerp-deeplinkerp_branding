@@ -99,6 +99,10 @@ def _templates(settings=None):
 
 
 def _template(row, settings=None):
+    from .regional_expenses import template_for
+    regional = template_for(row, _templates(settings))
+    if regional:
+        return regional
     return templates.find(_templates(settings), row["corp_id"], row["process_code"])
 
 
@@ -134,6 +138,8 @@ def permission_query_conditions(user=None):
     if not _manager(user):
         version = frappe.db.escape(_settings().mapping_version or "")
         scope += f" AND (company_basis = 'manual' OR mapping_version = {version})"
+    from .regional_expenses import company_condition
+    scope += " AND " + company_condition(user)
     return scope
 
 
@@ -143,6 +149,9 @@ def has_permission(doc, user=None, ptype=None):
     user = user or frappe.session.user
     if not doc or not doc.get("name"):
         return _manager(user) or bool({"Accounts User", "Accounts Manager"}.intersection(frappe.get_roles(user)))
+    from .regional_expenses import allowed_companies
+    if doc.get("regional_company") and doc.regional_company not in allowed_companies(user):
+        return False
     if not doc.get("company"):
         return _manager(user)
     if doc.company not in _companies(user):
@@ -160,9 +169,11 @@ def source_permission_query_conditions(user=None):
     quote = '"' if frappe.db.db_type == "postgres" else "`"
     version = frappe.db.escape(_settings().mapping_version or "")
     stale = f"mx.is_active = 1 AND COALESCE(mx.company_basis, '') <> 'manual' AND COALESCE(mx.mapping_version, '') <> {version}"
+    from .regional_expenses import company_condition
+    regional = company_condition(user, alias="mx")
     return (f"NOT EXISTS (SELECT 1 FROM {quote}tabMexico Expense Line{quote} mx WHERE "
             f"mx.source = {quote}tabMexico Expense Source{quote}.name "
-            f"AND ((COALESCE(mx.company, '') <> '' AND ({unauthorized})) OR ({stale})))")
+            f"AND ((COALESCE(mx.company, '') <> '' AND ({unauthorized})) OR ({stale}) OR NOT ({regional})))")
 
 
 def source_has_permission(doc, user=None, ptype=None):
@@ -173,8 +184,12 @@ def source_has_permission(doc, user=None, ptype=None):
         return True
     allowed = set(_companies(user))
     version = _settings().mapping_version or ""
-    rows = frappe.get_all(LINE, filters={"source": doc.name}, fields=["company", "is_active", "company_basis", "mapping_version"])
+    from .regional_expenses import membership_fields, allowed_companies
+    extra = membership_fields()
+    regional_allowed = allowed_companies(user) if extra else set()
+    rows = frappe.get_all(LINE, filters={"source": doc.name}, fields=["company", "is_active", "company_basis", "mapping_version"] + extra)
     return bool(rows) and all((not r.company or r.company in allowed) and
+        (not r.get("regional_company") or r.regional_company in regional_allowed) and
         (not r.is_active or r.company_basis == "manual" or (r.mapping_version or "") == version) for r in rows)
 
 
@@ -193,7 +208,7 @@ def _store_projection(doc, values):
         return str(value) if value not in (None, "") else ""
     # Empty links are intentional source facts. None would be replaced by the
     # inserting user's Company/Currency default in Document._set_defaults().
-    values = {key: ("" if value is None and key in {"company", "currency"} else value)
+    values = {key: ("" if value is None and key in {"company", "currency", "regional_company"} else value)
               for key, value in values.items()}
     if doc.is_new() or any(canonical(field, doc.get(field)) != canonical(field, value) for field, value in values.items()):
         doc.update(values)
@@ -206,8 +221,11 @@ def _maps(settings):
     } for r in settings.company_mappings or []}
 
 
-def _upsert(row, settings):
-    source, projected = projection.project(row, _template(row, settings), settings.business_timezone or "America/Mexico_City")
+def _upsert(row, settings, regional_origin="mx", regional_template=None):
+    from .regional_expenses import project_for_mx
+    template = regional_template or _template(row, settings)
+    regional = project_for_mx(row, template, settings, origin=regional_origin)
+    source, projected = regional or projection.project(row, template, settings.business_timezone or "America/Mexico_City")
     existing = frappe.db.exists(SOURCE, source["source_key"])
     doc = frappe.get_doc(SOURCE, source["source_key"], for_update=True) if existing else frappe.new_doc(SOURCE)
     if existing and (doc.corp_id != source["corp_id"] or doc.process_code != source["process_code"]):
@@ -220,7 +238,10 @@ def _upsert(row, settings):
         old = previous.get(raw["line_key"])
         legacy_fingerprint = raw.pop("_legacy_row_fingerprint", None)
         prior_review = projection.compatible_previous_review(old, raw, source["source_version"], legacy_fingerprint)
-        line = contract.apply_review(raw, prior_review, mappings, settings.mapping_version or "")
+        line = dict(raw) if regional else contract.apply_review(raw, prior_review, mappings, settings.mapping_version or "")
+        # An ordinary MX line has no cross-region permission owner. Explicit
+        # blank prevents Frappe from inserting the user's default Company.
+        line.setdefault("regional_company", "")
         line.update({k: source.get(k) for k in ("source_version", "approval_no", "applicant", "approval_status", "request_date", "planned_payment_date")})
         line.update(is_active=1, period_version=_period_version(settings), issues=json.dumps(line["issues"]), base_issues=json.dumps(raw["base_issues"]))
         item = frappe.get_doc(LINE, raw["line_key"], for_update=True) if old else frappe.new_doc(LINE)
@@ -570,6 +591,11 @@ def _query(values, fields, *, confirmed=False, review=False):
         else:
             # Reserved forms have no data yet, never reuse Gastos rows under another label.
             approval_scope = table.name.isnull()
+        # Explicit allocations also import templates that MX does not synchronize.
+        from .regional_expenses import DOCTYPE as ALLOCATIONS, installed as allocations_installed
+        if allocations_installed():
+            allocations = frappe.qb.DocType(ALLOCATIONS)
+            approval_scope |= table.source.isin(frappe.qb.from_(allocations).select(allocations.name)) & (table.approval_type == values["approval_type"])
     status = values["status"]
     if status in {"active", "finance_approved"}:
         filters.append(["approval_status", "in", ["pending", "approved"]])
@@ -947,11 +973,15 @@ def _line(name, lock=False):
 
 def _whole_source_allowed(source):
     # Historic memberships still protect comments/attachments on shared approvals.
-    docs = frappe.get_all(LINE, filters={"source": source}, fields=["name", "company", "is_active", "company_basis", "mapping_version"])
+    from .regional_expenses import membership_fields, allowed_companies
+    extra = membership_fields()
+    regional_allowed = allowed_companies() if extra else set()
+    docs = frappe.get_all(LINE, filters={"source": source}, fields=["name", "company", "is_active", "company_basis", "mapping_version"] + extra)
     companies, manager = set(_companies()), _manager()
     version = _settings().mapping_version or ""
     return bool(docs) and all(
         ((not row.company and manager) or row.company in companies)
+        and (not row.get("regional_company") or row.regional_company in regional_allowed)
         and (not row.is_active or row.company_basis == "manual" or (row.mapping_version or "") == version)
         for row in docs
     )
@@ -998,6 +1028,10 @@ def get_detail(line_key, reporting_currency=None):
     visible = [_public_line(row, mapping_version, period_version) for row in siblings]
     result = {"line": _public_line({field: doc.get(field) for field in FIELDS}, mapping_version, period_version), "lines": visible,
         "whole_source": whole}
+    from .regional_expenses import record_for
+    allocation = record_for(source)
+    result["regional_allocation"] = allocation.name if allocation else None
+    result["allocation_origin"] = allocation.origin if allocation else None
     if reporting_currency:
         conversion = fx.Conversion(reporting_currency)
         result["line"] = conversion.line(result["line"])
@@ -1031,6 +1065,9 @@ def review_line(line_key, expected_source_version, expected_modified, month=None
         frappe.throw(_("Expense line not found"))
     source = frappe.get_doc(SOURCE, source_name, for_update=True)
     doc = _line(line_key, lock=True)
+    from .regional_expenses import record_for
+    if record_for(source):
+        frappe.throw(_("Use cross-region allocation to review this approval"))
     if doc.source_version != expected_source_version or str(doc.modified) != expected_modified:
         frappe.throw(_("Expense source changed; reload and review again"))
     if doc.period_version != _period_version(settings):

@@ -21,7 +21,7 @@ def text(value):
     return str(value)
 
 
-def _project(row, template, business_timezone):
+def _project(row, template, business_timezone, *, ignore_region=False):
     template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
     if row.get('corp_id')!=template['corp_id'] or row.get('process_code')!=template['process_code'] or not row.get('process_instance_id'):
         raise ValueError('Unexpected Mexico approval identity')
@@ -35,7 +35,8 @@ def _project(row, template, business_timezone):
     if not isinstance(raw,dict):raise ValueError('Invalid raw approval')
     components=c._json(row.get('form_component_values') or raw.get('formComponentValues') or [])
     if not isinstance(components,list) or len(components)>500 or any(not isinstance(v,dict) for v in components):raise ValueError('Invalid form components')
-    fields,errors=templates.resolve(components,template)
+    schema = {key: spec for key, spec in templates.FIELDS.items() if key != 'region'} if ignore_region else None
+    fields,errors=templates.resolve(components,template,schema=schema)
     if len({f.get('id') for f in components})!=len(components):errors.append('structure')
     value=lambda key:fields.get(key,{}).get('value')
     status=c.approval_status(row.get('status'),row.get('result'),bool(row.get('deleted_at')))
@@ -139,10 +140,10 @@ def _project(row, template, business_timezone):
     return source,lines
 
 
-def project(row, template, business_timezone):
+def project(row, template, business_timezone, *, ignore_region=False):
     from . import mexico_expense_classification as classification
     template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
-    source, lines = _project(row, template, business_timezone)
+    source, lines = _project(row, template, business_timezone, ignore_region=ignore_region)
     path, problems = classification.extract(row, template)
     conflict = False
     if template['approval_type'] == 'expense':

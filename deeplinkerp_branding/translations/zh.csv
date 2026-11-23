@@ -1235,3 +1235,53 @@ Start Month,起始月份
 End Month,结束月份
 Last Month,上月
 This Year,本年
+Cross-region expense allocation,跨区支出归属
+CN Expenses,支出（CN）
+MX Expenses,支出（MX）
+Other scope,其他范围
+Awaiting allocation,待确认归属
+Original expense line,原始费用明细
+Statistical scope,统计归属
+Allocated original amount,分配原币金额
+CN management category,CN 管理费用类别
+Save allocation,保存归属
+Rebuild from current source lines,按当前来源明细重新填写
+Cross-region allocation requires review,跨区支出归属需要重新核对
+Open an expense approval to create its cross-region allocation.,请打开一笔支出审批，设置其跨区支出归属。
+Allocate every original line in its original currency. Split a line by adding rows; its allocated amounts must equal its original amount. CN uses the application month; MX requires its finance approval date. Approval does not confirm payment.,请按原币分配每条原始明细。需要分摊时可添加行，每条明细的分配合计必须等于原金额。CN 按申请月统计，MX 需要财务通过日期。审批通过不代表实际付款。
+Invalid expense allocation,支出归属设置无效
+Correct source amounts and line identities before allocating expenses,请先修正来源金额与明细身份，再分配支出归属
+Select an authorized subsidiary for the allocation,请选择有权访问的承担子公司；MX 仅支持墨西哥公司
+Select a management category for CN allocations,请为 CN 支出选择管理费用类别
+Other and pending allocations must not specify a subsidiary or category,其他范围和待确认归属不能指定子公司或类别
+Management categories apply only to CN allocations,管理费用类别仅适用于 CN 支出
+Allocated amounts must equal each original line amount,每条明细的分配合计必须等于原始金额
+Cross-region allocations require access to every subsidiary,跨区支出归属设置要求拥有全部子公司访问权限
+Expense allocation storage is not installed. Run the application migration.,尚未安装支出归属存储，请先执行应用迁移。
+Expense allocation limit exceeded,支出归属记录超过查询上限
+Expense approval is unavailable,该支出审批不可用
+Refresh approvals before allocating this source,请先刷新审批，再设置该来源的支出归属
+Expense allocation changed; reload and review again,支出归属已被修改，请重新加载并核对
+Use cross-region allocation to review this approval,请通过跨区支出归属设置核对该审批
+Expense allocations can only be changed through the workbench,支出归属只能通过工作台修改
+Expense allocations cannot be deleted; update the allocation instead,支出归属不能删除，请更新归属设置
+Expense allocation belongs to another OA connection; restore or reconcile the source first,支出归属属于其他 OA 连接，请先恢复或核对来源
+Approval source,审批来源
+Allocation State,归属状态
+Expense Facts,支出来源事实
+Expense Allocations,支出归属分配
+Template Snapshot,模板快照
+OA Connection Fingerprint,OA 连接指纹
+MX Finance approval,MX 财务审批
+MX finance activity IDs,MX 财务节点 ID
+MX finance node names,MX 财务节点名称
+Use exact node names or activity IDs from the approval. Leave empty to keep MX allocations awaiting finance confirmation.,请填写审批中准确的财务节点名称或 ID；留空时 MX 支出将保持待财务确认。
+Invalid finance node configuration,财务节点配置无效
+Allocated Subsidiary,分配承担子公司
+Approval Source Key,审批来源标识
+Source Corporation ID,来源企业 ID
+Source Snapshot,来源快照
+Regional Expense Allocation,跨区支出归属
+Detail row,明细行
+Open,打开
+CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,CN 管理分析明细超过 50000 条，请缩小配置范围。
