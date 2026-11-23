@@ -53,7 +53,9 @@
                 if (onSaved) await onSaved();
             } finally { dialog.enable_primary_action(); }
         }});
-        dialog.fields_dict.instructions.$wrapper.html(`<p><strong>${escape(data.number)}</strong></p><p>${escape(__(
+        dialog.fields_dict.instructions.$wrapper.html(`<p><strong>${escape(data.number)}</strong></p><p>${escape(__(data.assignment_mode === "automatic"
+            ? "Automatically assigned by company country. Saving changes creates a manual exception."
+            : "This approval uses a saved manual allocation."))}</p><p>${escape(__(
             "Allocate every original line in its original currency. Split a line by adding rows; its allocated amounts must equal its original amount. CN uses the application month; MX requires its finance approval date. Approval does not confirm payment."
         ))}</p>${data.state === "stale" ? `<p class="text-warning">${escape(__("Cross-region allocation requires review"))}</p>` : ""}`);
         dialog.show();

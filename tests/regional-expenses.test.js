@@ -66,6 +66,15 @@ test("saving retains decimal strings, source identity and concurrency tokens", a
     assert.equal(h.dialogs[0].visible, false);
 });
 
+test("automatic ownership is explained and saving submits a manual exception without trusted metadata", async () => {
+    const h = harness({assignment_mode: "automatic"});
+    h.data.allocations[0].assignment_mode = "automatic";
+    await h.api.open({allocation: "record"});
+    assert.match(h.dialogs[0].html, /Automatically assigned by company country/);
+    await h.dialogs[0].config.primary_action();
+    assert.equal(h.calls.at(-1).args.allocations[0].assignment_mode, undefined);
+});
+
 test("failed saving keeps the draft visible and allows retry", async () => {
     const h = harness(); await h.api.open({allocation: "record"}); h.fail();
     await assert.rejects(h.dialogs[0].config.primary_action());

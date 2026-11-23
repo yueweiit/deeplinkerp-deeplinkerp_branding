@@ -2957,3 +2957,7 @@ Regional Expense Allocation,Asignación de gastos entre regiones
 Detail row,Línea de detalle
 Open,Abrir
 CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,El análisis de gestión CN supera las 50000 líneas. Reduzca el ámbito configurado.
+Expense ownership is being updated automatically. Please wait.,La asignación de gastos se está actualizando automáticamente. Espere un momento.
+Automatically assigned by company country. Edit only for exceptions.,Asignado automáticamente según el país de la empresa. Edite solo las excepciones.
+Automatically assigned by company country. Saving changes creates a manual exception.,Asignado automáticamente según el país de la empresa. Guardar los cambios crea una asignación manual.
+This approval uses a saved manual allocation.,Esta aprobación utiliza una asignación manual guardada.

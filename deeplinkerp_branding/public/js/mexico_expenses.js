@@ -193,6 +193,7 @@
 			this.el.className = "mx-expenses";
 			this.page.main.append(this.el);
 			root.$(wrapper).on("hide.mx-expenses", () => {
+				clearTimeout(this.allocationTimer);
 				this.disposeFilterControls();
 				this.disposeApprovalSidebar();
 			});
@@ -569,6 +570,16 @@
 			const searchFocus =
 				keepSearch && this.el.querySelector("#mx-search") === root.document.activeElement;
 			this.shell();
+			clearTimeout(this.allocationTimer);
+			if (this.context.allocation_rebuilding) {
+				this.el.querySelector(".mx-body").innerHTML = `<div class="mx-notice">${esc(t("Expense ownership is being updated automatically. Please wait."))}</div>`;
+				this.allocationTimer = setTimeout(() => {
+					if (this.isCurrentRoute() && epoch === this.epoch) this.reload().catch(() => {
+						if (epoch === this.epoch) this.el.querySelector(".mx-body").innerHTML = `<div class="mx-notice mx-warning">${esc(t("Mexico expenses could not be loaded"))}${button("Retry", "retry")}</div>`;
+					});
+				}, 2500);
+				return;
+			}
 			this.mountApprovalSidebar();
 			if (!validDateRange(filters)) {
 				this.el.querySelector(".mx-body").innerHTML = `<div class="mx-notice mx-warning">${esc(t("Enter a valid start and end date; the start date must not be after the end date"))}</div>`;
@@ -1114,7 +1125,7 @@
 			dialog.$wrapper.addClass("mx-detail-dialog");
 			const detail = (label, value) =>
 				`<div><dt>${esc(t(label))}</dt><dd>${value}</dd></div>`;
-			const allocationButton = (data.allocation_origin ? `<p>${esc(t("Approval source"))}: ${esc(data.allocation_origin.toUpperCase())}</p>` : "") + (this.context.can_manage && data.whole_source ? `<div class="mx-detail-actions">${button("Cross-region expense allocation", "regional")}</div>` : "");
+			const allocationButton = (data.allocation_origin ? `<p>${esc(t("Approval source"))}: ${esc(data.allocation_origin.toUpperCase())}</p>` : "") + (data.assignment_mode === "automatic" ? `<p>${esc(t("Automatically assigned by company country. Edit only for exceptions."))}</p>` : "") + (this.context.can_manage && data.whole_source ? `<div class="mx-detail-actions">${button("Cross-region expense allocation", "regional")}</div>` : "");
             const sourceLink = data.whole_source && data.dingtalk_url
 				? `<div class="mx-detail-source"><a class="mx-button" href="${esc(data.dingtalk_url)}" rel="noopener noreferrer">${esc(t("Open Original in DingTalk"))}</a></div>`
 				: "";
