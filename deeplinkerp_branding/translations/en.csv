@@ -2686,3 +2686,4 @@ Regional Expense Allocation,Regional Expense Allocation
 Detail row,Detail row
 Open,Open
 CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,CN management analysis exceeds 50000 detail lines. Narrow the configured scope.
+The reporting period cannot start in the future,The reporting period cannot start in the future

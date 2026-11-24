@@ -553,7 +553,7 @@ def preview_template(template, business_timezone="America/Mexico_City"):
 
 def _filters(filters):
     values = frappe.parse_json(filters) if isinstance(filters, str) else filters or {}
-    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact", "confirmed_only", "expense_scope"}
+    allowed = {"month", "from_date", "to_date", "basis", "company", "approval_type", "category", "subcategory", "currency", "reporting_currency", "status", "keyword", "issue", "classification_key", "classification_exact", "confirmed_only", "expense_scope", "review_bucket", "unassigned_only"}
     if not isinstance(values, dict) or set(values) - allowed:
         frappe.throw(_("Invalid Mexico expense filters"))
     if any(not isinstance(v, str) or len(v) > 200 for v in values.values() if v is not None):
@@ -588,6 +588,8 @@ def _filters(filters):
     if values.get("classification_key") and (not values.get("approval_type") or not re.fullmatch(classification.KEY_PATTERN, values["classification_key"])):
         frappe.throw(_("Invalid expense category"))
     if values.get("confirmed_only") not in (None, "", "1"):
+        frappe.throw(_("Invalid Mexico expense filters"))
+    if values.get("unassigned_only") not in (None, "", "1") or values.get("review_bucket") not in (None, "", "attention", "awaiting_finance"):
         frappe.throw(_("Invalid Mexico expense filters"))
     if values.get("classification_exact") not in (None, "", "1"):
         frappe.throw(_("Invalid expense category"))
@@ -634,7 +636,7 @@ def _query(values, fields, *, confirmed=False, review=False):
     from .regional_expense_automatic import ensure_rebuild
     if not review and ensure_rebuild(settings):
         frappe.throw(_("Expense ownership is being updated automatically. Please wait."))
-    mapping_current = (table.company_basis == "manual") | (Coalesce(table.mapping_version, "") == (_mapping_version(settings)))
+    mapping_current = (Coalesce(table.company_basis, "") == "manual") | (Coalesce(table.mapping_version, "") == (_mapping_version(settings)))
     excluded = (Coalesce(table.expense_scope, "mx") == "non_mx") & mapping_current & period_current
     excluded_view = values.get("expense_scope") == "non_mx" and not confirmed
     currency_scope = table.currency == values["currency"]
@@ -662,6 +664,8 @@ def _query(values, fields, *, confirmed=False, review=False):
     if not review and scoped_query(["name"]).where(~period_current).limit(1).run():
         frappe.throw(_("Expense periods are being recalculated; view Data Review and retry after recalculation"))
     query = scoped_query(fields)
+    if values.get("unassigned_only") == "1":
+        query = query.where(Coalesce(table.company, "") == "")
     if status == "finance_approved":
         query = query.where(table.finance_approved_date.isnotnull())
     if not review:
@@ -670,6 +674,9 @@ def _query(values, fields, *, confirmed=False, review=False):
         query = query.where((table.review_state == "confirmed") & mapping_current)
     if review and not excluded_view:
         query = query.where((table.review_state != "confirmed") | ~mapping_current | ~period_current)
+        if values.get("review_bucket"):
+            awaiting = _awaiting_finance(table, mapping_current, period_current)
+            query = query.where(awaiting if values["review_bucket"] == "awaiting_finance" else ~awaiting)
     basis = {"period": table.finance_approved_date, "request": table.request_date, "planned": table.planned_payment_date}[values["basis"]]
     if review and values["basis"] == "period":
         from pypika.terms import Case
@@ -689,6 +696,158 @@ def _query(values, fields, *, confirmed=False, review=False):
             criterion |= ~period_current
         query = query.where(criterion)
     return query
+
+
+def _awaiting_finance(table, mapping_current, period_current):
+    """Only a missing finance period is workflow waiting, never an unknown issue."""
+    from pypika.functions import Coalesce, Replace
+    return (mapping_current & period_current & table.finance_approved_date.isnull()
+            & (Coalesce(table.company, "") != "")
+            & (Replace(Coalesce(table.issues, ""), " ", "") == '["period"]'))
+
+
+def _review_by_company(values):
+    from pypika.functions import Coalesce, Count, Sum
+    from pypika.terms import Case
+    table = frappe.qb.DocType(LINE)
+    settings = _settings()
+    mapping_current = (Coalesce(table.company_basis, "") == "manual") | (Coalesce(table.mapping_version, "") == _mapping_version(settings))
+    period_current = Coalesce(table.period_version, "") == _period_version(settings)
+    awaiting = _awaiting_finance(table, mapping_current, period_current)
+    company = Coalesce(table.company, "")
+    fields = [company.as_("company"), Count(table.name).as_("lines"),
+              Sum(Case().when(awaiting, 1).else_(0)).as_("awaiting_lines")]
+    scope = {**values, "status": "active", "confirmed_only": "", "review_bucket": "", "unassigned_only": "", "issue": ""}
+    return {row["company"] or "": {"review_lines": int(row["lines"]) - int(row["awaiting_lines"] or 0),
+                                    "awaiting_lines": int(row["awaiting_lines"] or 0)}
+            for row in _query(scope, fields, review=True).groupby(company).run(as_dict=True)}
+
+
+@frappe.whitelist()
+def get_management_overview(filters=None):
+    """Month-first management view; every amount and drilldown uses the shared query."""
+    _finance()
+    values = _filters(filters)
+    values.update(basis="period", status="finance_approved", expense_scope="mx", confirmed_only="1",
+                  category="", subcategory="", classification_key="", classification_exact="", keyword="",
+                  issue="", review_bucket="", unassigned_only="")
+    settings = _settings()
+    today = datetime.now(ZoneInfo(settings.business_timezone or "America/Mexico_City")).date().isoformat()
+    # Future dates never inflate month-to-date totals, comparisons or drilldowns.
+    if values["from_date"] > today:
+        frappe.throw(_("The reporting period cannot start in the future"))
+    values["to_date"] = min(values["to_date"], today)
+    conversion = fx.Conversion(values["reporting_currency"]) if values.get("reporting_currency") else None
+    history_conversion = fx.Conversion(values["reporting_currency"],
+        loader=lambda currency, day: fx.load_month_rate(currency, day, quiet=True)) if conversion else None
+    def aggregate(scope, groups, *, historical=False):
+        return _aggregates(scope, groups, conversion=history_conversion if historical else conversion, confirmed=True)
+    current = aggregate(values, ("company",))
+    included = _counts(values, confirmed=True)
+    review = _review_by_company(values)
+    window = insights.comparison_period(values["from_date"], values["to_date"], today)
+    previous, previous_review = [], {}
+    previous_available = True
+    if window:
+        prior = {**values, "from_date": window["previous_from"], "to_date": window["previous_to"]}
+        try:
+            previous = aggregate(prior, ("company",), historical=True)
+        except fx.RateUnavailable:
+            previous_available = False
+        else:
+            previous_review = _review_by_company(prior)
+    # last_sync_at alone can represent a partial page. Do not claim a completed
+    # baseline while a selected template is disabled, unsynced, failed or paging.
+    selected_templates = [row for row in _templates(settings)
+                          if not values.get("approval_type") or row.get("approval_type") == values["approval_type"]]
+    sync_complete = bool(selected_templates) and all(row.get("enabled") and row.get("last_sync_at")
+        and not any(row.get(key) for key in ("last_error", "cursor", "sync_until")) for row in selected_templates)
+
+    def comparison_reason(current_lines, previous_lines, review_lines):
+        if not window:
+            return "period"
+        if not previous_available:
+            return "exchange_rate"
+        if not sync_complete:
+            return "synchronization"
+        if not current_lines or not previous_lines:
+            return "history"
+        if review_lines:
+            return "review"
+        return ""
+
+    current_by_company = {row["company"]: row for row in current}
+    previous_by_company = {row["company"]: row for row in previous}
+    ranked = {row["key"]: row for row in insights.ranking(current, previous, "company")}
+    companies = []
+    unknown_review = review.get("", {}).get("review_lines", 0) + previous_review.get("", {}).get("review_lines", 0)
+    if values.get("company") and window and previous_available:
+        # Company drilldown must retain the overview's uncertainty about visible
+        # unassigned lines. Keep these out of this company's amounts and counts.
+        for scope in (values, prior):
+            unassigned = {**scope, "company": "", "status": "active", "confirmed_only": "",
+                          "review_bucket": "attention", "unassigned_only": "1", "issue": ""}
+            unknown_review += int(_counts(unassigned, review=True).get("lines") or 0)
+    for company in _companies():
+        if values.get("company") and company != values["company"]:
+            continue
+        row = current_by_company.get(company, {})
+        change = ranked.get(company, {**insights.change(0, 0), "share": "0.0"})
+        reason = comparison_reason(row.get("lines"), previous_by_company.get(company, {}).get("lines"),
+            unknown_review or review.get(company, {}).get("review_lines") or previous_review.get(company, {}).get("review_lines"))
+        comparable = not reason
+        companies.append({"company": company, "amount": insights.money(row.get("amount")),
+            "lines": int(row.get("lines") or 0), "applications": int(row.get("applications") or 0),
+            "previous": change["previous"] if previous_available else None,
+            "delta": change["delta"] if previous_available else None, "share": change["share"],
+            "percent": change["percent"] if comparable else None, "comparable": comparable, "unavailable_reason": reason,
+            **review.get(company, {"review_lines": 0, "awaiting_lines": 0})})
+    companies.sort(key=lambda row: (-insights.amount(row["amount"]), row["company"]))
+    total = sum((insights.amount(row.get("amount")) for row in current), Decimal(0))
+    comparison = None
+    if window:
+        previous_total = sum((insights.amount(row.get("amount")) for row in previous), Decimal(0))
+        reason = comparison_reason(included.get("lines"), sum(int(row.get("lines") or 0) for row in previous),
+            unknown_review or any(row["review_lines"] for row in [*review.values(), *previous_review.values()]))
+        comparable = not reason
+        comparison = {**window, **insights.change(total, previous_total), "comparable": comparable}
+        if not comparable:
+            comparison["percent"] = None
+            comparison["unavailable_reason"] = reason
+        if not previous_available:
+            comparison.update(previous=None, delta=None, unavailable_reason="exchange_rate")
+    result = {"scope": values, "today": today, "total": insights.money(total), "included": included,
+              "companies": companies, "comparison": comparison, "sync_complete": sync_complete,
+              "review": {"lines": sum(row["review_lines"] for row in review.values()),
+                         "awaiting_lines": sum(row["awaiting_lines"] for row in review.values()),
+                         "unassigned_lines": review.get("", {}).get("review_lines", 0)}}
+    if values.get("company"):
+        result["forms"] = [{**row, "amount": insights.money(row["amount"])}
+                           for row in aggregate(values, ("approval_type",))]
+        result["categories"] = [{**row, "amount": insights.money(row["amount"])}
+                                for row in aggregate(values, ("category",))]
+        end_month = date.fromisoformat(values["to_date"]).replace(day=1)
+        first = max(date(1900, 1, 1), insights.shift_month(end_month, -5))
+        trend_scope = {**values, "from_date": first.isoformat()}
+        try:
+            monthly = {str(row["period_month"])[:7]: row
+                       for row in aggregate(trend_scope, ("period_month",), historical=True)}
+        except fx.RateUnavailable:
+            # Do not fabricate zero-valued months or hide valid selected-period totals.
+            result.update(trend=[], trend_unavailable_reason="exchange_rate")
+            return result
+        trend = []
+        cursor = first
+        while cursor <= end_month:
+            key = cursor.strftime("%Y-%m")
+            row = monthly.get(key)
+            trend.append({"month": key, "amount": insights.money(row["amount"]) if row else None,
+                          "lines": int(row["lines"]) if row else 0,
+                          "from_date": cursor.isoformat(),
+                          "to_date": min(contract.month_bounds(key)[1].isoformat(), values["to_date"])})
+            cursor = insights.shift_month(cursor, 1)
+        result["trend"] = trend
+    return result
 
 
 def _conversion_expression(values, conversion, **scope):

@@ -2,6 +2,8 @@
 import json
 import sqlite3
 import unittest
+from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,6 +16,257 @@ from deeplinkerp_branding.services import mexico_expenses as s
 
 
 class MexicoQueryTests(unittest.TestCase):
+    def management(self, template_state=None, **filters):
+        clock = SimpleNamespace(now=lambda zone: datetime(2026, 11, 24))
+        templates = [{**row, "enabled": 1, "last_sync_at": "2026-11-24", **(template_state or {})} for row in s._templates()]
+        with patch.object(s, "_finance"), patch.object(s, "_companies", return_value=["A", "Empty"]), \
+                patch.object(s, "datetime", clock), patch.object(s, "_templates", return_value=templates):
+            return s.get_management_overview({"from_date": "2026-11-01", "to_date": "2026-11-30", **filters})
+
+    def test_monthly_dashboard_includes_empty_authorized_companies_and_exact_drilldown(self):
+        result = self.management()
+        self.assertEqual(result["total"], "90.00")
+        self.assertEqual(result["scope"]["to_date"], "2026-11-24")
+        self.assertEqual(result["scope"]["status"], "finance_approved")
+        self.assertEqual([row["company"] for row in result["companies"]], ["A", "Empty"])
+        self.assertEqual(result["companies"][1]["lines"], 0)
+        self.assertNotIn("forbidden", str(result))
+        detail = s._query(result["scope"], ["amount"]).run(as_dict=True)
+        self.assertEqual(sum(row["amount"] for row in detail), 90)
+        self.assertEqual(result["included"]["applications"], 2)
+        self.assertEqual(result["review"], {"lines": 1, "awaiting_lines": 1, "unassigned_lines": 0})
+        for bucket, expected in (("attention", {"stale_mapping"}), ("awaiting_finance", {"missing_period"})):
+            scope = {**result["scope"], "status": "active", "confirmed_only": "", "review_bucket": bucket}
+            self.assertEqual({r["name"] for r in s._query(scope, ["name"], review=True).run(as_dict=True)}, expected)
+
+    def test_waiting_with_another_issue_or_stale_mapping_remains_attention(self):
+        for changes in (("issues", '["period", "amount"]'), ("mapping_version", "old"), ("company_basis", None)):
+            self.db.execute('UPDATE "tabMexico Expense Line" SET "'+changes[0]+'"=? WHERE name=?', (changes[1], "missing_period"))
+            if changes[0] == "company_basis":
+                self.db.execute('UPDATE "tabMexico Expense Line" SET mapping_version=? WHERE name=?', ("old", "missing_period"))
+            result = self.management()
+            self.assertEqual(result["review"]["lines"], 2)
+            self.assertEqual(result["review"]["awaiting_lines"], 0)
+            rows = s._query({**result["scope"], "status": "active", "confirmed_only": "", "review_bucket": "attention"}, ["name"], review=True).run(as_dict=True)
+            self.assertEqual({r["name"] for r in rows}, {"missing_period", "stale_mapping"})
+
+    def test_comparison_uses_same_elapsed_days_and_suppresses_incomplete_baseline(self):
+        self.assertFalse(self.management()["comparison"]["comparable"])
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("stale_mapping",))
+        # This old-month approval is outside the comparable elapsed window.
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=? WHERE name=?', ("2026-10-25", "october"))
+        result = self.management()
+        self.assertEqual(result["comparison"]["previous_to"], "2026-10-24")
+        self.assertEqual(result["comparison"]["previous"], "0.00")
+        self.assertIsNone(result["comparison"]["percent"])
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=? WHERE name=?', ("2026-10-24", "october"))
+        result = self.management()
+        self.assertTrue(result["comparison"]["comparable"])
+        self.assertEqual(result["comparison"]["previous"], "7.00")
+        self.assertEqual(result["companies"][0]["delta"], "83.00")
+
+    def test_company_dashboard_trend_expands_dates_without_changing_monthly_total(self):
+        with patch.object(s, "_company_access"):
+            result = self.management(company="A")
+        self.assertEqual(result["total"], "90.00")
+        self.assertEqual(sum(float(row["amount"]) for row in result["forms"]), 90)
+        self.assertEqual(sum(float(row["amount"]) for row in result["categories"]), 90)
+        self.assertEqual(len(result["trend"]), 6)
+        october = next(row for row in result["trend"] if row["month"] == "2026-10")
+        self.assertEqual((october["amount"], october["to_date"]), ("7.00", "2026-10-31"))
+        self.assertEqual(result["trend"][-1]["to_date"], "2026-11-24")
+
+    def test_converted_dashboard_amount_matches_public_detail_lines(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET amount_raw=CAST(amount AS TEXT)')
+        with patch.object(s.fx, "load_month_rate", side_effect=lambda currency, day, **kwargs: Decimal("17.13") if currency == "USD" else Decimal(1)), patch.object(s, "_finance"):
+            result = self.management(reporting_currency="MXN")
+            details = s.get_lines(result["scope"])
+        self.assertEqual(result["total"], "8655.00")
+        self.assertEqual(sum(Decimal(row["converted_amount"]) for row in details["rows"]), Decimal(result["total"]))
+        self.assertEqual({row["currency"] for row in details["rows"]}, {"MXN", "USD"})
+
+    def test_missing_previous_rates_preserve_selected_totals_and_can_recover(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET currency=? WHERE name=?', ("USD", "october"))
+        missing = {"2026-10-01"}
+        def rate(currency, day, **options):
+            if day in missing:
+                if options.get("quiet"):
+                    raise s.fx.RateUnavailable("Missing historical rate")
+                raise ValueError("Missing required rate")
+            return Decimal("17.13") if currency == "USD" else Decimal(1)
+        with patch.object(s.fx, "load_month_rate", side_effect=rate), patch.object(s, "_company_access"):
+            for company in ("", "A"):
+                with self.subTest(company=company):
+                    result = self.management(reporting_currency="MXN", company=company)
+                    self.assertEqual(result["total"], "8655.00")
+                    self.assertEqual(result["included"]["lines"], 4)
+                    self.assertEqual(result["comparison"]["unavailable_reason"], "exchange_rate")
+                    self.assertFalse(result["comparison"]["comparable"])
+                    for key in ("previous", "delta", "percent"):
+                        self.assertIsNone(result["comparison"][key])
+                        self.assertIsNone(result["companies"][0][key])
+                    if company:
+                        self.assertEqual(sum(Decimal(row["amount"]) for row in result["forms"]), Decimal("8655.00"))
+                        self.assertEqual(result["trend"], [])
+                        self.assertEqual(result["trend_unavailable_reason"], "exchange_rate")
+            missing.clear()
+            recovered = self.management(reporting_currency="MXN", company="A")
+            self.assertEqual(recovered["comparison"]["previous"], "119.91")
+            self.assertEqual(recovered["comparison"]["unavailable_reason"], "review")
+            self.assertNotIn("trend_unavailable_reason", recovered)
+            self.assertEqual(len(recovered["trend"]), 6)
+
+    def test_missing_older_trend_rate_preserves_current_and_comparison(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=?,period_month=? WHERE name=?',
+                        ("2026-09-01", "2026-09-01", "usd"))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("stale_mapping",))
+        def rate(currency, day, **options):
+            if day == "2026-09-01" and options.get("quiet"):
+                raise s.fx.RateUnavailable("Missing September rate")
+            raise AssertionError("Only September needs conversion")
+        with patch.object(s.fx, "load_month_rate", side_effect=rate), patch.object(s, "_company_access"):
+            result = self.management(company="A", reporting_currency="MXN")
+        self.assertEqual(result["total"], "90.00")
+        self.assertTrue(result["comparison"]["comparable"])
+        self.assertEqual(result["comparison"]["previous"], "7.00")
+        self.assertEqual(result["trend"], [])
+        self.assertEqual(result["trend_unavailable_reason"], "exchange_rate")
+
+    def test_missing_selected_month_rate_still_fails(self):
+        with patch.object(s.fx, "load_month_rate", side_effect=ValueError("Missing required rate")):
+            with self.assertRaisesRegex(ValueError, "Missing required rate"):
+                self.management(reporting_currency="MXN")
+
+    def test_optional_history_does_not_hide_permission_or_query_errors(self):
+        aggregate = s._aggregates
+        for start in ("2026-10-01", "2026-06-01"):
+            for error_type in (frappe.PermissionError, RuntimeError):
+                with self.subTest(start=start, error=error_type):
+                    def fail_history(values, *args, **kwargs):
+                        if values["from_date"] == start:
+                            raise error_type("History query failed")
+                        return aggregate(values, *args, **kwargs)
+                    with patch.object(s, "_aggregates", side_effect=fail_history), patch.object(s, "_company_access"):
+                        with self.assertRaisesRegex(error_type, "History query failed"):
+                            self.management(company="A")
+
+    def test_month_to_date_does_not_include_future_finance_dates(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=? WHERE name=?', ("2026-11-25", "a1"))
+        result = self.management()
+        self.assertEqual(result["total"], "80.00")
+        self.assertNotIn("a1", {row["name"] for row in s._query(result["scope"], ["name"]).run(as_dict=True)})
+
+    def test_trend_distinguishes_absent_records_from_confirmed_zero(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET amount=0 WHERE name=?', ("october",))
+        with patch.object(s, "_company_access"):
+            result = self.management(company="A")
+        september = next(row for row in result["trend"] if row["month"] == "2026-09")
+        october = next(row for row in result["trend"] if row["month"] == "2026-10")
+        self.assertEqual((september["amount"], september["lines"]), (None, 0))
+        self.assertEqual((october["amount"], october["lines"]), ("0.00", 1))
+
+    def test_comparison_returns_the_actual_unavailability_reason(self):
+        self.assertEqual(self.management()["comparison"]["unavailable_reason"], "review")
+        self.assertEqual(self.management(template_state={"last_sync_at":None})["comparison"]["unavailable_reason"], "synchronization")
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name IN (?,?)', ("october", "stale_mapping"))
+        self.assertEqual(self.management()["comparison"]["unavailable_reason"], "history")
+
+    def test_management_rejects_future_periods(self):
+        with patch.object(s, "_", side_effect=lambda text: text), patch.object(frappe, "throw", side_effect=ValueError("future period")):
+            with self.assertRaisesRegex(ValueError, "future period"):
+                self.management(from_date="2026-12-01", to_date="2026-12-31")
+
+    def test_missing_current_records_do_not_claim_a_complete_drop_in_spending(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name!=?', ("october",))
+        result = self.management()
+        self.assertEqual(result["total"], "0.00")
+        self.assertFalse(result["comparison"]["comparable"])
+        self.assertIsNone(result["companies"][0]["percent"])
+
+    def test_unknown_company_filter_never_returns_assigned_rows(self):
+        rows = s._query({**self.filters, "unassigned_only": "1"}, ["name"], review=True).run(as_dict=True)
+        self.assertEqual(rows, [])
+
+    def test_incomplete_or_disabled_sync_never_claims_comparable_history(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("stale_mapping",))
+        for state in ({"cursor": "next"}, {"last_error": "failure"}, {"last_sync_at": None}, {"enabled": 0}):
+            with self.subTest(state=state):
+                result = self.management(template_state=state)
+                self.assertEqual(result["total"], "90.00")
+                self.assertFalse(result["sync_complete"])
+                self.assertFalse(result["comparison"]["comparable"])
+                self.assertIsNone(result["comparison"]["percent"])
+
+    def test_manager_unknown_company_bucket_is_separate_and_reconciles_to_review(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET company=NULL,review_state=?,issues=? WHERE name=?',
+                        ("needs_review", '["company"]', "forbidden"))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET company=?,is_active=1,review_state=?,issues=? WHERE name=?',
+                        ("", "needs_review", '["company"]', "inactive"))
+        def manager_query(doctype, fields, filters, ignore_permissions):
+            self.assertFalse(ignore_permissions)
+            table = Table("tab" + doctype)
+            query = Query.from_(table).select(*[getattr(table, f) if isinstance(f, str) else f for f in fields])
+            query = query.where((table.company == "A") | table.company.isnull() | (table.company == ""))
+            for field, operator, value in filters:
+                column = getattr(table, field)
+                query = query.where(column.isin(value) if operator == "in" else column == value)
+            return query
+        with patch.object(frappe.qb, "get_query", manager_query):
+            result = self.management()
+            self.assertEqual(result["total"], "90.00")
+            self.assertEqual(result["review"]["unassigned_lines"], 2)
+            self.assertEqual(result["review"]["lines"], 3)
+            scope = {**result["scope"], "confirmed_only": "", "status": "active", "review_bucket": "attention", "unassigned_only": "1"}
+            rows = s._query(scope, ["name"], review=True).run(as_dict=True)
+            self.assertEqual({row["name"] for row in rows}, {"forbidden", "inactive"})
+
+    def test_company_comparison_retains_visible_unassigned_uncertainty_in_either_period(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("stale_mapping",))
+        self.db.execute('UPDATE "tabMexico Expense Line" SET company=NULL,review_state=?,issues=? WHERE name=?',
+                        ("needs_review", '["company"]', "forbidden"))
+
+        def manager_query(doctype, fields, filters, ignore_permissions):
+            self.assertFalse(ignore_permissions)
+            table = Table("tab" + doctype)
+            query = Query.from_(table).select(*[getattr(table, f) if isinstance(f, str) else f for f in fields])
+            query = query.where((table.company == "A") | table.company.isnull() | (table.company == ""))
+            for field, operator, value in filters:
+                column = getattr(table, field)
+                query = query.where(column.isin(value) if operator == "in" else column == value)
+            return query
+
+        with patch.object(frappe.qb, "get_query", manager_query), patch.object(s, "_company_access"):
+            for day, company in (("2026-11-05", None), ("2026-10-05", "")):
+                with self.subTest(period=day):
+                    self.db.execute('UPDATE "tabMexico Expense Line" SET finance_approved_date=?,company=? WHERE name=?',
+                                    (day, company, "forbidden"))
+                    overview = self.management()
+                    selected = self.management(company="A")
+                    company_row = next(row for row in overview["companies"] if row["company"] == "A")
+                    for comparison in (company_row, selected["companies"][0], selected["comparison"]):
+                        self.assertFalse(comparison["comparable"])
+                        self.assertEqual(comparison["unavailable_reason"], "review")
+                        self.assertIsNone(comparison["percent"])
+                    self.assertEqual(selected["total"], "90.00")
+                    self.assertEqual(selected["comparison"]["previous"], "7.00")
+                    self.assertEqual(selected["review"], {"lines": 0, "awaiting_lines": 1, "unassigned_lines": 0})
+                    self.assertNotIn("forbidden", str(selected))
+            # Once the uncertain record is resolved, both views can compare again.
+            self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("forbidden",))
+            self.assertTrue(self.management()["companies"][0]["comparable"])
+            self.assertTrue(self.management(company="A")["comparison"]["comparable"])
+
+    def test_company_comparison_does_not_read_unassigned_lines_outside_permissions(self):
+        self.db.execute('UPDATE "tabMexico Expense Line" SET is_active=0 WHERE name=?', ("stale_mapping",))
+        # The fixture's native permission scope allows only company A, never unknown owners.
+        self.db.execute('UPDATE "tabMexico Expense Line" SET company=NULL,review_state=?,issues=? WHERE name=?',
+                        ("needs_review", '["company"]', "forbidden"))
+        with patch.object(s, "_company_access"):
+            for result in (self.management(), self.management(company="A")):
+                self.assertTrue(result["comparison"]["comparable"])
+                self.assertEqual(result["comparison"]["percent"], "1185.7")
+                self.assertEqual(result["review"]["unassigned_lines"], 0)
+
     def test_routed_approval_type_is_visible_without_an_mx_sync_template(self):
         from deeplinkerp_branding.services import regional_expenses as regional
         self.db.execute('CREATE TABLE "tabRegional Expense Allocation" (name TEXT)')
