@@ -246,6 +246,28 @@ class TemplateSyncTests(unittest.TestCase):
             self.assertEqual(enqueue.call_args.kwargs['template_key'],s._template_key(settings.templates[1]))
         self.assertEqual(len(s._templates(settings)),2)
 
+    def test_page_jobs_deduplicate_the_same_cursor_and_continue_with_a_different_job(self):
+        template=self.settings().templates[0]
+        with patch.object(frappe,'enqueue') as enqueue:
+            s._enqueue_page(template)
+            first=enqueue.call_args.kwargs
+            s._enqueue_page(template,force=True)
+            self.assertEqual(first['job_id'],enqueue.call_args.kwargs['job_id'])
+            self.assertTrue(first['deduplicate'])
+            self.assertTrue(first['enqueue_after_commit'])
+            self.assertEqual(first['expected_cursor'],'cursor-0')
+            template.cursor='next-page'
+            s._enqueue_page(template)
+            self.assertNotEqual(first['job_id'],enqueue.call_args.kwargs['job_id'])
+
+    def test_obsolete_queued_page_does_not_read_or_advance_current_source(self):
+        settings=self.settings();template=settings.templates[0]
+        with patch.object(s,'_settings',return_value=settings),patch.object(frappe,'db',MagicMock()),patch.object(frappe,'cache',SimpleNamespace(lock=lambda *a,**kw:nullcontext())),patch.object(frappe,'local',SimpleNamespace(site='isolated')),patch.object(s.http,'read_template_page') as read,patch.object(s,'_save') as save:
+            result=s.sync_page(template_key=s._template_key(template),expected_cursor='obsolete')
+        self.assertTrue(result['superseded'])
+        read.assert_not_called();save.assert_not_called()
+        self.assertEqual(template.cursor,'cursor-0')
+
     def test_one_failure_preserves_other_template_cursor_and_retry_is_independent(self):
         settings=self.settings();first=settings.templates[0];second=settings.templates[1]
         with patch.object(s,'_',side_effect=lambda text:text),patch.object(s,'_settings',return_value=settings),patch.object(frappe,'db',MagicMock()),patch.object(frappe,'cache',SimpleNamespace(lock=lambda *a,**kw:nullcontext())),patch.object(frappe,'local',SimpleNamespace(site='isolated')),patch.object(s.http,'configuration',return_value=('http://qa',[s.contract.CORP_ID])),patch.object(s.http,'read_template_page',side_effect=s.http.OAInvalidCursor()),patch.object(s,'_save'),patch.object(frappe,'log_error'):

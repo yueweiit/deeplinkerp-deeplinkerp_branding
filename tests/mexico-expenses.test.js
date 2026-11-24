@@ -482,14 +482,24 @@ test("composition legend follows filtered amounts and retains form/category dril
     assert(!all.includes('data-category='));
 });
 
+function withSettingsAssets(root) {
+    root.__ = (value) => value;
+    root.frappe.utils = {escape_html: (value) => factory(root).esc(value)};
+    root.frappe.require = (_paths, done) => {
+        root.DeepLinkERPMexicoExpenseSettings = require("../deeplinkerp_branding/public/js/mexico_expense_settings.js")(root);
+        done();
+    };
+    return root;
+}
+
 test("template grid uses approval labels in both editing and static cells without changing stored codes", async () => {
     for (const label of ['费用支出', 'Expense Requests', 'Solicitudes de gastos']) {
         let options;
-        const local = factory({DeepLinkERPMexicoExpenseMappings: {Editor: class {async loadPage() {}}}, frappe: {
+        const local = factory(withSettingsAssets({DeepLinkERPMexicoExpenseMappings: {Editor: class {async loadPage() {}}}, frappe: {
             call: async () => ({message: {can_manage: true, approval_forms: [{id:'expense',label}],
                 settings: {templates: [],company_mappings: []}}}),
             ui: {Dialog: class {constructor(value) {options=value;this.fields_dict={company_mappings:{$wrapper:{}}};} show() {}}},
-        }});
+        }}));
         const page = Object.create(local.Workbench.prototype);
         await page.settings();
         const field=options.fields.find(f=>f.fieldname==='approval_templates').fields.find(f=>f.fieldname==='approval_type');
@@ -503,7 +513,7 @@ test("settings save sends explicitly edited alias draft through the existing ver
     const original = [{source_entity:"Old A", entity_kind:"entity", company:"A"}];
     const context = {can_manage:true, companies:["A"], approval_forms:[], settings:{
         config_version:"v1", company_mappings:original, templates:[]}};
-    const local = factory({
+    const local = factory(withSettingsAssets({
         DeepLinkERPMexicoExpenseMappings:{Editor:class {
             constructor(config) {this.mappings=config.mappings.map(r=>({...r}));editor=this;}
             async loadPage() {}
@@ -515,7 +525,7 @@ test("settings save sends explicitly edited alias draft through the existing ver
             constructor(value) {options=value;this.fields_dict={company_mappings:{$wrapper:{}}};}
             show() {} hide() {} disable_primary_action() {} enable_primary_action() {}
         }}}
-    });
+    }));
     const wb=Object.create(local.Workbench.prototype);wb.refresh=async()=>{};
     await wb.settings();
     assert.equal(submitted,undefined);

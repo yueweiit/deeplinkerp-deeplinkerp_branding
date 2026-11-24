@@ -452,17 +452,57 @@ def enqueue_sync():
     _require_settings_access(_settings())
     _connection()
     frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", force=True,
-        enqueue_after_commit=True, queue="long", timeout=180)
+        enqueue_after_commit=True, queue="long", timeout=180,
+        job_id="mexico-expense-sync-dispatch", deduplicate=True)
     return {"queued": True}
 
 
 def scheduled_sync():
     if frappe.db.exists("DocType", SETTINGS) and _settings().enabled:
         frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", enqueue_after_commit=True,
-            queue="long", timeout=180)
+            queue="long", timeout=180, job_id="mexico-expense-sync-dispatch", deduplicate=True)
 
 
-def sync_page(force=False, template_key=None):
+def _page_job_id(template):
+    return "mexico-expense-page-" + digest([_template_key(template), template.get("cursor") or ""])
+
+
+def _enqueue_page(template, *, force=False):
+    frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", force=force,
+        template_key=_template_key(template), expected_cursor=template.get("cursor") or "",
+        job_id=_page_job_id(template), deduplicate=True, enqueue_after_commit=True, queue="long", timeout=180)
+
+
+def sync_revision(settings):
+    """Identify the local facts without reading queue state or contacting OA."""
+    selected = [row for row in _templates(settings) if row.get("enabled")]
+    return digest([settings.get("config_version") or "", [(str(row.get("last_sync_at") or ""), row.get("cursor"),
+        bool(row.get("last_error"))) for row in selected]])
+
+
+@frappe.whitelist()
+def get_sync_status():
+    """Only report aggregate local state; never expose source configuration."""
+    from frappe.utils.background_jobs import get_job_status
+    _finance()
+    settings = _settings()
+    selected = [row for row in _templates(settings) if row.get("enabled")]
+    states = [get_job_status("mexico-expense-sync-dispatch")]
+    states.extend(get_job_status(_page_job_id(row)) for row in selected)
+    active = any(state in ("queued", "started", "deferred") for state in states)
+    failed = any(row.get("last_error") for row in selected) or "failed" in states
+    completed = sum(bool(row.get("last_sync_at")) and not any(row.get(key)
+        for key in ("cursor", "sync_until", "last_error")) for row in selected)
+    status = "running" if active else "failed" if failed else "success" if selected and completed == len(selected) else "idle"
+    return {"status": status, "active": active, "enabled": bool(settings.enabled),
+        "configured": bool(selected), "can_manage": _can_manage_settings(settings),
+        "template_count": len(selected), "completed_templates": completed,
+        "last_update_at": str(settings.last_sync_at) if settings.last_sync_at else None,
+        "error_code": "sync_failed" if failed else None,
+        "revision": sync_revision(settings)}
+
+
+def sync_page(force=False, template_key=None, expected_cursor=None):
     """Each template owns its cursor. A failed job never advances another template."""
     from redis.exceptions import LockError
     if template_key is None:
@@ -472,8 +512,7 @@ def sync_page(force=False, template_key=None):
         count = 0
         for template in _templates(settings):
             if template.get("enabled"):
-                frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", force=force,
-                    template_key=_template_key(template), enqueue_after_commit=True, queue="long", timeout=180)
+                _enqueue_page(template, force=force)
                 count += 1
         return {"ok": True, "queued": count}
     try:
@@ -483,6 +522,10 @@ def sync_page(force=False, template_key=None):
             template = next((t for t in _templates(settings) if _template_key(t) == template_key), None)
             if not template or not template.get("enabled") or (not force and not settings.enabled):
                 return {"ok": True, "disabled": True}
+            # A queued duplicate must not advance a different page after another
+            # worker has committed. Keep old direct callers compatible.
+            if expected_cursor is not None and (template.get("cursor") or "") != expected_cursor:
+                return {"ok": True, "superseded": True}
             try:
                 url, corps = http.configuration()
                 if template.get("corp_id") not in corps:
@@ -502,8 +545,7 @@ def sync_page(force=False, template_key=None):
                 settings.last_error = next((t.get("last_error") for t in _templates(settings) if t.get("last_error")), None)
                 _save(settings)
                 if page["hasMore"]:
-                    frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", force=force, template_key=template_key,
-                        enqueue_after_commit=True, queue="long", timeout=180)
+                    _enqueue_page(template, force=force)
                 return {"ok": True, "processed": len(rows), "has_more": page["hasMore"]}
             except Exception as exc:
                 frappe.db.rollback(save_point="mx_sync")
