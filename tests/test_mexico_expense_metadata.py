@@ -87,15 +87,15 @@ class MexicoMetadataTests(unittest.TestCase):
 
     def test_expense_translation_is_scoped_without_overwriting_generic_events(self):
         context = meta('mexico_expense_template')['name']
-        for lang, generic, approval in [('zh', '费用', '费用支出'),
-                                        ('en', 'Expense', 'Expense Requests'),
-                                        ('es', 'gasto', 'Solicitudes de gastos')]:
+        for lang, generic, approval, journal in [('zh', '费用', '费用支出', '支出'),
+                                        ('en', 'Expense', 'Expense Requests', 'Payment'),
+                                        ('es', 'gasto', 'Solicitudes de gastos', 'Gasto')]:
             with self.subTest(lang=lang):
                 with (PACKAGE/'translations'/(lang+'.csv')).open() as stream:
                     rows = [row for row in csv.reader(stream) if len(row) >= 2 and row[0] == 'expense']
-                self.assertEqual(len(rows), 2)
+                self.assertEqual(len(rows), 3)
                 values = {(row[2] if len(row) > 2 else ''): row[1] for row in rows}
-                self.assertEqual(values, {'': generic, context: approval})
+                self.assertEqual(values, {'': generic, context: approval, 'CN Cash Journal Entry': journal})
                 # Frappe Select controls and formatters use the parent DocType context.
                 def translate(text, context=None):
                     return values.get(context, values.get('', text))
@@ -103,3 +103,4 @@ class MexicoMetadataTests(unittest.TestCase):
                 with patch.object(frappe, '_', side_effect=translate):
                     self.assertEqual(format_value('expense', frappe._dict(fieldtype='Select', parent=context)), approval)
                     self.assertEqual(format_value('expense', frappe._dict(fieldtype='Select', parent='Operating Expense Event')), generic)
+                    self.assertEqual(format_value('expense', frappe._dict(fieldtype='Select', parent='CN Cash Journal Entry')), journal)

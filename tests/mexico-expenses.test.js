@@ -205,10 +205,13 @@ test("content starts at filters and no longer duplicates the title or five tabs"
 	const workbench = Object.create(api.Workbench.prototype);
 	Object.assign(workbench, {
 		view: "overview", filters: { month: "2026-11", basis: "period", currency: "MXN", status: "active" },
-		context: { companies: [], categories: [], approval_forms: [] }, el: {}, setSyncTime() {}, mountDateControls() {}, mountSelectControls() {}, disposeFilterControls() {},
+		context: { companies: [], categories: [], approval_forms: [] }, el: {}, setSyncTime() {}, mountDateControls() {}, mountDashboardMonth() {}, mountSelectControls() {}, disposeFilterControls() {},
 	});
 	workbench.shell();
-	assert(workbench.el.innerHTML.startsWith('<div class="mx-filters">'));
+	assert(workbench.el.innerHTML.startsWith('<div class="mx-filters mx-dashboard-filters">'));
+	assert(workbench.el.innerHTML.includes('mx-dashboard-month-picker'));
+	assert(!workbench.el.innerHTML.includes('type="month"'));
+	assert(!workbench.el.innerHTML.includes('data-filter="status"'));
 	assert(!workbench.el.innerHTML.includes('mx-heading'));
 	assert(!workbench.el.innerHTML.includes('mx-nav'));
 });
@@ -309,13 +312,17 @@ function preferenceWorkbench(storage = new Map()) {
  return {root, page, storage};
 }
 
-test('first opening keeps current month; saved dates and form survive a fresh page', () => {
+test('module entry starts this month and all forms; analysis retains saved preferences', () => {
  const {page, storage} = preferenceWorkbench();
  page.restorePreferences();
  assert.equal(page.filters.from_date,'2026-11-01');
  Object.assign(page.filters,{from_date:'2026-09-12',to_date:'2026-10-04',approval_type:'purchase',company:'Private Company'});
  page.rememberFilters();
  const next=preferenceWorkbench(storage).page;
+ next.restorePreferences();
+ assert.equal(next.filters.from_date,'2026-11-01');
+ assert.equal(next.filters.approval_type,'');
+ next.view='reports';
  next.restorePreferences();
  assert.equal(next.filters.from_date,'2026-09-12');
  assert.equal(next.filters.to_date,'2026-10-04');

@@ -209,6 +209,10 @@
 				);
 			}
 			this.sync([this.value.from_date, this.value.to_date].filter(Boolean).map(value => localDate(this.mode === "month" ? value.slice(0, 7) + "-01" : value)));
+			this.watchPopup(calendars);
+		}
+		watchPopup(calendars) {
+			const popup = this.popup;
 			this.makeAccessible();
 			this.position();
 			this.outside = (event) => {
@@ -402,5 +406,79 @@
 			this.trigger.remove();
 		}
 	}
-	return { RangePicker, presetRange, calendarMonths, wholeMonths };
+	class MonthPicker extends RangePicker {
+		constructor(options) {
+			super({ ...options, mode: "month" });
+			this.label = "Reporting Month";
+			this.renderValue();
+		}
+		renderValue() {
+			this.trigger.replaceChildren();
+			const value = root.document.createElement("span");
+			const month = this.value.from_date?.slice(0, 7) || this.today.slice(0, 7);
+			const range = wholeMonths(month, month);
+			value.textContent = this.value.from_date === range.from_date && this.value.to_date === range.to_date
+				? this.formatValue(range.from_date)
+				: `${root.frappe.datetime.str_to_user(this.value.from_date)} → ${root.frappe.datetime.str_to_user(this.value.to_date)}`;
+			this.trigger.appendChild(value);
+			const icon = root.document.createElement("span");
+			icon.className = "mx-range-icon";
+			icon.setAttribute("aria-hidden", "true");
+			icon.innerHTML = root.frappe.utils.icon("calendar", "sm");
+			this.trigger.appendChild(icon);
+			this.trigger.setAttribute("aria-label", `${t("Reporting Month")}: ${value.textContent}`);
+		}
+		open() {
+			if (this.popup || this.destroyed) return;
+			const popup = root.document.createElement("div");
+			popup.className = "mx-range-popup mx-single-month-popup";
+			popup.setAttribute("role", "dialog");
+			popup.setAttribute("aria-label", t("Reporting Month"));
+			this.popup = popup;
+			this.trigger.setAttribute("aria-expanded", "true");
+			const holder = root.document.createElement("div");
+			holder.className = "mx-range-calendar";
+			popup.appendChild(holder);
+			root.document.body.appendChild(popup);
+			let language = root.frappe.boot?.lang || root.frappe.boot?.user?.language || "en";
+			if (!root.$.fn.datepicker.language[language]) language = "en";
+			const selected = localDate((this.value.from_date || this.today).slice(0, 7) + "-01");
+			root.$(holder).datepicker({
+				inline: true, view: "months", minView: "months", range: false,
+				toggleSelected: false, keyboardNav: false, language,
+				startDate: selected, minDate: new Date(1900, 0, 1), maxDate: localDate(this.today),
+				onSelect: (_, dates) => this.select(dates),
+			});
+			const picker = root.$(holder).data("datepicker");
+			this.pickers.push(picker);
+			holder.addEventListener("click", event => {
+				const cell = event.target.closest(".datepicker--cell-month:not(.-disabled-)");
+				if (!cell) return;
+				event.preventDefault();
+				event.stopImmediatePropagation();
+				this.select(new Date(picker.date.getFullYear(), +cell.dataset.month, 1));
+			}, true);
+			this.sync([selected]);
+			this.watchPopup(holder);
+		}
+		select(dates) {
+			if (this.syncing) return;
+			const date = Array.isArray(dates) ? dates[0] : dates;
+			if (!(date instanceof Date) || Number.isNaN(date.getTime())) return;
+			const month = iso(date).slice(0, 7);
+			if (month < "1900-01" || month > this.today.slice(0, 7)) return;
+			this.commit(wholeMonths(month, month));
+		}
+		onKeydown(event) {
+			const cell = event.target.closest(".datepicker--cell-month");
+			const delta = {ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3}[event.key];
+			if (cell && delta) {
+				const picker = root.$(cell.closest(".mx-range-calendar")).data("datepicker");
+				const next = iso(new Date(picker.date.getFullYear(), +cell.dataset.month + delta, 1)).slice(0, 7);
+				if (next < "1900-01" || next > this.today.slice(0, 7)) { event.preventDefault(); return; }
+			}
+			super.onKeydown(event);
+		}
+	}
+	return { RangePicker, MonthPicker, presetRange, calendarMonths, wholeMonths };
 });

@@ -65,7 +65,7 @@ class MexicoNavigationTests(unittest.TestCase):
             self.assertFalse(DeskViews.is_item_allowed(authority,'mexico-expenses','Page'))
 
     def test_navigation_caption_is_localized_in_three_languages(self):
-        for lang,expected in [('zh','运营支出（MX）'),('en','Operating Expenses (MX)'),('es','Gastos operativos (MX)')]:
+        for lang,expected in [('zh','支出（MX）'),('en','Expenses (MX)'),('es','Gastos (MX)')]:
             with (PACKAGE/'translations'/(lang+'.csv')).open() as stream:
                 rows={row[0]:row[1] for row in csv.reader(stream) if len(row)>=2}
             self.assertEqual(rows['Mexico Expenses'],expected)

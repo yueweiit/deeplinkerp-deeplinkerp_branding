@@ -1099,3 +1099,58 @@
 .mx-expenses .mx-analysis-group { display: inline-flex; gap: 4px; }
 .mx-expenses .mx-analysis-group [aria-pressed="true"] { background: var(--mx-blue-light); color: var(--mx-blue); border-color: var(--mx-blue); }
 .mx-expenses .mx-comparison-dates { display: block; margin-top: 6px; }
+
+/* Month-first management overview. Keep after shared filter rules. */
+.mx-expenses .mx-dashboard-filters { align-items: flex-end; gap: 14px; }
+.mx-expenses .mx-dashboard-filters .mx-filter { flex: 0 1 220px; min-width: 170px; }
+.mx-expenses .mx-dashboard-filters .mx-filter:has([data-filter="currency"]) { flex: 0 0 110px; min-width: 100px; }
+.mx-expenses .mx-dashboard-filters .mx-dashboard-month { flex: 0 1 310px; min-width: 290px; max-width: 360px; }
+.mx-expenses .mx-dashboard-filters .mx-filter > span { font-size: 12px; color: var(--text-muted, #66758a); }
+.mx-expenses .mx-dashboard-filters .mx-select-toggle, .mx-expenses .mx-dashboard-filters .mx-button, .mx-expenses .mx-dashboard-filters .mx-range-trigger { font-size: 13px; height: 36px; }
+.mx-expenses .mx-dashboard-tools { display: flex; align-items: center; gap: 8px; margin-inline-start: auto; flex-wrap: wrap; }
+.mx-expenses .mx-back-button::before { content: "←"; margin-inline-end: 8px; }
+.mx-expenses .mx-dashboard-meta { flex-basis: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 12px; color: var(--text-muted, #66758a); }
+.mx-expenses .mx-filter-chip { border: 1px solid var(--mx-line); border-radius: 12px; padding: 3px 8px; }
+.mx-expenses .mx-month-controls { display: flex; align-items: center; gap: 4px; }
+.mx-expenses .mx-month-step { flex: 0 0 30px; padding: 0; }
+.mx-expenses .mx-month-step span { font-size: 22px; line-height: 1; }
+.mx-expenses .mx-dashboard-month-picker { flex: 1; min-width: 0; }
+.mx-expenses .mx-dashboard-month-picker .mx-range-trigger { gap: 6px; }
+.mx-single-month-popup { width: 280px; }
+.mx-single-month-popup .datepicker--cell-month { height: 44px; font-size: 13px; }
+.mx-expenses .mx-dashboard-cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-bottom: 20px; }
+.mx-expenses .mx-dashboard-cards .mx-card { min-width: 0; padding: 20px; }
+.mx-expenses .mx-dashboard-cards .mx-card:first-child { background: var(--mx-blue-light); }
+.mx-expenses .mx-card-label { display: flex; align-items: center; gap: 4px; color: var(--text-muted, #66758a); font-size: 13px; }
+.mx-expenses .mx-dashboard-cards .mx-card-value { overflow-wrap: anywhere; margin: 14px 0 8px; }
+.mx-expenses .mx-card-detail { font-size: 12px; color: var(--text-muted, #66758a); min-height: 18px; }
+.mx-expenses .mx-follow-up { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0 8px; }
+.mx-expenses .mx-follow-up > div { display: flex; flex-direction: column; gap: 4px; }
+.mx-expenses .mx-follow-up > div > span { font-size: 12px; color: var(--text-muted, #66758a); }
+.mx-expenses .mx-follow-up strong { font-size: 25px; font-weight: 600; line-height: 1.2; }
+.mx-expenses .mx-follow-up .mx-link { font: inherit; }
+.mx-expenses .mx-status-neutral, .mx-expenses .mx-unassigned-chip { display: inline-block; padding: 3px 8px; border-radius: 6px; background: var(--subtle-fg, #f1f4f8); font-size: 12px; }
+.mx-expenses .mx-status-warning { color: var(--yellow-700, #9a6518); border-color: var(--yellow-300, #ead3ad); }
+.mx-expenses .mx-status-warning::before { content: "●"; font-size: 9px; margin-inline-end: 6px; }
+.mx-expenses.mx-management .mx-muted { color: var(--text-muted, #66758a); font-weight: 400; }
+.mx-expenses.mx-management th { font-size: 12px; color: var(--text-muted, #66758a); }
+.mx-expenses.mx-management td, .mx-expenses.mx-management td .mx-link { font-size: 13px; }
+.mx-expenses.mx-management .mx-panel-head h3 { font-size: 14px; }
+.mx-expenses.mx-management .mx-panel-head .mx-currency-label { font-size: 12px; }
+.mx-expenses .mx-dashboard-companies td { padding-top: 17px; padding-bottom: 17px; }
+.mx-expenses .mx-company-link { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; text-align: start; }
+.mx-expenses .mx-company-link > span { font-size: 20px; color: var(--text-muted, #66758a); }
+.mx-expenses .mx-month-empty { color: var(--text-muted, #66758a); }
+.mx-expenses .mx-month-empty .mx-bar-track { background: transparent; }
+.mx-expenses .mx-month-empty strong { font-weight: 400; font-size: 12px; }
+.mx-expenses .mx-return-navigation { margin: 0 0 12px; }
+@media (max-width: 700px) {
+    .mx-expenses .mx-dashboard-cards { grid-template-columns: 1fr; gap: 10px; }
+    .mx-expenses .mx-dashboard-filters { gap: 12px; }
+    .mx-expenses .mx-dashboard-back { flex-basis: 100%; }
+    .mx-expenses .mx-dashboard-filters .mx-filter { flex: 1 1 160px; min-width: 0; max-width: none; }
+    .mx-expenses .mx-dashboard-filters .mx-dashboard-month { flex: 1 1 100%; min-width: 0; max-width: none; order: 1; }
+    .mx-expenses .mx-dashboard-tools { flex-basis: 100%; margin: 0; order: 2; }
+    .mx-expenses .mx-dashboard-meta { order: 3; }
+    .mx-expenses .mx-dashboard-companies table { min-width: 720px; }
+}

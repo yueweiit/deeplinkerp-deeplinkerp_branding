@@ -2961,4 +2961,44 @@ Expense ownership is being updated automatically. Please wait.,La asignación de
 Automatically assigned by company country. Edit only for exceptions.,Asignado automáticamente según el país de la empresa. Edite solo las excepciones.
 Automatically assigned by company country. Saving changes creates a manual exception.,Asignado automáticamente según el país de la empresa. Guardar los cambios crea una asignación manual.
 This approval uses a saved manual allocation.,Esta aprobación utiliza una asignación manual guardada.
+Back to All Subsidiaries,Volver a todas las filiales
+Back to Subsidiary Analysis,Volver al análisis de la filial
+"Compare confirmed expenses only. Missing history, unfinished synchronization or review items in either period prevent a reliable comparison.","Solo se comparan gastos confirmados. Si falta historial, la sincronización no ha terminado o hay partidas por revisar en alguno de los períodos, la comparación no está disponible."
+Comparison Dates,Fechas de comparación
+Comparison unavailable,Comparación no disponible
+Expense Lines Requiring Review,Partidas por revisar
+Month to Date,Acumulado del mes
+Next Month,Mes siguiente
+No authorized subsidiaries,No hay filiales autorizadas
+Previous Month,Mes anterior
+Recent Six Months,Últimos seis meses
+Subsidiary Expenditure Overview,Resumen de gastos por filial
+Through the selected month; select a month to view confirmed details,Hasta el mes seleccionado; seleccione un mes para ver las partidas confirmadas
+Unassigned expenses are not included in subsidiary totals,Los gastos sin filial asignada no se incluyen en los totales por filial
+Unassigned subsidiary: {0} lines,Sin filial asignada: {0} partidas
+{0} authorized subsidiaries; sorted by confirmed expenditure,"{0} filiales autorizadas, ordenadas por gastos confirmados"
+{0} lines,{0} partidas
+Unassigned subsidiary expenses,Gastos sin filial asignada
+Expenditure by Approval Form,Gastos por tipo de solicitud
+Selected Period,Período seleccionado
+Historical exchange rates are unavailable. Refresh to retry; selected-period totals remain available.,Los tipos de cambio históricos no están disponibles. Actualice para reintentar; los totales del período seleccionado siguen disponibles.
 The reporting period cannot start in the future,El período del informe no puede comenzar en una fecha futura
+Data Status,Estado de los datos
+Data Needs Attention,Datos por completar
+Selected sources have completed synchronization,Las fuentes seleccionadas han completado la sincronización
+Some selected sources have not completed synchronization,Algunas fuentes seleccionadas no han completado la sincronización
+Through {0},Hasta {0}
+View explanation,Ver explicación
+There are insufficient confirmed records in one of the comparison periods,Uno de los períodos de comparación no tiene suficientes registros confirmados
+Review items in either period prevent a reliable comparison,Hay registros pendientes de revisión en los períodos comparados; la comparación aún no es fiable
+Review {0} expense lines,Revisar {0} partidas de gastos
+View {0} lines awaiting finance,Ver {0} partidas pendientes de aprobación financiera
+Including {0} unassigned,Incluye {0} partidas sin filial asignada
+Expense Follow-up,Pendientes de gastos
+Needs Review,Por revisar
+Awaiting Finance,Pendiente de Finanzas
+"Unassigned expenses are included in review counts, but not in subsidiary expenditure totals.","Las partidas sin filial asignada se incluyen en el recuento pendiente de revisión, pero no en los gastos totales de las filiales."
+No Records,Sin registros
+Subsidiaries ({0}),Filiales ({0})
+Expenditure Share,Proporción del gasto
+Trend unavailable,Tendencia no disponible

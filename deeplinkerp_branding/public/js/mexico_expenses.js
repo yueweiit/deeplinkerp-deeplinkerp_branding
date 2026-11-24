@@ -54,12 +54,23 @@
 			// Native clear() already renders the clickable Home icon.
 			this.append_breadcrumb_element("/desk/" + routes.overview, esc(t("Mexico Expenses")));
 			const report = reportFromRoute(root.frappe.get_route());
-			if (report) this.append_breadcrumb_element("/desk/" + routes.reports, esc(t(views.reports)));
+			let company = "", home;
+			try {
+				const params = new URLSearchParams(root.location?.search || "");
+				const filters = JSON.parse(params.get("mx_filters") || "null");
+				if ((view === "overview" || (report === "company" && [1,"1",true].includes(JSON.parse(params.get("mx_dashboard") || "null"))))
+					&& typeof filters?.company === "string" && validDateRange(filters)) {
+					company = filters.company;
+					home = { ...filters, company: "" };
+				}
+			} catch (_) { /* Malformed links retain the standard breadcrumb. */ }
+			if (company) this.append_breadcrumb_element("/desk/" + routes.overview + "?mx_filters=" + encodeURIComponent(JSON.stringify(home)), esc(t(views.overview)));
+			else if (report) this.append_breadcrumb_element("/desk/" + routes.reports, esc(t(views.reports)));
 			const item = root.document.createElement("li");
 			const current = root.document.createElement("span");
 			current.className = "mx-breadcrumb-current";
 			current.setAttribute("aria-current", "page");
-			current.textContent = t(report ? reportTitles[report] : views[view]);
+			current.textContent = company || t(report ? reportTitles[report] : views[view]);
 			item.appendChild(current);
 			this.$breadcrumbs.append(item);
 		};
@@ -83,6 +94,7 @@
 	};
 	const reportTitles = {company: "Expenditure Analysis", payroll: "Mexico Personnel Expenses", trend: "Expenditure Analysis"};
 	const insightUI = () => root.DeepLinkERPMexicoExpenseInsights || (typeof module === "object" && module.exports ? require("./mexico_expense_insights.js")(root) : null);
+	const dashboardUI = () => root.DeepLinkERPMexicoExpenseDashboard || (typeof module === "object" && module.exports ? require("./mexico_expense_dashboard.js")(root) : null);
 	const help = (text) => insightUI().help(text);
 	const nodeMoneyFormatter = typeof module === "object" && module.exports
 		? require("./mexico_expense_money.js")(root) : null;
@@ -193,6 +205,7 @@
 			this.el.className = "mx-expenses";
 			this.page.main.append(this.el);
 			root.$(wrapper).on("hide.mx-expenses", () => {
+				this.epoch++;
 				clearTimeout(this.allocationTimer);
 				this.disposeFilterControls();
 				this.disposeApprovalSidebar();
@@ -208,14 +221,19 @@
 				category: "",
 				subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "",
 				currency: "MXN",
-				status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
+				status: ["overview", "payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 				keyword: "",
-				issue: "", expense_scope: "",
+				issue: "", expense_scope: "", review_bucket: "", unassigned_only: "",
 			};
 			this.el.addEventListener("click", (e) => this.click(e));
 			this.el.addEventListener("change", (e) => {
 				if (!e.target.dataset.filter) return;
+				if (e.target.dataset.filter === "company" && this.isDashboard()) return this.selectDashboardCompany(e.target.value);
 				this.filters[e.target.dataset.filter] = e.target.value;
+				if (e.target.dataset.filter === "approval_type") Object.assign(this.filters, {
+					category: "", classification_key: "", classification_exact: "", confirmed_only: "", issue: "", keyword: "", review_bucket: "", unassigned_only: "",
+				});
+				if (e.target.dataset.filter === "company") this.filters.unassigned_only = "";
 				this.filters.subcategory = "";
 				this.start = 0;
 				this.refresh();
@@ -259,6 +277,7 @@
 				this.page.add_menu_item(t("Synchronize Now"), () => this.synchronize());
 			}
 			this.applyRouteFilters();
+			if (this.redirectLegacyOverview()) return;
 			this.setBreadcrumbs();
 			await this.refresh();
 		}
@@ -275,6 +294,9 @@
 			return user && user !== "Guest" ? `mx-expenses:preferences:v1:${user}${this.report === "payroll" ? ":payroll" : ""}` : null;
 		}
 		restorePreferences() {
+			// A fresh module entry always starts this month. Explicit URLs restore
+			// refresh/history/drilldown state without inheriting an old shared range.
+			if (this.view === "overview") return;
 			try {
 				const key = this.preferenceKey();
 				let saved = key && JSON.parse(root.localStorage?.getItem(key) || "null");
@@ -314,40 +336,7 @@
 			this.sidebarSetupHandler = null;
 			this.approvalSidebar?.remove();
 			this.approvalSidebar = null;
-		}
-		mountApprovalSidebar() {
-			if (!this.isCurrentRoute()) return;
-			if (!this.sidebarSetupHandler) {
-				this.sidebarSetupHandler = () => {
-					clearTimeout(this.sidebarTimer);
-					// Native sidebar_setup fires before its synchronous DOM rebuild.
-					this.sidebarTimer = setTimeout(() => this.mountApprovalSidebar(), 0);
-				};
-				root.$(root.document).on("sidebar_setup.mx-expenses", this.sidebarSetupHandler);
-			}
-			// Keep outside the native item node, which the optional DL navigation reparents.
-			const top = root.document.querySelector(".body-sidebar-top");
-			if (!top) return;
-			if (!this.approvalSidebar?.isConnected) {
-				top.querySelector(".mx-approval-sidebar")?.remove();
-				const group = root.document.createElement("div");
-				group.className = "mx-approval-sidebar";
-				group.setAttribute("role", "group");
-				group.setAttribute("aria-label", t("Approval Form"));
-				top.prepend(group);
-				this.approvalSidebar = group;
-				group.addEventListener("click", (event) => {
-					const item = event.target.closest("[data-approval-type]");
-					if (!item || !this.isCurrentRoute()) return;
-					Object.assign(this.filters, { approval_type: item.dataset.approvalType, category: "", subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "", issue: "", keyword: "" });
-					this.start = 0;
-					this.refresh();
-					this.approvalSidebar?.querySelector('[aria-pressed="true"]')?.focus();
-				});
-			}
-			this.approvalSidebar.innerHTML = `<div class="mx-approval-heading">${esc(t("Approval Form"))}</div>${[
-				{ id: "", label: t("All Approval Forms") }, ...this.context.approval_forms,
-			].map((form) => `<button type="button" class="mx-approval-item" data-approval-type="${esc(form.id)}" aria-pressed="${this.filters.approval_type === form.id}"><span>${esc(form.label)}</span><span class="mx-approval-check" aria-hidden="true">✓</span></button>`).join("")}`;
+			root.document?.querySelector(".mx-approval-sidebar")?.remove();
 		}
 		cat(id) {
 			return this.context.categories.find((c) => c.id === id);
@@ -433,6 +422,8 @@
 			});
 		}
 		shell() {
+			this.el.classList?.toggle("mx-management", this.isDashboard());
+			if (this.isDashboard()) return this.dashboardShell();
 			this.disposeFilterControls();
 			const f = this.filters,
 				payroll =
@@ -450,6 +441,7 @@
 					payroll
 				)}
                 <div class="mx-filter mx-date-range-filter"><span>${esc(t("Date Range"))}</span><div class="mx-date-range-control"></div></div>
+                ${this.filter("approval_type", "Approval Form", [["", t("All Approval Forms")], ...this.context.approval_forms.map(f => [f.id, f.label])])}
                 ${this.filter("company", "Subsidiary", [
 					["", t("All Subsidiaries")],
 					...this.context.companies.map((c) => [c, c]),
@@ -465,7 +457,7 @@
 					Object.entries(statuses).map(([v, l]) => [v, t(l)])
 				)}
                 <div class="mx-filter-actions">${button("Reset Filters", "reset", "mx-reset", `title="${esc(t(this.report === "trend" ? "Restore six complete months and reset filters" : "Restore this month and reset all filters"))}"`)}</div></div>
-                <div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(
+                ${this.returnNavigation()}<div class="mx-scope"><span><i></i>${esc(f.from_date)} ~ ${esc(f.to_date)} · ${esc(
 				t(
 					{
 						period: "Expense Period",
@@ -476,6 +468,7 @@
 			)} · ${esc(f.approval_type ? this.form(f.approval_type) : t("All Approval Forms"))} · ${esc(f.company || t("All Subsidiaries"))} · ${esc(t(statuses[f.status]))} · ${esc(f.currency)}</span><span>${help(t("OA approvals do not prove actual payment"))}</span></div>
                 ${this.context.approval_forms.find((form) => form.id === f.approval_type)?.connected === false
                     ? `<div class="mx-notice">${esc(t("This approval form is not connected yet; no data is available"))}</div>` : ""}
+                ${f.review_bucket || f.unassigned_only ? `<div class="mx-active-filter">${esc(t(f.unassigned_only ? "Unassigned subsidiary expenses" : f.review_bucket === "awaiting_finance" ? "Awaiting MX Finance approval" : "Expense Lines Requiring Review"))} ${button("All Issues","all-issues","mx-link")}</div>` : ""}
                 ${f.confirmed_only ? `<div class="mx-active-filter">${esc(t("Only confirmed expense lines are included"))} ${button("Show All Matching Details", "clear-confirmed", "mx-link")}</div>` : ""}
                 ${f.classification_key ? `<div class="mx-active-filter">${esc(t("Filtered by source classification"))} · ${esc(t("Only confirmed expense lines are included"))} ${button("Clear Source Classification", "clear-classification", "mx-link")}</div>` : ""}
                 ${f.category && !payroll
@@ -507,8 +500,104 @@
 					? root.frappe.datetime.str_to_user(String(this.context.last_sync_at))
 					: t("Not Synchronized");
 		}
+		isDashboard() {
+			return this.view === "overview" || Boolean(this.companyDashboard);
+		}
+		redirectLegacyOverview() {
+			if (this.view !== "overview") return false;
+			const f = this.filters;
+			if ((f.basis && f.basis !== "period") || (f.status && !["active","finance_approved"].includes(f.status))
+				|| ["approval_type","category","subcategory","classification_key","keyword"].some(key => f[key])) {
+					// Back must skip this obsolete entry instead of entering the redirect again.
+					root.frappe.route_flags.replace_route = true;
+				this.navigate("reports", {...f});
+				return true;
+			}
+			return false;
+		}
+		readNavigationFilters(value) {
+			if (!value || Array.isArray(value) || typeof value !== "object" || !validDateRange(value)) return null;
+			return Object.fromEntries(Object.keys(this.filters).filter(key => typeof value[key] === "string" && value[key].length <= 200).map(key => [key,value[key]]));
+		}
+		returnNavigation() {
+			if (this.companyFilters) return `<div class="mx-return-navigation">${button("Back to Subsidiary Analysis","return-company","mx-link")}</div>`;
+			if (this.homeFilters || this.companyDashboard || (this.view === "overview" && this.filters.company)) return `<div class="mx-return-navigation">${button("Back to All Subsidiaries","return-home","mx-button")}</div>`;
+			return "";
+		}
+		dashboardHomeFilters() {
+			return { ...this.filters, company: "", confirmed_only: "", review_bucket: "", unassigned_only: "" };
+		}
+		selectDashboardCompany(company) {
+			const home = this.dashboardHomeFilters();
+			return company ? this.navigate("reports", { ...home, company }, {mx_dashboard:"1", mx_home:home}) : this.navigate("overview", home);
+		}
+		setDashboardMonth(month) {
+			if (!/^\d{4}-\d{2}$/.test(month) || month > this.context.today.slice(0,7)) return false;
+			const range = monthRange(month);
+			if (!validDateRange(range)) return false;
+			Object.assign(this.filters, range);
+			this.refresh();
+			return true;
+		}
+		mountDashboardMonth() {
+			this.rangePicker = new root.DeepLinkERPMexicoExpenseDateRange.MonthPicker({
+				parent: this.el.querySelector(".mx-dashboard-month-picker"),
+				value: {from_date:this.filters.from_date, to_date:this.filters.to_date}, today: this.context.today,
+				onChange: range => {
+					if (!this.isCurrentRoute()) return;
+					this.setDashboardMonth(range.from_date.slice(0,7));
+					this.el.querySelector(".mx-range-trigger")?.focus();
+				},
+			});
+		}
+		dashboardShell() {
+			this.disposeFilterControls();
+			const f = this.filters, month = (f.from_date || this.context.today || "").slice(0,7);
+			const step = (label, action, glyph, disabled) => `<button type="button" class="mx-button mx-month-step" data-action="${action}" aria-label="${esc(t(label))}" title="${esc(t(label))}" ${disabled ? "disabled" : ""}><span aria-hidden="true">${glyph}</span></button>`;
+			this.el.innerHTML = `<div class="mx-filters mx-dashboard-filters">
+				${f.company ? `<div class="mx-dashboard-back">${button("Back to All Subsidiaries","return-home","mx-button mx-back-button")}</div>` : ""}
+				${this.filter("company","Subsidiary",[["",t("All Subsidiaries")],...this.context.companies.map(c=>[c,c])])}
+				<div class="mx-filter mx-dashboard-month"><span>${esc(t("Reporting Month"))}</span><div class="mx-month-controls">${step("Previous Month","month-previous","‹",month <= "1900-01")}<div class="mx-dashboard-month-picker"></div>${step("Next Month","month-next","›",month >= (this.context.today || "").slice(0,7))}${button("This Month","month-current","mx-button")}</div></div>
+				${this.filter("currency","Reporting Currency",[["MXN","MXN"],["USD","USD"],["CNY","CNY"]])}
+				<div class="mx-dashboard-tools">${button("Data Status","data-status","mx-button", "disabled")}${button("Calculation Basis","criteria","mx-button")}</div>
+				<div class="mx-dashboard-meta"><span class="mx-dashboard-cutoff">${esc(t("Loading"))}…</span>${f.approval_type ? `<span class="mx-filter-chip">${esc(this.form(f.approval_type))} ${button("All Approval Forms","clear-approval","mx-link")}</span>` : ""}</div></div>
+				<div class="mx-body" aria-live="polite"><div class="mx-empty">${esc(t("Loading"))}…</div></div>`;
+			this.mountSelectControls();
+			this.mountDashboardMonth();
+		}
+		updateDashboardStatus(data) {
+			const cutoff = this.el.querySelector(".mx-dashboard-cutoff");
+			if (cutoff) cutoff.textContent = t("Through {0}", [date(data.scope.to_date)]);
+			const status = this.el.querySelector('[data-action="data-status"]');
+			if (status) {
+				status.disabled = false;
+				const warning = !data.sync_complete || Boolean(this.context.last_error);
+				status.textContent = t(warning ? "Data Needs Attention" : "Data Status");
+				status.classList.toggle("mx-status-warning", warning);
+			}
+		}
+		dashboardNavigate(d) {
+			if (!this.dashboardData) return;
+			const parent = {...this.filters}, scope = {...this.dashboardData.scope};
+			const home = this.dashboardHomeFilters();
+			if (d.dashboard === "company") return this.navigate("reports", {...parent,company:d.company}, {mx_dashboard:"1",mx_home:home});
+			const options = {mx_home:home, ...(this.filters.company ? {mx_company:parent} : {})};
+			if (d.company !== undefined) scope.company = d.company;
+			if (d.form) Object.assign(scope,{approval_type:d.form,category:"",subcategory:""});
+			if (d.category) Object.assign(scope,{category:d.category,subcategory:""});
+			if (d.dashboard === "trend") Object.assign(scope,{from_date:d.from,to_date:d.to});
+			if (d.dashboard === "review") return this.navigate("review", {...scope,status:"active",confirmed_only:"",review_bucket:d.bucket || "attention",unassigned_only:d.unassigned ? "1" : ""}, options);
+			return this.navigate("details", {...scope,confirmed_only:"1"}, options);
+		}
 		effectiveFilters() {
 			const f = { ...this.filters };
+			if (this.view === "overview" || this.companyDashboard) Object.assign(f, {
+				basis:"period", status:"finance_approved", confirmed_only:"1", category:"", subcategory:"",
+				classification_key:"", classification_exact:"", keyword:"", issue:"", review_bucket:"", unassigned_only:"",
+			});
+			if ((this.view === "overview" || this.companyDashboard) && this.context?.today && f.from_date <= this.context.today) {
+				f.to_date = f.to_date > this.context.today ? this.context.today : f.to_date;
+			}
             if (!["details", "review"].includes(this.view)) delete f.expense_scope;
 			if (f.currency) f.reporting_currency = f.currency;
 			if (this.view === "payroll" || (this.view === "reports" && this.report === "payroll"))
@@ -520,12 +609,17 @@
 		}
 		setBreadcrumbs() {
 			if (!this.isCurrentRoute()) return;
+			this.page?.set_title?.(this.isDashboard() && this.filters.company ? this.filters.company : t(this.view === "reports" ? reportTitles[this.report] : views[this.view]));
 			root.frappe.breadcrumbs.add({ type: "Custom", label: t(views[this.view]) });
 		}
 		applyRouteFilters() {
 			// Read this URL, not global route_options that another sidebar may consume.
 			if (!this.isCurrentRoute()) return;
 			const params = new URLSearchParams(root.location?.search || "");
+			const read = key => { try { return JSON.parse(params.get(key)); } catch (_) { return null; } };
+			this.companyDashboard = this.view === "reports" && this.report === "company" && [1,"1",true].includes(read("mx_dashboard"));
+			this.homeFilters = this.readNavigationFilters(read("mx_home"));
+			this.companyFilters = this.readNavigationFilters(read("mx_company"));
 			if (this.view === "reports" && this.report === "company") {
 				let group = params.get("mx_group");
 				// Frappe set_route JSON-encodes options; direct links use plain values.
@@ -546,25 +640,66 @@
 				// Invalid navigation state leaves the normal defaults in place.
 			}
 		}
-		show() {
+		async show() {
 			if (!this.context) return;
+			const epoch = ++this.epoch;
+			this.detailEpoch = (this.detailEpoch || 0) + 1;
+			this.contextNeedsReload = true;
+			this.dashboardData = null;
+			clearTimeout(this.searchTimer);
+			clearTimeout(this.allocationTimer);
+			this.disposeFilterControls();
+			this.disposeApprovalSidebar();
+			this.page?.set_title?.(t(this.view === "reports" ? reportTitles[this.report] : views[this.view]));
+			this.el.innerHTML = `<div class="mx-empty">${esc(t("Loading Mexico expenses"))}</div>`;
+			let context;
+			try {
+				context = await call("get_context");
+			} catch (_) {
+				if (epoch === this.epoch && this.isCurrentRoute()) {
+					this.el.innerHTML = `<div class="mx-empty"><strong>${esc(t("Mexico expenses could not be loaded"))}</strong>${button("Retry", "retry")}</div>`;
+				}
+				return;
+			}
+			if (epoch !== this.epoch || !this.isCurrentRoute()) return;
+			this.context = context;
+			if (this.view === "overview" && !new URLSearchParams(root.location?.search || "").get("mx_filters")) {
+				Object.assign(this.filters, monthRange(this.context.today.slice(0,7)), {
+					company:"", approval_type:"", category:"", subcategory:"", classification_key:"", classification_exact:"",
+					currency:"MXN", status:"finance_approved", basis:"period", confirmed_only:"", keyword:"", issue:"",
+					expense_scope:"", review_bucket:"", unassigned_only:"",
+				});
+			}
 			this.restorePreferences();
 			this.applyRouteFilters();
+			this.contextNeedsReload = false;
+			if (this.redirectLegacyOverview()) return;
 			this.setBreadcrumbs();
-			return this.reload();
+			return this.refresh();
 		}
-		navigate(view, filters) {
+		navigate(view, filters, options = {}) {
 			if (!routes[view]) return;
 			clearTimeout(this.searchTimer);
-			return root.frappe.set_route(routes[view], filters ? { mx_filters: { ...filters } } : {});
+			return root.frappe.set_route(routes[view], filters ? { mx_filters: { ...filters }, ...options } : {});
 		}
 		async reload() {
 			if (!this.context) return;
-			this.context = await call("get_context");
+			if (this.contextNeedsReload) return this.show();
+			const epoch = this.epoch;
+			let context;
+			try {
+				context = await call("get_context");
+			} catch (error) {
+				if (epoch === this.epoch && this.isCurrentRoute()) throw error;
+				return;
+			}
+			if (epoch !== this.epoch || !this.isCurrentRoute()) return;
+			this.context = context;
 			return this.refresh();
 		}
 		async refresh(keepSearch = false) {
-			if (!this.context) return;
+			if (!this.context || this.contextNeedsReload) return;
+			this.dashboardData = null;
 			const epoch = ++this.epoch,
 				filters = this.effectiveFilters();
 			const searchFocus =
@@ -580,19 +715,22 @@
 				}, 2500);
 				return;
 			}
-			this.mountApprovalSidebar();
+			this.disposeApprovalSidebar();
 			if (!validDateRange(filters)) {
 				this.el.querySelector(".mx-body").innerHTML = `<div class="mx-notice mx-warning">${esc(t("Enter a valid start and end date; the start date must not be after the end date"))}</div>`;
 				return;
 			}
 			this.rememberFilters();
+			if (this.isDashboard() && root.frappe.breadcrumbs) this.setBreadcrumbs();
 			try {
 				let html;
-				if (this.view === "overview") {
-					const data = await call("get_overview", { filters });
-					if (epoch !== this.epoch) return;
-					this.overviewData = data;
-					html = this.overview(data);
+				if (this.isDashboard()) {
+					const data = await call("get_management_overview", { filters });
+					if (epoch !== this.epoch || !this.isCurrentRoute()) return;
+					this.dashboardData = data;
+					this.updateDashboardStatus(data);
+					html = dashboardUI().render(data, {currency:filters.currency, company:filters.company,
+						forms:this.context.approval_forms, categories:this.context.categories, money, number, help});
 				} else if (this.view === "details" || this.view === "review") {
 					const data = await call("get_lines", {
 						filters,
@@ -614,7 +752,7 @@
 					if (epoch !== this.epoch) return;
 					html = this.reportTable(data);
 				}
-				const sync = this.context.last_error
+				const sync = this.context.last_error && !this.isDashboard()
 					? `<div class="mx-notice mx-warning">${esc(this.context.last_error)}</div>`
 					: "";
 				this.el.querySelector(".mx-body").innerHTML = sync + html;
@@ -803,14 +941,14 @@
 			const f = this.filters;
             return `${this.context.can_assign_company ? `<div class="mx-issue-filters">${button(f.expense_scope === "non_mx" ? "Back to MX Expenses" : "View Non-Mexico Expenses", "toggle-scope")}</div>` : ""}${f.expense_scope === "non_mx" ? `<div class="mx-notice">${esc(t("Excluded from MX totals and pending reviews. Original approval details are retained."))}</div>` : ""}${
 				review && f.expense_scope !== "non_mx"
-					? `<div class="mx-notice mx-warning">${esc(
+					? `<div class="mx-notice">${esc(
 							t(
 								"Expenses awaiting period assignment are listed by application date for review only"
 							)
 					  )}</div><div class="mx-issue-filters">${button(
 							"All Issues",
 							"all-issues",
-							`mx-button ${!f.issue ? "active" : ""}`
+							`mx-button ${!f.issue && !f.review_bucket && !f.unassigned_only ? "active" : ""}`
 					  )}${Object.entries(this.context.issue_labels)
 							.map(
 								([id, label]) =>
@@ -1007,12 +1145,23 @@
 					.join(""),
 			});
 		}
+		showDataStatus() {
+			if (!this.dashboardData) return;
+			const data = this.dashboardData;
+			return root.frappe.msgprint({title:t("Data Status"), message:[
+				t("Last Successful Sync") + ": " + (this.context.last_sync_at ? root.frappe.datetime.str_to_user(String(this.context.last_sync_at)) : t("Not Synchronized")),
+				t(data.sync_complete ? "Selected sources have completed synchronization" : "Some selected sources have not completed synchronization"),
+				t("Selected Period") + ": " + date(data.scope.from_date) + " → " + date(data.scope.to_date),
+				this.context.last_error || "",
+			].filter(Boolean).map(line=>`<p>${esc(line)}</p>`).join("")});
+		}
 		async click(event) {
 			const target = event.target.closest(
-				"[data-insight],[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue],[data-classification-open],[data-classification-details]"
+				"[data-dashboard],[data-insight],[data-action],[data-row],[data-company],[data-form],[data-category],[data-subcategory],[data-month],[data-issue],[data-classification-open],[data-classification-details]"
 			);
 			if (!target || target.disabled) return;
 			const d = target.dataset;
+			if (d.dashboard) return this.dashboardNavigate(d);
 			if (d.row) return this.detail(d.row);
             if (d.insight) {
                 const filters = {...this.effectiveFilters(), keyword:"", issue:"", confirmed_only:"1"};
@@ -1037,7 +1186,24 @@
                 classification_key: d.classificationDetails, classification_exact: d.exact || "",
             });
 			if (d.action) {
-				if (d.action === "retry" && !this.context) return this.initialize();
+				if (d.action === "dashboard-help") return root.frappe.msgprint({title:t("Calculation Basis"), message:esc(d.help).replace(/\n/g,"<br>")});
+				if (d.action === "data-status") return this.showDataStatus();
+				if (d.action === "clear-approval") { this.filters.approval_type = ""; return this.refresh(); }
+				if (d.action === "return-home") return this.navigate("overview", this.isDashboard() ? this.dashboardHomeFilters() : this.homeFilters || this.dashboardHomeFilters());
+				if (d.action === "return-company") return this.navigate("reports", this.companyFilters, {mx_dashboard:"1",mx_home:this.homeFilters});
+				if (["month-previous","month-next","month-current"].includes(d.action)) {
+					if (d.action === "month-current") this.context = await call("get_context");
+					if (!this.isCurrentRoute()) return;
+					const value = this.filters.from_date || this.context.today;
+					const [year, month] = value.slice(0,7).split("-").map(Number);
+					const selected = d.action === "month-current" ? this.context.today.slice(0,7)
+						: new Date(Date.UTC(year, month - 1 + (d.action === "month-next" ? 1 : -1), 1)).toISOString().slice(0,7);
+					return this.setDashboardMonth(selected);
+				}
+				if (d.action === "retry") {
+					if (!this.context) return this.initialize();
+					if (this.contextNeedsReload) return this.show();
+				}
 				if (d.action === "criteria") return this.showCriteria();
                 if (["group-company", "group-trend"].includes(d.action) && this.view === "reports" && this.report === "company") {
                     this.analysisGrouping = d.action === "group-trend" ? "trend" : "company";
@@ -1057,9 +1223,9 @@
 						category: "",
 						subcategory: "", classification_key: "", classification_exact: "", confirmed_only: "",
 						currency: "MXN",
-						status: ["payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
+						status: ["overview", "payroll", "reports"].includes(this.view) ? "finance_approved" : "active",
 						keyword: "",
-						issue: "", expense_scope:"",
+						issue: "", expense_scope:"", review_bucket:"", unassigned_only:"",
 					});
 					this.start = 0;
 				}
@@ -1076,10 +1242,12 @@
 				if (d.action === "previous") this.start = Math.max(0, this.start - 25);
 				if (d.action === "next") this.start += 25;
 				if (d.action === "toggle-scope") {
-                    Object.assign(this.filters, {expense_scope:this.filters.expense_scope === "non_mx" ? "" : "non_mx", company:"", issue:"", confirmed_only:"", classification_key:"", classification_exact:"", basis:"request", status:"all"});
+                    Object.assign(this.filters, {expense_scope:this.filters.expense_scope === "non_mx" ? "" : "non_mx", company:"", issue:"", confirmed_only:"", classification_key:"", classification_exact:"", basis:"request", status:"all", review_bucket:"", unassigned_only:""});
                     this.start = 0;
                 }
-                if (d.action === "all-issues") {
+				if (d.action === "all-issues") {
+					this.filters.review_bucket = "";
+					this.filters.unassigned_only = "";
 					this.filters.issue = "";
 					this.start = 0;
 				}
@@ -1094,6 +1262,7 @@
 			}
 
 			if (d.issue) {
+				this.filters.review_bucket = "";
 				this.filters.issue = d.issue;
 				this.start = 0;
 				return this.refresh();
@@ -1411,6 +1580,7 @@
 			this.setSyncTime();
 		}
 		async export() {
+			if (this.contextNeedsReload) return;
 			if (!root.DeepLinkERPPurchaseOrderExport?.fetchNativeWorkbook)
 				await root.frappe.require(
 					"/assets/deeplinkerp_branding/js/purchase_order_export.js"
@@ -1424,7 +1594,7 @@
 					: this.view;
 			const bytes = await exporter.fetchNativeWorkbook(
 				root,
-				{ filters: JSON.stringify(this.effectiveFilters()), kind },
+				{ filters: JSON.stringify(this.isDashboard() && this.dashboardData ? this.dashboardData.scope : this.effectiveFilters()), kind },
 				API + "export_report"
 			);
 			exporter.downloadWorkbook(

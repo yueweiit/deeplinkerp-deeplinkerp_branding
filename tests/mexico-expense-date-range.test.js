@@ -157,3 +157,15 @@ test("month selection waits for two endpoints and normalizes reverse and same-mo
 	assert.deepEqual(values.pop(),{from_date:"2024-02-01",to_date:"2024-02-29"});
 	assert.deepEqual(wholeMonths("2026-11","2027-02"),{from_date:"2026-11-01",to_date:"2027-02-28"});
 });
+
+test("single-month picker commits once and never selects an empty or future month",()=>{
+    const {MonthPicker}=require("../deeplinkerp_branding/public/js/mexico_expense_date_range.js")({});
+    const picker=Object.create(MonthPicker.prototype),commits=[];
+    Object.assign(picker,{today:"2026-11-24",commit:value=>commits.push(value)});
+    for(const value of [[],null,new Date(NaN),new Date(2026,11,1),new Date(1899,11,1)])picker.select(value);
+    assert.equal(commits.length,0);
+    picker.select(new Date(2024,1,1));
+    assert.deepEqual(commits,[{from_date:"2024-02-01",to_date:"2024-02-29"}]);
+    picker.syncing=true;picker.select(new Date(2026,10,1));
+    assert.equal(commits.length,1);
+});

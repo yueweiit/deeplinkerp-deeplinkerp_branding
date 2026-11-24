@@ -1289,4 +1289,44 @@ Expense ownership is being updated automatically. Please wait.,正在自动更�
 Automatically assigned by company country. Edit only for exceptions.,已按公司档案国家自动归属，仅特殊情况需要手工调整。
 Automatically assigned by company country. Saving changes creates a manual exception.,已按公司档案国家自动归属。保存修改后，该审批将采用人工分摊。
 This approval uses a saved manual allocation.,该审批使用已保存的人工分摊。
+Back to All Subsidiaries,返回全部子公司
+Back to Subsidiary Analysis,返回子公司分析
+"Compare confirmed expenses only. Missing history, unfinished synchronization or review items in either period prevent a reliable comparison.",仅比较已确认费用；历史数据不足、同步未完成或任一期存在待核对记录时，暂不比较。
+Comparison Dates,对比日期
+Comparison unavailable,暂不可比
+Expense Lines Requiring Review,待核对明细
+Month to Date,本月累计
+Next Month,下个月
+No authorized subsidiaries,没有可查看的子公司
+Previous Month,上个月
+Recent Six Months,近六个月
+Subsidiary Expenditure Overview,子公司支出总览
+Through the selected month; select a month to view confirmed details,截至所选月份；点击月份查看已确认明细
+Unassigned expenses are not included in subsidiary totals,未归属费用不计入各子公司合计
+Unassigned subsidiary: {0} lines,未归属公司：{0} 条
+{0} authorized subsidiaries; sorted by confirmed expenditure,共 {0} 家授权子公司，按已确认支出排序
+{0} lines,{0} 条
+Unassigned subsidiary expenses,未归属公司的费用
+Expenditure by Approval Form,各类审批支出
+Selected Period,所选期间
+Historical exchange rates are unavailable. Refresh to retry; selected-period totals remain available.,历史期间汇率暂不可用，请刷新重试；所选期间汇总仍可查看。
 The reporting period cannot start in the future,统计期间不能从未来日期开始
+Data Status,数据状态
+Data Needs Attention,数据待完善
+Selected sources have completed synchronization,所选数据来源已完成同步
+Some selected sources have not completed synchronization,部分所选数据来源尚未完成同步
+Through {0},截至 {0}
+View explanation,查看说明
+There are insufficient confirmed records in one of the comparison periods,其中一个比较期间缺少足够的已确认记录
+Review items in either period prevent a reliable comparison,比较期间存在待核对记录，暂不能可靠比较
+Review {0} expense lines,核对 {0} 条费用明细
+View {0} lines awaiting finance,查看 {0} 条待财务明细
+Including {0} unassigned,其中未归属 {0} 条
+Expense Follow-up,待处理
+Needs Review,待核对
+Awaiting Finance,待财务
+"Unassigned expenses are included in review counts, but not in subsidiary expenditure totals.",未归属明细已包含在待核对数量中，不计入各子公司支出合计。
+No Records,暂无记录
+Subsidiaries ({0}),子公司（{0}）
+Expenditure Share,支出占比
+Trend unavailable,趋势暂不可用

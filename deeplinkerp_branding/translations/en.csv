@@ -2686,4 +2686,44 @@ Regional Expense Allocation,Regional Expense Allocation
 Detail row,Detail row
 Open,Open
 CN management analysis exceeds 50000 detail lines. Narrow the configured scope.,CN management analysis exceeds 50000 detail lines. Narrow the configured scope.
+Back to All Subsidiaries,Back to All Subsidiaries
+Back to Subsidiary Analysis,Back to Subsidiary Analysis
+"Compare confirmed expenses only. Missing history, unfinished synchronization or review items in either period prevent a reliable comparison.","Compare confirmed expenses only. Missing history, unfinished synchronization or review items in either period prevent a reliable comparison."
+Comparison Dates,Comparison Dates
+Comparison unavailable,Comparison unavailable
+Expense Lines Requiring Review,Expense Lines Requiring Review
+Month to Date,Month to Date
+Next Month,Next Month
+No authorized subsidiaries,No authorized subsidiaries
+Previous Month,Previous Month
+Recent Six Months,Recent Six Months
+Subsidiary Expenditure Overview,Subsidiary Expenditure Overview
+Through the selected month; select a month to view confirmed details,Through the selected month; select a month to view confirmed details
+Unassigned expenses are not included in subsidiary totals,Unassigned expenses are not included in subsidiary totals
+Unassigned subsidiary: {0} lines,Unassigned subsidiary: {0} lines
+{0} authorized subsidiaries; sorted by confirmed expenditure,{0} authorized subsidiaries; sorted by confirmed expenditure
+{0} lines,{0} lines
+Unassigned subsidiary expenses,Unassigned subsidiary expenses
+Expenditure by Approval Form,Expenditure by Approval Form
+Selected Period,Selected Period
+Historical exchange rates are unavailable. Refresh to retry; selected-period totals remain available.,Historical exchange rates are unavailable. Refresh to retry; selected-period totals remain available.
 The reporting period cannot start in the future,The reporting period cannot start in the future
+Data Status,Data Status
+Data Needs Attention,Data Needs Attention
+Selected sources have completed synchronization,Selected sources have completed synchronization
+Some selected sources have not completed synchronization,Some selected sources have not completed synchronization
+Through {0},Through {0}
+View explanation,View explanation
+There are insufficient confirmed records in one of the comparison periods,There are insufficient confirmed records in one of the comparison periods
+Review items in either period prevent a reliable comparison,Review items in either period prevent a reliable comparison
+Review {0} expense lines,Review {0} expense lines
+View {0} lines awaiting finance,View {0} lines awaiting finance
+Including {0} unassigned,Including {0} unassigned
+Expense Follow-up,Expense Follow-up
+Needs Review,Needs Review
+Awaiting Finance,Awaiting Finance
+"Unassigned expenses are included in review counts, but not in subsidiary expenditure totals.","Unassigned expenses are included in review counts, but not in subsidiary expenditure totals."
+No Records,No Records
+Subsidiaries ({0}),Subsidiaries ({0})
+Expenditure Share,Expenditure Share
+Trend unavailable,Trend unavailable
