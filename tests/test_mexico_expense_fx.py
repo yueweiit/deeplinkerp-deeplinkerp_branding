@@ -87,3 +87,17 @@ class MexicoExpenseFxTests(unittest.TestCase):
             fetch.reset_mock()
             self.assertEqual(fx.load_month_rate('MXN','2026-11-01'), Decimal('.35'))
             fetch.assert_not_called()
+
+    def test_optional_missing_rates_raise_without_queuing_a_frappe_popup(self):
+        import frappe
+        from unittest.mock import Mock, patch
+        from overseas_costing.services import fx_rate_service
+        cache = Mock()
+        cache.get_value.return_value = None
+        with patch.object(frappe, "cache", cache), patch.object(frappe, "_", side_effect=lambda text: text), \
+                patch.object(frappe, "throw") as throw, \
+                patch.object(fx_rate_service, "fetch_cny_rate", return_value={"ok": False}):
+            with self.assertRaises(fx.RateUnavailable):
+                fx.load_month_rate("USD", "2026-10-01", quiet=True)
+            throw.assert_not_called()
+            cache.set_value.assert_not_called()

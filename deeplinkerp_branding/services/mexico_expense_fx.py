@@ -6,6 +6,10 @@ CENT = Decimal("0.01")
 RATE_PRECISION = Decimal("0.000000000001")
 
 
+class RateUnavailable(Exception):
+    """An optional analysis cannot obtain a validated exact-month-start rate."""
+
+
 def positive_rate(value):
     try:
         rate = Decimal(str(value))
@@ -38,16 +42,23 @@ def converted_amount(amount, rate):
         return (value * factor).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def load_month_rate(currency, rate_date):
-    """Reuse the existing FX transport without its costing-date fallback policy."""
+def load_month_rate(currency, rate_date, *, quiet=False):
+    """Keep required conversions strict; optional analyses handle RateUnavailable."""
     if currency == "CNY":
         return Decimal(1)
     import frappe
     from frappe import _
+
+    def unavailable(message):
+        # A handled historical failure must not queue a popup on a successful API response.
+        if quiet:
+            raise RateUnavailable(message)
+        frappe.throw(message)
+
     try:
         from overseas_costing.services.fx_rate_service import fetch_cny_rate
     except ImportError:
-        frappe.throw(_("The exchange rate service is unavailable; install Overseas Costing or contact the administrator"))
+        unavailable(_("The exchange rate service is unavailable; install Overseas Costing or contact the administrator"))
     key = f"mx-month-fx:v2:{rate_date}:{currency}"
     cached = frappe.cache.get_value(key)
     if cached:
@@ -60,7 +71,7 @@ def load_month_rate(currency, rate_date):
     # Require the provider's own date as evidence for this exact-month-start policy.
     source_date = (result.get("raw") or {}).get("rateDate")
     if not result.get("ok") or result.get("rate_date") != rate_date or source_date != rate_date or rate is None:
-        frappe.throw(_("Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.").format(currency, rate_date))
+        unavailable(_("Month-start exchange rate unavailable: {0} to CNY on {1}. Conversion is paused; retry after the rate is available.").format(currency, rate_date))
     # Cache only a validated exact-day response, never a failure or a prior-day rate.
     frappe.cache.set_value(key, str(rate), expires_in_sec=86400)
     return rate
