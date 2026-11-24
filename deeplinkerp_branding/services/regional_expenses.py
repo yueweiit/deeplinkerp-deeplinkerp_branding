@@ -139,21 +139,33 @@ def categories():
     return CATEGORIES
 
 
-def facts(raw, template, timezone, ignore_region=False):
-    from .mexico_expense_projection import project
-    source, lines = project(raw, template, timezone, ignore_region=ignore_region)
-    # CN uses the form's application date, not the MX local creation date.
+def application_date(raw):
+    return application_date_info(raw)[0]
+
+
+def application_date_info(raw):
+    """Read an explicit form date without borrowing finance or payment dates."""
     from .mexico_expense_projection import text
     from datetime import date
     components = decode(raw.get("form_component_values") or (raw.get("raw_payload") or {}).get("formComponentValues") or [])
-    dates = {text(field.get("value")) for field in components if field.get("value") and (
+    fields = [field for field in components if (
         field.get("id") in {"DDDateField_29I59O630HUS", "DDDateField_B0K470VSL0O0"}
-        or str(field.get("name", "")).startswith(("申请日期", "Fecha de solicitud")))}
+        or str(field.get("name", "")).startswith(("申请日期", "Fecha de solicitud")))]
+    if not fields:
+        return None, "missing"
+    dates = {text(field.get("value")) for field in fields if field.get("value")}
     try:
         applied = date.fromisoformat(next(iter(dates))).isoformat() if len(dates) == 1 else None
+        return applied, "form" if applied else "invalid"
     except ValueError:
-        applied = None
-    source["cn_application_date"] = applied
+        return None, "invalid"
+
+
+def facts(raw, template, timezone, ignore_region=False):
+    from .mexico_expense_projection import project, text
+    source, lines = project(raw, template, timezone, ignore_region=ignore_region)
+    source["cn_application_date"], source["application_date_state"] = application_date_info(raw)
+    components = decode(raw.get("form_component_values") or (raw.get("raw_payload") or {}).get("formComponentValues") or [])
     # Match the native CN project precedence: component ID first, then the
     # historical label. Never choose one project from conflicting values.
     project_fields = [field for field in components if field.get("id") == "TextField_97MDU018WPC0"]
@@ -400,14 +412,29 @@ def refresh_cn(rows, templates):
 
 
 def cn_projection(context):
+    return management_projection(context, regions=("cn",))
+
+
+def management_projection(context, *, regions=("cn", "mx"), include_legacy=True, submission_fallback=False,
+        management_rules=None):
     """Read allocations once; permissions apply before returning any line."""
-    from budget.services.cn_approval_management_rules import CATEGORIES
+    from budget.services.cn_approval_management_rules import CATEGORIES, classify
     from . import regional_expense_automatic as automatic
-    output, identities = [], automatic.legacy_manual_identities()
+    output, identities = [], automatic.legacy_manual_identities() if include_legacy else set()
     current_version = None
-    for record in records():
+    saved = records()
+    parsed = {record.name: decode(record.facts_json) for record in saved}
+    # Older facts do not carry field-presence metadata. Inspect only those
+    # local source payloads, in one bounded read, without changing the snapshot.
+    candidates = [record.name for record in saved if submission_fallback and record.origin == "mx"
+        and not parsed[record.name][0].get("cn_application_date")
+        and not parsed[record.name][0].get("application_date_state")]
+    date_states = {row.name: application_date_info(decode(row.source_json))[1]
+        for row in frappe.get_all(DOCTYPE, filters={"name": ["in", candidates]},
+            fields=["name", "source_json"], limit_page_length=10000)} if candidates else {}
+    for record in saved:
         identities.add((record.corp_id, record.process_instance_id))
-        source, lines = decode(record.facts_json)
+        source, lines = parsed[record.name]
         originals = {line["line_key"]: line for line in lines}
         entries = decode(record.allocations_json)
         auto = automatic.is_automatic(entries)
@@ -415,39 +442,54 @@ def cn_projection(context):
             from .mexico_expenses import _settings
             current_version = automatic.configuration(_settings())["version"]
         for index, entry in enumerate(entries):
-            pending = entry["region"] == "pending" and record.origin == "cn" and context.get("manager")
+            pending = entry["region"] == "pending" and record.origin in regions and context.get("manager")
             if pending and entry.get("matched_company") and entry["matched_company"] not in context["companies"]:
                 continue
-            if not pending and (entry["region"] != "cn" or entry["company"] not in context["companies"]):
+            if not pending and (entry["region"] not in regions or entry["company"] not in context["companies"]):
                 continue
             original = originals.get(entry["line_key"], {})
             valid = record.state == "confirmed" and bool(original) and not pending
             if auto:
                 valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
             applied = source.get("cn_application_date")
+            date_basis = "application"
+            if (submission_fallback and record.origin == "mx" and not applied
+                    and (source.get("application_date_state") or date_states.get(record.name)) == "missing"):
+                applied, date_basis = source.get("request_date"), "submission"
             issues = [] if valid else ["regional_allocation"]
             if pending:
                 issues.append("organization")
             if not applied:
                 issues.append("period")
-            if entry["management_category"] not in CATEGORIES:
-                issues.append("management_category")
             path = contract.management_path(original)
-            output.append({"key": digest([record.name, "regional-cn", index]), "source_key": record.name,
+            kind = "purchase" if source.get("approval_type") == "purchase" else "operating"
+            category = entry["management_category"]
+            # MX allocations intentionally store no CN management category.
+            # The unified report maps source paths at read time; saved CN
+            # category decisions and legacy report behavior remain unchanged.
+            if entry["region"] == "mx" and management_rules is not None:
+                category = classify(kind, path, management_rules)
+            if category not in CATEGORIES:
+                issues.append("management_category")
+            key_region = "cn" if regions == ("cn",) else entry["region"]
+            output.append({"key": digest([record.name, "regional-" + key_region, index]), "source_key": record.name,
                 "corp_id": record.corp_id, "process_code": record.process_code, "process_instance_id": record.process_instance_id,
-                "kind": "purchase" if source.get("approval_type") == "purchase" else "operating",
+                "kind": kind,
                 "number": source.get("approval_no") or record.process_instance_id, "applicant": source.get("applicant") or "",
                 "company": entry["company"], "entity": original.get("source_entity", ""), "department": "",
                 "application_date": applied, "month": applied[:7] if applied else None, "status": source["approval_status"],
+                "date_basis": date_basis,
                 "amount": entry["amount"] if valid else None, "currency": original.get("currency") or source.get("currency"),
                 "category": original.get("business_category", ""), "classification": path, "issues": issues,
-                "management_category": entry["management_category"], "source_path": path,
+                "management_category": category, "source_path": path,
                 "description": original.get("description", ""), "line_label": original.get("description", ""),
                 "project": source.get("cn_project") or "", "budget_state": "", "approved_at": None, "budget_categories_complete": False,
                 "allocation_amounts": [part["amount"] for part in entries] if valid else [],
                 "allocation_index": index, "header_amount": source.get("total_amount"),
                 "table_index": -1, "detail_index": -1,
                 "allocation_origin": record.origin, "regional_allocation": record.name,
+                "source_family": source.get("approval_type"),
+                "original_issues": original.get("base_issues") or [],
                 "allocation_modified": str(record.modified)})
             if len(output) > 50000:
                 frappe.throw(_("CN management analysis exceeds 50000 detail lines. Narrow the configured scope."))

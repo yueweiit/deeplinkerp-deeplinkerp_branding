@@ -156,6 +156,61 @@ def make_record(origin="mx"):
     return record, source, lines
 
 
+def test_unified_projection_returns_each_split_once_and_respects_permissions(monkeypatch):
+    record, _, _ = make_record()
+    monkeypatch.setattr(s, "records", lambda: [record])
+    ids, visible = s.management_projection({"companies": {"China A", "Mexico B"}}, include_legacy=False)
+    assert ids == {("corp", "approval")}
+    assert [row["amount"] for row in visible] == ["30.00", "70.00"]
+    assert len({row["key"] for row in visible}) == 2
+    assert [row["company"] for row in s.management_projection({"companies": {"Mexico B"}})[1]] == ["Mexico B"]
+
+
+@pytest.mark.parametrize("label,mappings,expected", [
+    ("Salaries", [], "salary"),
+    ("Services", [{"kind": "operating", "source_path": ["Services"], "category": "service"}], "service"),
+    ("Unknown item", [], ""),
+])
+def test_unified_mx_categories_use_current_rules_without_changing_cn_allocations(monkeypatch, label, mappings, expected):
+    from budget.services import cn_approval_management_rules as rules
+    record, source, lines = make_record()
+    lines[0]["classification_path"] = s.encode([{"label": label}])
+    record.facts_json = s.encode([source, lines])
+    saved_allocations = record.allocations_json
+    monkeypatch.setattr(s, "records", lambda: [record])
+    configured = {**rules.defaults(), "category_mappings": mappings}
+    _, visible = s.management_projection({"companies": {"China A", "Mexico B"}},
+        include_legacy=False, management_rules=configured)
+    cn, mx_line = visible
+    assert cn["management_category"] == "service"
+    assert mx_line["management_category"] == expected
+    assert ("management_category" in mx_line["issues"]) is (not expected)
+    assert mx_line["amount"] == "70.00"
+    assert record.allocations_json == saved_allocations
+    assert s.cn_projection({"companies": {"China A"}})[1][0]["management_category"] == "service"
+
+
+@pytest.mark.parametrize("fields,expected", [([], "2026-10"),
+    ([{"name": "申请日期", "value": "not-a-date"}], None),
+    ([{"name": "申请日期", "value": ""}], None),
+    ([{"name": "申请日期", "value": "2026-11-01"}, {"name": "申请日期", "value": "2026-10-01"}], None)])
+def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch, fields, expected):
+    record, source, lines = make_record()
+    source.update(cn_application_date=None, request_date="2026-10-31")
+    record.facts_json=s.encode([source,lines])
+    record.source_json=s.encode({"form_component_values":fields})
+    monkeypatch.setattr(s,"records",lambda:[record])
+    queries=[]
+    def local_sources(doctype, **kwargs):
+        queries.append(kwargs)
+        return [record]
+    monkeypatch.setattr(frappe,"get_all",local_sources)
+    result=s.management_projection({"companies":{"Mexico B"}},include_legacy=False,submission_fallback=True)[1][0]
+    assert result["month"] == expected
+    assert len(queries) == 1
+    assert s.cn_projection({"companies":{"China A"}})[1][0]["month"] is None
+
+
 @pytest.mark.parametrize("origin", ["cn", "mx"])
 def test_cn_reads_both_origins_once_and_applies_company_permissions(monkeypatch, origin):
     record, _, _ = make_record(origin)
