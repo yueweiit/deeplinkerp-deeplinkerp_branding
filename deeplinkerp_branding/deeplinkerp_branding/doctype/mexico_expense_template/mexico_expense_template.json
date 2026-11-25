@@ -20,9 +20,17 @@
   "page_count",
   "last_sync_at",
   "last_error",
-  "classification_fields"
+  "classification_fields",
+  "sync_state"
  ],
  "fields": [
+  {
+   "fieldname": "sync_state",
+   "label": "OA Incremental Sync State",
+   "fieldtype": "Long Text",
+   "read_only": 1,
+   "hidden": 1
+  },
   {
    "fieldname": "enabled",
    "label": "Enabled",

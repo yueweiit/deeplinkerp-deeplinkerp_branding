@@ -391,7 +391,7 @@ def project_for_mx(row, template, settings, origin="mx", source_available=True):
     return source, routed
 
 
-def refresh_cn(rows, templates):
+def refresh_cn(rows, templates, *, incremental=False):
     if not installed():
         return
     from . import mexico_expenses as mx
@@ -404,6 +404,9 @@ def refresh_cn(rows, templates):
         if record.origin != "cn" or (record.corp_id, record.process_code) not in active:
             continue
         row = incoming.get((record.corp_id, record.process_instance_id))
+        if incremental and row is None:
+            # Absence from a change feed does not mean an approval disappeared.
+            continue
         if row and row.get("_routing_source"):
             mx._upsert(row["_routing_source"]["row"], settings, regional_origin="cn", regional_template=row["_routing_source"]["template"])
             processed.add((record.corp_id, record.process_instance_id))

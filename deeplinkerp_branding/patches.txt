@@ -5,3 +5,4 @@
 [post_model_sync]
 # Patches added in this section will be executed after doctypes are migrated
 deeplinkerp_branding.patches.apply_deeplinkerp_settings_branding
+deeplinkerp_branding.patches.add_expense_incremental_sync_state

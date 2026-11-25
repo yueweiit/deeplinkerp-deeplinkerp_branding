@@ -305,9 +305,13 @@ def download_attachment(url, identity, expected_size):
         "fileId": identity["file_id"]}, max_bytes=MAX_DOWNLOAD_BYTES)
 
 
-def read_template_page(url, corp, process_code, *, cursor=None, limit=100):
+def read_template_page(url, corp, process_code, *, cursor=None, limit=100, updated_after=None):
     """Bounded single-template reader; the caller owns its independent cursor."""
     params = {"corpId": corp, "processCode": process_code, "limit": min(max(int(limit), 1), 100)}
+    if updated_after is not None:
+        # The lower bound must remain identical on every page of a round.
+        oa.timestamp(updated_after)
+        params["updatedAfter"] = updated_after
     if cursor:
         if not isinstance(cursor, str) or len(cursor) > 8000:
             frappe.throw(_("Invalid OA template cursor"))

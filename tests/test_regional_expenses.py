@@ -457,6 +457,18 @@ def test_cn_missing_active_source_marks_existing_allocation_stale(monkeypatch):
     assert record.state == "stale"
 
 
+def test_incremental_absence_is_not_a_deleted_approval(monkeypatch):
+    record, _, _ = make_record("cn")
+    before = deepcopy(record)
+    monkeypatch.setattr(s, "installed", lambda: True)
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda **kw: None)
+    monkeypatch.setattr(mx, "_upsert", lambda *a, **kw: pytest.fail("unchanged approval written"))
+    monkeypatch.setattr(s, "save_record", lambda *a: pytest.fail("unchanged allocation written"))
+    s.refresh_cn([], [{"corp_id": "corp", "process_code": "PROC-test"}], incremental=True)
+    assert record == before
+
+
 @pytest.fixture
 def allocation_save(monkeypatch):
     """Keep source lookup/validation real; isolate only storage and projection."""

@@ -6,7 +6,7 @@ from . import mexico_expense_contract as c
 
 CONFIG_FIELDS = ('enabled', 'approval_type', 'template_name', 'corp_id', 'process_code',
                  'finance_node_names', 'finance_activity_ids', 'field_mapping', 'classification_fields')
-STATE_FIELDS = ('cursor', 'sync_until', 'page_count', 'last_sync_at', 'last_error')
+STATE_FIELDS = ('cursor', 'sync_until', 'page_count', 'last_sync_at', 'last_error', 'sync_state')
 DEFAULT_CODES = {
     'operating': ('PROC-D3ED660B-A5D4-4516-BC82-D83E52B5FEF8', 'PROC-75FEF975-C79F-44A3-A02C-21734C2DBC49', 'PROC-CCB314E9-1458-4D53-9EF2-F68A21EA018D'),
     'expense': (c.PROCESS_CODE,),
