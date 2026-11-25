@@ -369,6 +369,14 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
     _require_settings_access(settings)
     if (settings.config_version or "") != expected_config_version:
         frappe.throw(_("Settings changed; reload and try again"))
+    # Upgrade verifiable legacy watermarks before a local mapping edit changes
+    # the configuration digest used by the old sync implementation.
+    if any(t.get("sync_state") for t in _templates(settings)):
+        source_url, _corps = http.configuration()
+        for item in _templates(settings):
+            state = _compatible_sync_state(item, settings, source_url)
+            if state:
+                item.sync_state = json.dumps(state)
     old_templates = {_template_key(t): t for t in _templates(settings)}
     configured = None
     if approval_templates is not None:
@@ -488,13 +496,25 @@ def _enqueue_page(template, *, force=False):
         job_id=_page_job_id(template), deduplicate=True, enqueue_after_commit=True, queue="long", timeout=180)
 
 
-def _sync_round(template, settings, url):
-    """Keep the same lower bound across pages; invalidate it on config changes."""
+def _sync_scope(template, url):
+    # OA returns raw approvals. Local company/category mappings, timezones and
+    # parsing rules are reapplied by reproject_cache, not by resetting this feed.
+    return digest(["mx-oa-source-v2", url, _template_key(template)])
+
+
+def _compatible_sync_state(template, settings, url):
     state = sync_policy.decode(template.get("sync_state"))
-    # Use saved configuration only. Organization discovery/reprojection has its
-    # own invalidation path and must not turn a page claim into an OA lookup.
-    scope = digest([url, settings.get("config_version"), settings.get("mapping_version"),
+    legacy_scope = digest([url, settings.get("config_version"), settings.get("mapping_version"),
         _period_version(settings), _template_key(template)])
+    if state.get("scope") == legacy_scope:
+        return {**state, "scope": _sync_scope(template, url)}
+    return state
+
+
+def _sync_round(template, settings, url):
+    """Keep checkpoints tied to the raw OA source, independently of local rules."""
+    state = _compatible_sync_state(template, settings, url)
+    scope = _sync_scope(template, url)
     legacy_cursor = template.get("cursor") and not template.get("sync_state")
     if state.get("scope") != scope:
         # Never relabel the old configuration's completed watermark as the new
@@ -592,60 +612,78 @@ def sync_page(force=False, template_key=None, expected_cursor=None, retry_failed
         return {"ok": True, "queued": count}
     try:
         with frappe.cache.lock("mexico-expense-sync:" + frappe.local.site + ":" + template_key, timeout=170, blocking_timeout=0):
-            frappe.db.savepoint("mx_sync")
-            settings = _settings(lock=True)
-            template = next((t for t in _templates(settings) if _template_key(t) == template_key), None)
-            if not template or not template.get("enabled") or (not force and not settings.enabled):
-                return {"ok": True, "disabled": True}
-            # A queued duplicate must not advance a different page after another
-            # worker has committed. Keep old direct callers compatible.
-            if expected_cursor is not None and (template.get("cursor") or "") != expected_cursor:
-                return {"ok": True, "superseded": True}
-            try:
-                if not frappe.db.has_column("Mexico Expense Template", "sync_state"):
-                    frappe.throw(_("OA synchronization storage requires a site migration."))
-                url, corps = http.configuration()
-                if template.get("corp_id") not in corps:
-                    frappe.throw(_("Duplicate or unauthorized approval template"))
-                state, scope, round_plan = _sync_round(template, settings, url)
-                options = {"updated_after": round_plan["updated_after"]} if round_plan["mode"] == "incremental" else {}
-                rows, page = http.read_template_page(url, template.get("corp_id"), template.get("process_code"), cursor=template.get("cursor") or None, **options)
-                if template.get("cursor") and template.get("sync_until") != page["syncUntil"]:
-                    raise http.OAInvalidCursor("Snapshot changed")
-                if (template.get("page_count") or 0) >= http.MAX_PAGES:
-                    frappe.throw(_("Mexico approval scan exceeds the configured page limit"))
-                changed_rows = _changed_sync_rows(rows) if round_plan["mode"] == "incremental" else rows
-                for row in changed_rows:
-                    _upsert(row, settings)
-                next_state = ({**state, "version": sync_policy.VERSION, "scope": scope, "active": round_plan}
-                    if page["hasMore"] else sync_policy.completed(state, scope, round_plan, page["syncUntil"]))
-                template.update({"cursor": page["nextCursor"] if page["hasMore"] else None,
-                    "sync_state": json.dumps(next_state),
-                    "sync_until": page["syncUntil"] if page["hasMore"] else None,
-                    "page_count": (template.get("page_count") or 0) + 1 if page["hasMore"] else 0,
-                    "last_sync_at": now_datetime(), "last_error": None})
-                settings.last_sync_at = now_datetime()
-                settings.last_error = next((t.get("last_error") for t in _templates(settings) if t.get("last_error")), None)
-                _save(settings)
-                if page["hasMore"]:
-                    _enqueue_page(template, force=force)
-                return {"ok": True, "processed": len(changed_rows), "has_more": page["hasMore"]}
-            except Exception as exc:
-                frappe.db.rollback(save_point="mx_sync")
-                settings = _settings(lock=True)
-                template = next(t for t in _templates(settings) if _template_key(t) == template_key)
-                if isinstance(exc, http.OAInvalidCursor):
-                    template.update({"cursor": None, "sync_until": None, "page_count": 0})
-                    state = sync_policy.decode(template.get("sync_state"))
-                    state.pop("active", None)
-                    template.sync_state = json.dumps(state)
-                template.last_error = _("Mexico expense synchronization failed; retry or contact an administrator")
-                settings.last_error = template.get("last_error")
-                _save(settings)
-                frappe.log_error(title=_("Mexico Expense Sync Failed"), message=template.get("process_code") + ": " + type(exc).__name__)
-                return {"ok": False}
+            for attempt in range(3):
+                try:
+                    result = _sync_template_page(force, template_key, expected_cursor)
+                    # A page job owns its transaction. Publish before releasing
+                    # its Redis lock; the next page is queued only after commit.
+                    frappe.db.commit()
+                    return result
+                except frappe.QueryDeadlockError:
+                    # MariaDB aborts the entire transaction, including its
+                    # savepoint. Re-read settings/cursor after a full rollback.
+                    frappe.db.rollback()
+                    from .regional_expense_automatic import invalidate_configuration
+                    invalidate_configuration()
+                    if attempt == 2:
+                        raise
     except LockError:
         return {"ok": False, "busy": True}
+
+
+def _sync_template_page(force, template_key, expected_cursor):
+    frappe.db.savepoint("mx_sync")
+    settings = _settings(lock=True)
+    template = next((t for t in _templates(settings) if _template_key(t) == template_key), None)
+    if not template or not template.get("enabled") or (not force and not settings.enabled):
+        return {"ok": True, "disabled": True}
+    if expected_cursor is not None and (template.get("cursor") or "") != expected_cursor:
+        return {"ok": True, "superseded": True}
+    try:
+        if not frappe.db.has_column("Mexico Expense Template", "sync_state"):
+            frappe.throw(_("OA synchronization storage requires a site migration."))
+        url, corps = http.configuration()
+        if template.get("corp_id") not in corps:
+            frappe.throw(_("Duplicate or unauthorized approval template"))
+        state, scope, round_plan = _sync_round(template, settings, url)
+        options = {"updated_after": round_plan["updated_after"]} if round_plan["mode"] == "incremental" else {}
+        rows, page = http.read_template_page(url, template.get("corp_id"), template.get("process_code"), cursor=template.get("cursor") or None, **options)
+        if template.get("cursor") and template.get("sync_until") != page["syncUntil"]:
+            raise http.OAInvalidCursor("Snapshot changed")
+        if (template.get("page_count") or 0) >= http.MAX_PAGES:
+            frappe.throw(_("Mexico approval scan exceeds the configured page limit"))
+        changed_rows = _changed_sync_rows(rows) if round_plan["mode"] == "incremental" else rows
+        for row in changed_rows:
+            _upsert(row, settings)
+        next_state = ({**state, "version": sync_policy.VERSION, "scope": scope, "active": round_plan}
+            if page["hasMore"] else sync_policy.completed(state, scope, round_plan, page["syncUntil"]))
+        template.update({"cursor": page["nextCursor"] if page["hasMore"] else None,
+            "sync_state": json.dumps(next_state),
+            "sync_until": page["syncUntil"] if page["hasMore"] else None,
+            "page_count": (template.get("page_count") or 0) + 1 if page["hasMore"] else 0,
+            "last_sync_at": now_datetime(), "last_error": None})
+        settings.last_sync_at = now_datetime()
+        settings.last_error = next((t.get("last_error") for t in _templates(settings) if t.get("last_error")), None)
+        _save(settings)
+        if page["hasMore"]:
+            _enqueue_page(template, force=force)
+        return {"ok": True, "processed": len(changed_rows), "has_more": page["hasMore"]}
+    except frappe.QueryDeadlockError:
+        raise  # The outer page transaction must roll back, not this savepoint.
+    except Exception as exc:
+        frappe.db.rollback(save_point="mx_sync")
+        settings = _settings(lock=True)
+        template = next(t for t in _templates(settings) if _template_key(t) == template_key)
+        if isinstance(exc, http.OAInvalidCursor):
+            template.update({"cursor": None, "sync_until": None, "page_count": 0})
+            state = sync_policy.decode(template.get("sync_state"))
+            state.pop("active", None)
+            template.sync_state = json.dumps(state)
+        template.last_error = _("Mexico expense synchronization failed; retry or contact an administrator")
+        settings.last_error = template.get("last_error")
+        _save(settings)
+        frappe.log_error(title=_("Mexico Expense Sync Failed"), message=template.get("process_code") + ": " + type(exc).__name__)
+        return {"ok": False}
 
 
 def _preview_template(template, business_timezone, *, management=False):

@@ -328,6 +328,37 @@ class TemplateSyncTests(unittest.TestCase):
 
 
 class TemplateSettingsTests(unittest.TestCase):
+    def test_mapping_save_upgrades_legacy_watermark_before_changing_version(self):
+        from test_mexico_expense_service import Doc
+        from deeplinkerp_branding.services import oa_sync_policy as policy, regional_expenses, regional_expense_automatic
+        from datetime import datetime, timezone
+        settings=Doc(enabled=0,business_timezone='Asia/Shanghai',mapping_version=s.digest([]),
+            config_version='v1',company_mappings=[],templates=[ChildDoc(**t.default_templates()[0])])
+        settings.set=lambda key,value:settings.update({key:value})
+        template=settings.templates[0]
+        at=datetime(2026,11,25,1,tzinfo=timezone.utc)
+        legacy_scope=s.digest(['http://qa',settings.config_version,settings.mapping_version,
+            s._period_version(settings),s._template_key(template)])
+        template.sync_state=json.dumps(policy.completed({},legacy_scope,{'mode':'full'},at.isoformat()))
+        with patch.object(s,'_require_manager'),patch.object(s,'_require_settings_access'), \
+                patch.object(s,'_company_access'),patch.object(s,'_settings',return_value=settings), \
+                patch.object(s.http,'configuration',return_value=('http://qa',[s.contract.CORP_ID])), \
+                patch.object(s.http,'read_template_page') as read,patch.object(s,'_save'), \
+                patch.object(regional_expenses,'installed',return_value=True), \
+                patch.object(regional_expense_automatic,'invalidate_configuration'), \
+                patch.object(regional_expense_automatic,'enqueue_rebuild') as rebuild, \
+                patch.object(policy,'utc_now',return_value=at),patch.object(frappe,'enqueue') as enqueue:
+            s.save_settings([{'source_entity':'Reviewed company','company':'Company MX'}],
+                settings.business_timezone,0,'v1',[t.default_templates()[0]])
+            current=frappe._dict(settings.templates[0])
+            state,scope,plan=s._sync_round(current,settings,'http://qa')
+        self.assertEqual(plan['mode'],'incremental')
+        self.assertEqual(state['watermark'],at.isoformat())
+        self.assertEqual(state['reconciled_at'],at.isoformat())
+        self.assertEqual(scope,s._sync_scope(current,'http://qa'))
+        self.assertNotEqual(settings.config_version,'v1')
+        read.assert_not_called();enqueue.assert_not_called();rebuild.assert_called_once()
+
     def test_enabled_management_template_is_previewed_without_finance_nodes(self):
         from test_mexico_expense_service import Doc
         original=next(v for v in t.default_templates() if v['approval_type']=='expense')
