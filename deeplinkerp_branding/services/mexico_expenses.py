@@ -328,8 +328,11 @@ def get_unmapped_entities(start=0):
 
 
 @frappe.whitelist(methods=["POST"])
-def save_settings(company_mappings, business_timezone, enabled, expected_config_version="", approval_templates=None):
+def save_settings(company_mappings, business_timezone, enabled, expected_config_version="", approval_templates=None, *, management=False):
     _require_manager()
+    if management not in (0, 1, "0", "1", False, True):
+        frappe.throw(_("Invalid synchronization setting"))
+    management = management in (1, "1", True)
     entries = frappe.parse_json(company_mappings)
     if not isinstance(entries, list) or len(entries) > 1000:
         frappe.throw(_("Invalid subsidiary mappings"))
@@ -375,7 +378,12 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
         _base_url, allowed_corps = http.configuration()
         for entry in entries:
             try:
-                item = templates.normalize(entry)
+                previous = old_templates.get(_template_key(entry)) if isinstance(entry, dict) else None
+                # Legacy editors can retain a management-only template. They
+                # still cannot create one or clear existing finance evidence.
+                no_finance = previous is not None and not any(previous.get(key)
+                    for key in ("finance_node_names", "finance_activity_ids"))
+                item = templates.normalize(entry, require_finance=not (management or no_finance))
             except (ValueError, TypeError):
                 frappe.throw(_("Invalid approval template"))
             identity = _template_key(item)
@@ -387,7 +395,10 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
                 frappe.throw(_("An existing template cannot change approval form"))
             changed_rules = not old or any((item.get(k) or "") != (old.get(k) or "") for k in ("finance_node_names", "finance_activity_ids", "field_mapping", "classification_fields"))
             if item["enabled"] and (changed_rules or not old.get("enabled")):
-                _preview_template(item, business_timezone)
+                if management:
+                    _preview_template(item, business_timezone, management=True)
+                else:
+                    _preview_template(item, business_timezone)
             if old:
                 item.update({k: old.get(k) for k in templates.STATE_FIELDS})
                 if old.get("name"): item["name"] = old.get("name")
@@ -582,7 +593,7 @@ def sync_page(force=False, template_key=None, expected_cursor=None, retry_failed
         return {"ok": False, "busy": True}
 
 
-def _preview_template(template, business_timezone):
+def _preview_template(template, business_timezone, *, management=False):
     url, corps = http.configuration()
     if template.get("corp_id") not in corps:
         frappe.throw(_("Duplicate or unauthorized approval template"))
@@ -591,9 +602,16 @@ def _preview_template(template, business_timezone):
         frappe.throw(_("No sample approvals found; save this template disabled first"))
     issues, finance_nodes, count = set(), set(), 0
     for row in rows:
-        source, lines = projection.project(row, template, business_timezone)
+        source, lines = projection.project(row, template, business_timezone, include_finance=not management)
         count += len(lines)
         issues.update(issue for line in lines for issue in line["base_issues"])
+        if management:
+            from .regional_expenses import application_date_info, management_date
+            applied, date_state = application_date_info(row)
+            applied, _basis = management_date(applied, date_state, source.get("request_date"), allow_submission=True)
+            if not applied:
+                issues.add("period")
+            continue
         raw = row.get("raw_payload") or {}
         finance_nodes.update(t.get("taskGroupName", "") for t in raw.get("tasks", [])
                              if "财务" in t.get("taskGroupName", "") or "finanzas" in t.get("taskGroupName", "").lower())

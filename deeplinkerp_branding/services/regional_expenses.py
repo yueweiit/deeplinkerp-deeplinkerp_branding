@@ -161,6 +161,13 @@ def application_date_info(raw):
         return None, "invalid"
 
 
+def management_date(applied, date_state, submitted, *, allow_submission=False):
+    """Shared reporting/preview policy; absent fields alone permit fallback."""
+    if not applied and date_state == "missing" and allow_submission:
+        return str(submitted) if submitted else None, "submission"
+    return applied, "application"
+
+
 def facts(raw, template, timezone, ignore_region=False):
     from .mexico_expense_projection import project, text
     source, lines = project(raw, template, timezone, ignore_region=ignore_region)
@@ -424,9 +431,20 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
     current_version = None
     saved = records()
     parsed = {record.name: decode(record.facts_json) for record in saved}
+    fallback_records = {record.name for record in saved if submission_fallback and record.origin == "mx"}
+    if submission_fallback and any(record.origin == "cn" and not parsed[record.name][0].get("cn_application_date")
+            for record in saved):
+        from .mexico_expenses import _settings
+        # A shared template has the same date policy whichever feed published
+        # first. Include disabled templates: their retained history still uses
+        # the configured policy. Keep CN-only templates and legacy CN APIs strict.
+        expense_templates = {(item.get("corp_id"), item.get("process_code"))
+            for item in (_settings().get("templates") or [])}
+        fallback_records.update(record.name for record in saved
+            if (record.corp_id, record.process_code) in expense_templates)
     # Older facts do not carry field-presence metadata. Inspect only those
     # local source payloads, in one bounded read, without changing the snapshot.
-    candidates = [record.name for record in saved if submission_fallback and record.origin == "mx"
+    candidates = [record.name for record in saved if record.name in fallback_records
         and not parsed[record.name][0].get("cn_application_date")
         and not parsed[record.name][0].get("application_date_state")]
     date_states = {row.name: application_date_info(decode(row.source_json))[1]
@@ -451,11 +469,9 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
             valid = record.state == "confirmed" and bool(original) and not pending
             if auto:
                 valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
-            applied = source.get("cn_application_date")
-            date_basis = "application"
-            if (submission_fallback and record.origin == "mx" and not applied
-                    and (source.get("application_date_state") or date_states.get(record.name)) == "missing"):
-                applied, date_basis = source.get("request_date"), "submission"
+            applied, date_basis = management_date(source.get("cn_application_date"),
+                source.get("application_date_state") or date_states.get(record.name), source.get("request_date"),
+                allow_submission=record.name in fallback_records)
             issues = [] if valid else ["regional_allocation"]
             if pending:
                 issues.append("organization")

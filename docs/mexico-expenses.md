@@ -1,6 +1,10 @@
 # 墨西哥费用支出工作台
 
+统一管理日期由 `services/regional_expenses.py` 的 `management_date()` 统一判断；共用模板按企业及流程编码匹配费用解析配置，避免首次同步来源改变申请月份和纳入结果。共享记录、历史人工明细与管理预览复用该规则，旧 CN 申请日期及 MX 财务归期接口不变，详细边界见下方 Budget 文档。
+
 2026-11-16：已在本地测试站点 `dev.localhost` 迁移、构建资源，并按 MX 财务审批通过时间重算已有审批缓存；未部署生产。页面 `mexico-expenses` 位于本 App，沿用 ERP 登录、公司权限、格式化与翻译，独立于中国运营支出和海外采购成本核算。
+
+联合 Budget 的统一支出管理于 2026-11-25 取消处理规则与财务节点配置，按整单审批状态和申请月份展示管理支出；具体配置、预览和兼容协议见 [Budget 统一支出管理](../../budget/README.md#统一支出管理2026-11-24)。本 App 的 `mexico_expense_templates.normalize(require_finance=False)`、`mexico_expenses.save_settings(management=True)` 仅为统一管理入口允许无节点模板；历史节点配置及默认财务投影保持原义。解析器新增 `include_finance=False` 供管理预览使用，跳过节点解析而不构造财务通过时间。旧 MX 报表继续按原财务证据筛选，没有财务节点证据的新模板不据整单通过虚构财务归期。本次配置改造未执行生产迁移；开发站点后续同步启用记录见下文。
 
 ## 子公司月度总览（2026-11-24）
 

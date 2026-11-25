@@ -194,8 +194,12 @@ def test_unified_mx_categories_use_current_rules_without_changing_cn_allocations
     ([{"name": "申请日期", "value": "not-a-date"}], None),
     ([{"name": "申请日期", "value": ""}], None),
     ([{"name": "申请日期", "value": "2026-11-01"}, {"name": "申请日期", "value": "2026-10-01"}], None)])
-def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch, fields, expected):
-    record, source, lines = make_record()
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch, fields, expected, origin):
+    from deeplinkerp_branding.services import mexico_expenses as mx
+    record, source, lines = make_record(origin)
+    monkeypatch.setattr(mx, "_settings", lambda: frappe._dict(templates=[
+        {"corp_id": record.corp_id, "process_code": record.process_code}]))
     source.update(cn_application_date=None, request_date="2026-10-31")
     record.facts_json=s.encode([source,lines])
     record.source_json=s.encode({"form_component_values":fields})
@@ -209,6 +213,29 @@ def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch
     assert result["month"] == expected
     assert len(queries) == 1
     assert s.cn_projection({"companies":{"China A"}})[1][0]["month"] is None
+
+
+@pytest.mark.parametrize("template,expected", [
+    (None, None),
+    ({"corp_id": "another", "process_code": "PROC-test"}, None),
+    ({"corp_id": "corp", "process_code": "PROC-another"}, None),
+    ({"corp_id": "corp", "process_code": "PROC-test", "enabled": 0}, "2026-10"),
+    ({"corp_id": "corp", "process_code": "PROC-test", "enabled": 1}, "2026-10"),
+])
+@pytest.mark.parametrize("submitted", [None, "2026-10-31"])
+def test_cn_owned_submission_fallback_requires_exact_expense_template(monkeypatch, template, expected, submitted):
+    from deeplinkerp_branding.services import mexico_expenses as mx
+    record, source, lines = make_record("cn")
+    source.update(cn_application_date=None, application_date_state="missing", request_date=submitted)
+    record.facts_json = s.encode([source, lines])
+    before = deepcopy(record)
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda: frappe._dict(templates=[template] if template else []))
+    monkeypatch.setattr(frappe, "get_all", lambda *args, **kwargs: pytest.fail("date metadata is already available"))
+    rows = s.management_projection({"companies": {"Mexico B"}}, include_legacy=False, submission_fallback=True)[1]
+    assert len(rows) == 1 and rows[0]["company"] == "Mexico B"
+    assert rows[0]["month"] == (expected if submitted else None)
+    assert record == before  # No changes to manual decisions, ownership or stored facts.
 
 
 @pytest.mark.parametrize("origin", ["cn", "mx"])

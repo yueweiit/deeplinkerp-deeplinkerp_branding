@@ -253,7 +253,7 @@ def finance_period(row, business_timezone="America/Mexico_City", activity_ids=No
             "period_start": first.isoformat(), "period_end": last.isoformat(), "period_kind": "month"}, []
 
 
-def project(row, business_timezone="America/Mexico_City", template=None):
+def project(row, business_timezone="America/Mexico_City", template=None, *, include_finance=True):
     """Canonical archive row -> source + independent, stable expense lines."""
     corp, code = (template["corp_id"], template["process_code"]) if template else (CORP_ID, PROCESS_CODE)
     if row.get("corp_id") != corp or row.get("process_code") != code or not row.get("process_instance_id"):
@@ -323,7 +323,8 @@ def project(row, business_timezone="America/Mexico_City", template=None):
             planned = date.fromisoformat(planned).isoformat()
         except ValueError:
             planned = None
-    period, finance_issues = finance_period(row, business_timezone, **(template.get("finance_options", {}) if template else {}))
+    period, finance_issues = (finance_period(row, business_timezone, **(template.get("finance_options", {}) if template else {}))
+        if include_finance else (dict.fromkeys(PERIOD_FIELDS), []))
     errors.extend(finance_issues)
     source = {"source_key": source_key, "corp_id": corp, "process_code": code,
         "process_instance_id": row["process_instance_id"], "approval_no": row.get("business_id"),

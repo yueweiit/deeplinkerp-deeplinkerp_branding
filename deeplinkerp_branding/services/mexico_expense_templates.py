@@ -64,7 +64,7 @@ def default_templates():
 def tokens(value):
     return [v.strip() for v in re.split(r'[,\n，]+', value or '') if v.strip()]
 
-def normalize(entry):
+def normalize(entry, *, require_finance=True):
     if not isinstance(entry,dict):raise ValueError('Invalid approval template')
     out={k:entry.get(k) for k in CONFIG_FIELDS}
     if out['enabled'] not in (0,1,'0','1',False,True):raise ValueError('Invalid approval template')
@@ -80,7 +80,7 @@ def normalize(entry):
     for key,value in mapping.items():
         if not isinstance(value,list) or not value or len(value)>20 or any(not isinstance(v,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,140}',v) for v in value):raise ValueError('Invalid template field mapping')
     out['field_mapping']=json.dumps(mapping,sort_keys=True)
-    if not tokens(out['finance_node_names']) and not tokens(out['finance_activity_ids']):raise ValueError('Finance nodes are required')
+    if require_finance and not tokens(out['finance_node_names']) and not tokens(out['finance_activity_ids']):raise ValueError('Finance nodes are required')
     from .mexico_expense_classification import validate_fields
     validate_fields(out['classification_fields'])
     return out

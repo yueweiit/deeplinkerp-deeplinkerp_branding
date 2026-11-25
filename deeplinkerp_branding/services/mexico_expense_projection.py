@@ -21,13 +21,13 @@ def text(value):
     return str(value)
 
 
-def _project(row, template, business_timezone, *, ignore_region=False):
+def _project(row, template, business_timezone, *, ignore_region=False, include_finance=True):
     template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
     if row.get('corp_id')!=template['corp_id'] or row.get('process_code')!=template['process_code'] or not row.get('process_instance_id'):
         raise ValueError('Unexpected Mexico approval identity')
     options=templates.finance_options(template)
     if template['approval_type']=='expense':
-        source,lines=c.project(row,business_timezone,{**template,'finance_options':options})
+        source,lines=c.project(row,business_timezone,{**template,'finance_options':options}, include_finance=include_finance)
         source.update(approval_type='expense',details_json='{}')
         for line in lines:line.update(approval_type='expense',business_category='',salary_type='')
         return source,lines
@@ -48,7 +48,7 @@ def _project(row, template, business_timezone, *, ignore_region=False):
     if fields.get('entity',{}).get('componentType')=='CascadeField' and isinstance(value('entity'),str) and '/' in value('entity'):
         entity,department=value('entity').split('/',1);entity=entity.strip();multiple=False
     if multiple:errors.append('allocation')
-    period,issues=c.finance_period(row,business_timezone,**options);errors+=issues
+    period,issues=(c.finance_period(row,business_timezone,**options) if include_finance else (dict.fromkeys(c.PERIOD_FIELDS), []));errors+=issues
     created=datetime.fromisoformat(str(row['create_time']).replace('Z','+00:00'))
     if created.tzinfo is None:raise ValueError('Source timestamp requires timezone')
     planned=text(value('planned'))
@@ -143,10 +143,10 @@ def _project(row, template, business_timezone, *, ignore_region=False):
     return source,lines
 
 
-def project(row, template, business_timezone, *, ignore_region=False):
+def project(row, template, business_timezone, *, ignore_region=False, include_finance=True):
     from . import mexico_expense_classification as classification
     template = {key: template.get(key) for key in templates.CONFIG_FIELDS}
-    source, lines = _project(row, template, business_timezone, ignore_region=ignore_region)
+    source, lines = _project(row, template, business_timezone, ignore_region=ignore_region, include_finance=include_finance)
     path, problems = classification.extract(row, template)
     conflict = False
     if template['approval_type'] == 'expense':

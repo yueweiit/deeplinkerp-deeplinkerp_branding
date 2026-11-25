@@ -75,6 +75,56 @@ def test_country_rules_are_independent_of_currency_and_approval_status(context):
     assert a.plan(source, lines, context)[0][0]["region"] == "mx"
 
 
+@pytest.mark.parametrize("kind", ["operating", "purchase"])
+@pytest.mark.parametrize("order", [("cn", "mx"), ("mx", "cn")])
+@pytest.mark.parametrize("date_value,expected_month", [
+    (None, "2026-10"), ("2026-11-02", "2026-11"), ("", None), ("invalid", None),
+])
+def test_shared_template_reporting_is_independent_of_sync_order(monkeypatch, kind, order, date_value, expected_month):
+    from test_mexico_expense_templates import sample as approval_sample, component
+    from budget.services import expense_management as report
+
+    template, raw = approval_sample(kind)
+    template.update(finance_node_names="", finance_activity_ids="")
+    raw.update(status="COMPLETED", result="AGREE")
+    raw["raw_payload"].update(status="COMPLETED", result="AGREE")
+    if date_value is not None:
+        raw["raw_payload"]["formComponentValues"].append(
+            component("DDDateField_B0K470VSL0O0", date_value, "DDDateField", "申请日期"))
+    settings = frappe._dict(templates=[template], business_timezone="America/Mexico_City")
+    configuration = {"companies": {"Company MX": "Mexico"}, "aliases": {}, "organizations": {},
+        "rules": {}, "version": "test"}
+    saved = []
+    monkeypatch.setattr(s, "record_for", lambda *args, **kwargs: saved[0] if saved else None)
+    monkeypatch.setattr(s, "records", lambda: saved)
+    monkeypatch.setattr(s, "installed", lambda: True)
+    monkeypatch.setattr(s, "connection_key", lambda: "test")
+    monkeypatch.setattr(s, "save_record", lambda doc: saved.append(doc) if not saved else None)
+    monkeypatch.setattr(frappe, "new_doc", lambda *args: frappe._dict(name="test", modified="test"))
+    monkeypatch.setattr(frappe, "get_all", lambda *args, **kwargs: [])
+    monkeypatch.setattr(a, "configuration", lambda *args: configuration)
+    monkeypatch.setattr(mx, "_settings", lambda: settings)
+    context = {"companies": {"Company MX"}, "manager": True}
+    for origin in order:
+        s.project_for_mx(deepcopy(raw), deepcopy(template), settings, origin=origin)
+        identities, rows = s.management_projection(context, include_legacy=False, submission_fallback=True)
+        assert identities == {(raw["corp_id"], raw["process_instance_id"])}
+        assert len(rows) == 1
+        item = report.normalize(rows[0])
+        assert item["month"] == expected_month
+        assert item["eligible"] is bool(expected_month)
+        assert item["status"] == "approved" and item["amount"] == "100.00"
+        assert item["date_basis"] == ("submission" if date_value is None else "application")
+        assert ("period" in item["issues"]) is (not expected_month)
+        assert saved[0].origin == order[0]
+    # Report fallback does not rewrite the saved evidence or legacy CN dates.
+    source, _ = s.decode(saved[0].facts_json)
+    assert source["cn_application_date"] == (date_value if expected_month and date_value else None)
+    assert source.get("finance_approved_date") is None
+    assert s.management_projection(context, include_legacy=False)[1][0]["month"] == (
+        expected_month if date_value else None)
+
+
 @pytest.fixture
 def registry(monkeypatch, context):
     record, source, lines = make_record()

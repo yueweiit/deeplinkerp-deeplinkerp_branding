@@ -44,6 +44,36 @@ class TemplateProjectionTests(unittest.TestCase):
         for values in ({'approval_type':'other'},{'corp_id':'bad corp'},{'field_mapping':'{"amount":"bad"}'},{'field_mapping':'{"unknown":["id"]}'},{'finance_node_names':'','finance_activity_ids':''}):
             with self.subTest(values=values),self.assertRaises(ValueError):t.normalize({**config,**values})
 
+    def test_management_accepts_no_finance_config_without_disabling_other_validation(self):
+        config,_=sample()
+        config.update(finance_node_names='',finance_activity_ids='')
+        self.assertEqual(t.normalize(config,require_finance=False)['finance_node_names'],'')
+        with self.assertRaises(ValueError):t.normalize(config)
+        with self.assertRaises(ValueError):t.normalize({**config,'field_mapping':'{"unknown":["id"]}'},require_finance=False)
+
+    def test_management_projection_uses_whole_approval_without_reading_finance_tasks(self):
+        from test_mexico_expense_contract import approval
+        for kind in ('operating','purchase','expense'):
+            config,row=sample(kind) if kind!='expense' else (next(v for v in t.default_templates() if v['approval_type']=='expense'),approval())
+            for status,result,expected in (('RUNNING','AGREE','pending'),('COMPLETED','AGREE','approved'),('COMPLETED','REFUSE','rejected'),('TERMINATED','','terminated')):
+                with self.subTest(kind=kind,status=status,result=result):
+                    row.update(status=status,result=result)
+                    row['raw_payload'].update(status=status,result=result,tasks='malformed legacy task data')
+                    with patch.object(p.c,'finance_period',side_effect=AssertionError('management must not inspect finance tasks')):
+                        source,lines=p.project(row,config,'America/Mexico_City',include_finance=False)
+                    self.assertEqual(source['approval_status'],expected)
+                    self.assertIsNone(source['finance_approved_at'])
+                    self.assertTrue(lines)
+                    self.assertTrue(all(not line['finance_approved_date'] and 'finance' not in line['base_issues'] for line in lines))
+
+    def test_finance_projection_is_unchanged_after_management_preview(self):
+        config,row=sample()
+        before=p.project(row,config,'America/Mexico_City')
+        management=p.project(row,config,'America/Mexico_City',include_finance=False)
+        self.assertIsNotNone(before[0]['finance_approved_date'])
+        self.assertIsNone(management[0]['finance_approved_date'])
+        self.assertEqual(before,p.project(row,config,'America/Mexico_City'))
+
     def test_operating_salary_finance_date_currency_and_cascade(self):
         config,row=sample();source,lines=p.project(row,config,'America/Mexico_City')
         self.assertEqual(source['approval_type'],'operating')
@@ -298,6 +328,23 @@ class TemplateSyncTests(unittest.TestCase):
 
 
 class TemplateSettingsTests(unittest.TestCase):
+    def test_enabled_management_template_is_previewed_without_finance_nodes(self):
+        from test_mexico_expense_service import Doc
+        original=next(v for v in t.default_templates() if v['approval_type']=='expense')
+        config,row=sample()
+        config.update(finance_node_names='',finance_activity_ids='')
+        row['raw_payload']['tasks']='malformed historical task data'
+        settings=Doc(enabled=0,business_timezone='America/Mexico_City',mapping_version=s.digest([]),
+            config_version='v1',company_mappings=[],templates=[ChildDoc(**original)])
+        settings.set=lambda key,value:settings.update({key:value})
+        with patch.object(s,'_require_manager'),patch.object(s,'_require_settings_access'),patch.object(s,'_settings',return_value=settings),patch.object(s.http,'configuration',return_value=('http://qa',[s.contract.CORP_ID])),patch.object(s.http,'read_template_page',return_value=([row],{})) as read,patch.object(s,'_save'),patch.object(frappe,'enqueue'):
+            s.save_settings([],settings.business_timezone,0,'v1',[original,config],management=True)
+        read.assert_called_once()
+        self.assertEqual(read.call_args.kwargs,{'limit':3})
+        self.assertEqual(settings.templates[0]['finance_node_names'],original['finance_node_names'])
+        self.assertEqual(settings.templates[1]['finance_node_names'],'')
+        self.assertEqual(settings.templates[1]['enabled'],1)
+
     def test_save_preserves_cursor_and_previews_new_enabled_template(self):
         from test_mexico_expense_service import Doc
         settings=Doc(enabled=0,business_timezone='America/Mexico_City',mapping_version=s.digest([]),config_version='v1',company_mappings=[],templates=[ChildDoc(**t.default_templates()[0],cursor='saved',sync_until='snapshot')])
