@@ -168,7 +168,7 @@ CN 分类建议、保存和自动归类统一使用 `regional_expense_contract.m
 
 `operating_oa_http.read_template_page()` 新增独立模板读取能力，不改变原 `read_page()` 的中国模板和旧游标契约。当前实现每轮做全量分页，每个后台任务处理一页，页完成后持久化游标并在事务提交后排队下一页。它尚未实现 `updatedAfter` 增量水位。
 
-统一支出管理的同步设置直接复用 `public/js/mexico_expense_settings.js` 原生弹窗，旧 MX 页面设置入口同样委托该组件。`get_sync_status()` 仅返回获授权用户可见的同步汇总，不暴露模板码、企业范围或原始错误。调度入口与分页入队使用稳定 job ID 去重，后续页使用新游标的任务 ID；`expected_cursor` 与当前检查点不一致时直接跳过，保留旧直接调用兼容。CN/MX 支出同步每 5 分钟调度，采购等其他任务仍沿用原频率。目标站点须同步 Scheduled Job Type 并保持 scheduler/worker 运行；代码变更不自动开启站点全部定时任务。
+统一支出管理使用 Budget 的 `public/js/expense_sync_settings.js` 集中配置，复用本服务的权限、模板预览和保存校验；相同审批模板合并显示，原两套规则与存储保留，双版本校验和原子保存由 Budget 负责。旧 MX 页面继续使用 `public/js/mexico_expense_settings.js`。`get_sync_status()` 返回获授权用户可见的同步汇总及仅含不透明模板标识、状态、更新时间的进度，不暴露模板码、企业范围或原始错误。`enqueue_sync(retry_failed=False)` 保留旧调用兼容；失败重试优先调度失败模板，若分发任务失败且无可识别的失败模板则重新分发。调度入口与分页入队使用稳定 job ID 去重，后续页使用新游标的任务 ID；`expected_cursor` 与当前检查点不一致时直接跳过，保留旧直接调用兼容。CN/MX 支出同步每 5 分钟调度，采购等其他任务仍沿用原频率。目标站点须同步 Scheduled Job Type 并保持 scheduler/worker 运行；代码变更不自动开启站点全部定时任务。
 
 同步默认关闭。管理员可在页面同步设置中启用每 5 分钟的定时同步，也可“立即同步”完成一次分页扫描。每条模板的 Redis 锁与设置、来源、明细数据库锁协调同步和人工核对；单页失败回滚，不推进该模板游标，也不阻断其他模板独立调度。明确的失效游标重置全量扫描；其他失败保留游标等待重试。源记录和明细使用唯一稳定键，重复同步不重复建单，未变化的投影不更新 `modified`。
 

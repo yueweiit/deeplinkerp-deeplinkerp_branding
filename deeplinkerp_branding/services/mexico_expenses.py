@@ -448,10 +448,13 @@ def reproject_cache(projection_version, start=0):
 
 
 @frappe.whitelist(methods=["POST"])
-def enqueue_sync():
+def enqueue_sync(retry_failed=False):
     _require_settings_access(_settings())
     _connection()
+    if retry_failed not in (False, True, 0, 1, "0", "1"):
+        frappe.throw(_("Invalid synchronization setting"))
     frappe.enqueue("deeplinkerp_branding.services.mexico_expenses.sync_page", force=True,
+        retry_failed=bool(int(retry_failed)),
         enqueue_after_commit=True, queue="long", timeout=180,
         job_id="mexico-expense-sync-dispatch", deduplicate=True)
     return {"queued": True}
@@ -494,15 +497,23 @@ def get_sync_status():
     completed = sum(bool(row.get("last_sync_at")) and not any(row.get(key)
         for key in ("cursor", "sync_until", "last_error")) for row in selected)
     status = "running" if active else "failed" if failed else "success" if selected and completed == len(selected) else "idle"
+    progress = []
+    for index, row in enumerate(selected):
+        job = states[index + 1]
+        current = "running" if job == "started" else "queued" if job in ("queued", "deferred") or states[0] in ("queued", "started", "deferred") else (
+            "failed" if row.get("last_error") or job == "failed" or states[0] == "failed" else
+            "success" if row.get("last_sync_at") and not row.get("cursor") and not row.get("sync_until") else "pending")
+        progress.append({"key": _template_key(row), "status": current,
+            "last_update_at": str(row.get("last_sync_at")) if row.get("last_sync_at") else None})
     return {"status": status, "active": active, "enabled": bool(settings.enabled),
         "configured": bool(selected), "can_manage": _can_manage_settings(settings),
         "template_count": len(selected), "completed_templates": completed,
         "last_update_at": str(settings.last_sync_at) if settings.last_sync_at else None,
         "error_code": "sync_failed" if failed else None,
-        "revision": sync_revision(settings)}
+        "revision": sync_revision(settings), "templates": progress}
 
 
-def sync_page(force=False, template_key=None, expected_cursor=None):
+def sync_page(force=False, template_key=None, expected_cursor=None, retry_failed=False):
     """Each template owns its cursor. A failed job never advances another template."""
     from redis.exceptions import LockError
     if template_key is None:
@@ -510,7 +521,16 @@ def sync_page(force=False, template_key=None, expected_cursor=None):
         if not force and not settings.enabled:
             return {"ok": True, "disabled": True}
         count = 0
-        for template in _templates(settings):
+        if retry_failed:
+            from frappe.utils.background_jobs import get_job_status
+            failed = [row for row in _templates(settings) if row.get("enabled") and
+                (row.get("last_error") or get_job_status(_page_job_id(row)) == "failed")]
+            # Dispatch itself may have failed before any template was queued.
+            # A retry with no failed page restarts the dispatcher safely.
+            selected = failed or _templates(settings)
+        else:
+            selected = _templates(settings)
+        for template in selected:
             if template.get("enabled"):
                 _enqueue_page(template, force=force)
                 count += 1

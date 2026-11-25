@@ -268,6 +268,14 @@ class TemplateSyncTests(unittest.TestCase):
         read.assert_not_called();save.assert_not_called()
         self.assertEqual(template.cursor,'cursor-0')
 
+    def test_failed_only_dispatch_does_not_rescan_successful_templates(self):
+        settings=self.settings()
+        settings.templates[0].last_error='failed'
+        with patch.object(s,'_settings',return_value=settings),patch.object(s,'_enqueue_page') as enqueue,patch('frappe.utils.background_jobs.get_job_status',return_value=None):
+            result=s.sync_page(force=True,retry_failed=True)
+        self.assertEqual(result['queued'],1)
+        self.assertEqual(enqueue.call_args.args[0],settings.templates[0])
+
     def test_one_failure_preserves_other_template_cursor_and_retry_is_independent(self):
         settings=self.settings();first=settings.templates[0];second=settings.templates[1]
         with patch.object(s,'_',side_effect=lambda text:text),patch.object(s,'_settings',return_value=settings),patch.object(frappe,'db',MagicMock()),patch.object(frappe,'cache',SimpleNamespace(lock=lambda *a,**kw:nullcontext())),patch.object(frappe,'local',SimpleNamespace(site='isolated')),patch.object(s.http,'configuration',return_value=('http://qa',[s.contract.CORP_ID])),patch.object(s.http,'read_template_page',side_effect=s.http.OAInvalidCursor()),patch.object(s,'_save'),patch.object(frappe,'log_error'):
