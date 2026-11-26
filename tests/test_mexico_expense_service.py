@@ -212,7 +212,8 @@ class MexicoServiceTests(unittest.TestCase):
                        config_version="old", company_mappings=[])
         entries = [dict(source_entity=name, entity_kind="entity", company="A") for name in ("Old A", "New A")]
         with patch.object(s, "_settings", return_value=settings), patch.object(s, "_require_manager"), \
-                patch.object(s, "_require_settings_access"), patch.object(s, "_company_access"), \
+                patch.object(s, "_require_settings_access"), patch.object(s, "_mapping_companies", return_value=["A"]), \
+                patch.object(frappe, "has_permission", return_value=True), \
                 patch.object(s, "_save") as save, patch.object(frappe, "enqueue") as enqueue:
             s.save_settings(entries, settings.business_timezone, 0, "old")
             self.assertEqual(len(settings.company_mappings), 2)

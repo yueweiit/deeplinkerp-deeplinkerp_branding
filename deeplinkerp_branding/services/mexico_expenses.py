@@ -74,7 +74,7 @@ def _require_manager():
 def _can_manage_settings(settings, user=None):
     if not _manager(user):
         return False
-    companies = set(_companies(user))
+    companies = set(_mapping_companies(user))
     return all((row.get("expense_scope") == "non_mx" and not row.company) or row.company in companies for row in settings.company_mappings or [])
 
 
@@ -119,6 +119,15 @@ def _template_facts(settings):
 def _companies(user=None):
     return frappe.get_list("Company", filters={"country": "Mexico", "is_group": 0}, pluck="name",
                            limit_page_length=1000, user=user or frappe.session.user)
+
+
+def _mapping_companies(user=None):
+    """Shared aliases can target any authorized leaf company once routing is installed."""
+    from .regional_expenses import installed
+    if not installed():
+        return _companies(user)
+    return frappe.get_list("Company", filters={"is_group": 0}, pluck="name",
+                           limit_page_length=0, user=user or frappe.session.user)
 
 
 def _company_access(company):
@@ -319,7 +328,7 @@ def get_unmapped_entities(start=0):
         .groupby(table.source_entity, table.entity_kind)
         .orderby(Count(table.name), order=Order.desc).orderby(table.source_entity).orderby(table.entity_kind)
         .offset(start).limit(51).run(as_dict=True))
-    companies = _companies()
+    companies = _mapping_companies()
     mappings = [{"source_entity": r.source_entity, "entity_kind": r.entity_kind, "company": r.company}
                 for r in settings.company_mappings or []]
     for row in rows[:50]:
@@ -341,7 +350,7 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
         ZoneInfo(business_timezone)
     except (ZoneInfoNotFoundError, ValueError, TypeError):
         frappe.throw(_("Invalid business timezone"))
-    clean, seen = [], set()
+    clean, seen, mapping_companies = [], set(), None
     for entry in entries:
         if not isinstance(entry, dict) or not isinstance(entry.get("source_entity"), str) or not entry["source_entity"].strip() or len(entry["source_entity"]) > 500:
             frappe.throw(_("Invalid subsidiary mappings"))
@@ -360,7 +369,11 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
             if entry.get("company") or not reason.strip():
                 frappe.throw(_("A reason is required for non-Mexico expenses; leave the subsidiary empty"))
         else:
-            _company_access(entry.get("company"))
+            company = entry.get("company")
+            if mapping_companies is None:
+                mapping_companies = set(_mapping_companies())
+            if not isinstance(company, str) or company not in mapping_companies or not frappe.has_permission("Company", "read", doc=company):
+                frappe.throw(_("Not permitted to access this subsidiary"), frappe.PermissionError)
         clean.append({"source_entity": entry["source_entity"].strip(), "entity_kind": kind,
                       "company": entry.get("company") or "", "expense_scope": scope, "scope_reason": reason.strip() if scope == "non_mx" else ""})
     if enabled not in (0, 1, "0", "1", False, True):
