@@ -2,7 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const factory = require("../deeplinkerp_branding/public/js/mexico_expenses.js");
 const api = factory({
-	frappe: { format: (value) => String(value), datetime: { str_to_user: (value) => value } },
+	frappe: { format: (value, df) => df.fieldtype === "Currency" ? Number(value).toFixed(df.precision) : String(value),
+		datetime: { str_to_user: (value) => value } },
 });
 
 test("minor-unit sums preserve decimal amounts", () => {

@@ -77,7 +77,8 @@ class CashJournalTests(unittest.TestCase):
         fields = {field["fieldname"]:field for field in schema["fields"]}
         self.assertFalse(fields["company"].get("ignore_user_permissions"))
         self.assertFalse(fields["account"]["reqd"])
-        self.assertTrue(fields["account"]["hidden"])
+        self.assertFalse(fields["account"].get("hidden"))
+        self.assertTrue(fields["import_key"]["unique"])
         self.assertFalse(fields["dingtalk_approval_number"].get("reqd"))
         self.assertFalse(fields["dingtalk_approval_number"].get("unique"))
         self.assertEqual(fields["attachment"]["fieldtype"], "Attach")

@@ -34,6 +34,7 @@ test('exact display follows Desk separators, currency placement and hidden symbo
 test('ordinary amounts retain native formatting and invalid data never becomes zero', () => {
     const {money,calls}=harness();
     assert.equal(money.format('12.30','USD'),'12.30');
+    assert.equal(calls[0].value,12.3);
     assert.equal(calls[0].doc.currency,'USD');
     assert.equal(calls[0].df.precision,2);
     for (const value of [null,undefined,'NaN','Infinity','<img>']) assert.equal(money.format(value,'USD'),'—');

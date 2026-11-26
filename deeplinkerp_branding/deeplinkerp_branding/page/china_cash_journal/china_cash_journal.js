@@ -1,3 +1,4 @@
+{% include "deeplinkerp_branding/public/js/mexico_expense_money.js" %}
 {% include "deeplinkerp_branding/public/js/cn_cash_journal.js" %}
 frappe.pages["china-cash-journal"].on_page_load = wrapper => { wrapper.cashJournal = new DeepLinkERPCNCashJournal.Workbench(wrapper); };
 frappe.pages["china-cash-journal"].on_page_show = wrapper => {
