@@ -3005,3 +3005,233 @@ Trend unavailable,Tendencia no disponible
 OA Incremental Sync State,Estado de sincronización incremental de OA
 OA synchronization storage requires a site migration.,El almacenamiento de sincronización de OA requiere una migración del sitio.
 Expense Management,Gestión de gastos
+AI Assistant,Asistente de IA,Permission assignment
+AI assistant settings and business query features.,Configuración del asistente de IA y consultas de negocio.,Permission assignment
+Accounting,Contabilidad,Permission assignment
+Accounting archive preparation and enquiries.,Preparación y consulta de archivos contables.,Permission assignment
+Accounting archive staff,Personal de archivos contables,Permission assignment
+"Accounting documents, receivables, payables and financial reports.","Documentos contables, cuentas por cobrar y pagar e informes financieros.",Permission assignment
+Accounting staff,Personal de contabilidad,Permission assignment
+Accounting supervision and financial configuration.,Supervisión contable y configuración financiera.,Permission assignment
+Add to current form,Añadir al formulario actual,Permission assignment
+Administrator uses framework-wide privileges; the selected role list does not represent its full access.,Administrator utiliza privilegios de todo el sistema; la lista de roles seleccionados no representa todo su acceso.,Permission assignment
+All business groups,Todos los grupos de negocio,Permission assignment
+"Asset records, depreciation and asset movements.","Registros de activos, depreciación y movimientos de activos.",Permission assignment
+Assets,Activos,Permission assignment
+Assign permissions by job responsibility,Asignar permisos según las responsabilidades del puesto,Permission assignment
+Auditors,Auditores,Permission assignment
+Authorized production release staff,Personal autorizado para liberar producción,Permission assignment
+Authorized technical administrators,Administradores técnicos autorizados,Permission assignment
+Automatic assignment and other automation rules.,Asignación automática y otras reglas de automatización.,Permission assignment
+Automation,Automatización,Permission assignment
+Batch processing of supported business documents.,Procesamiento por lotes de documentos de negocio compatibles.,Permission assignment
+"Bills of materials, work orders and production processing.","Listas de materiales, órdenes de trabajo y procesamiento de producción.",Permission assignment
+Blog posts and related website content.,Artículos de blog y contenido web relacionado.,Permission assignment
+Budget and expense management features supplied by the installed app.,Funciones de presupuesto y gestión de gastos de la aplicación instalada.,Permission assignment
+Bulk transactions,Transacciones por lotes,Permission assignment
+Business group,Grupo de negocio,Permission assignment
+Buying,Compras,Permission assignment
+CRM,CRM,Permission assignment
+"CRM and ERP data exchange, settings and integration logs.","Intercambio de datos entre CRM y ERP, configuración y registros de integración.",Permission assignment
+CRM integration,Integración de CRM,Permission assignment
+Cashier processing in the China finance extension.,Operaciones de tesorería en la extensión de finanzas de China.,Permission assignment
+Cashiers,Personal de tesorería,Permission assignment
+Check the actual binding to Sales Production Release Permission before assigning this role.,"Antes de asignar este rol, compruebe su vinculación real con el permiso de liberación de producción de ventas.",Permission assignment
+China Finance,Finanzas de China,Permission assignment
+"China accounting vouchers, reconciliation, tax and closing.","Comprobantes contables de China, conciliación, impuestos y cierre.",Permission assignment
+"China finance configuration, closing and financial controls.","Configuración de finanzas de China, cierre y controles financieros.",Permission assignment
+Communication,Comunicación,Permission assignment
+Communication records linked to business documents.,Registros de comunicación vinculados a documentos de negocio.,Permission assignment
+Configure company / warehouse scope,Configurar el alcance de empresas y almacenes,Permission assignment
+Contacts,Contactos,Permission assignment
+Contacts and addresses shared by business documents.,Contactos y direcciones compartidos por los documentos de negocio.,Permission assignment
+Content editors,Editores de contenido,Permission assignment
+Controls module navigation. Checking a module does not grant document operations or data access.,Controla la navegación de módulos. Seleccionar un módulo no concede operaciones sobre documentos ni acceso a datos.,Permission assignment
+"Country, region and geographical reference data.","Datos de referencia de países, regiones y geografía.",Permission assignment
+"Custom fields, forms and system customization.","Campos personalizados, formularios y personalización del sistema.",Permission assignment
+"Custom filters, Desk enhancements and login integrations.","Filtros personalizados, mejoras del escritorio e integraciones de inicio de sesión.",Permission assignment
+"Customer issues, service requests and support follow-up.","Incidencias de clientes, solicitudes de servicio y seguimiento de soporte.",Permission assignment
+"Customer issues, support and service follow-up.","Incidencias de clientes, soporte y seguimiento del servicio.",Permission assignment
+Customer or supplier portal features.,Funciones del portal de clientes o proveedores.,Permission assignment
+Customer service staff,Personal de atención al cliente,Permission assignment
+Customer service supervision and service configuration.,Supervisión de atención al cliente y configuración del servicio.,Permission assignment
+Customer service supervisors,Supervisores de atención al cliente,Permission assignment
+Customization,Personalización,Permission assignment
+Daily accounting documents and financial processing.,Documentos contables diarios y procesamiento financiero.,Permission assignment
+Daily human resources records and processing.,Registros diarios y operaciones de recursos humanos.,Permission assignment
+Daily purchasing documents and supplier follow-up.,Documentos diarios de compras y seguimiento de proveedores.,Permission assignment
+Daily sales documents and customer follow-up.,Documentos diarios de ventas y seguimiento de clientes.,Permission assignment
+Daily work in the China finance extension.,Trabajo diario en la extensión de finanzas de China.,Permission assignment
+DeepLinkERP business extensions,Extensiones de negocio de DeepLinkERP,Permission assignment
+Delivery staff,Personal de entregas,Permission assignment
+Delivery supervision and delivery configuration.,Supervisión y configuración de entregas.,Permission assignment
+Delivery supervisors,Supervisores de entregas,Permission assignment
+Delivery trips and delivery coordination.,Rutas de entrega y coordinación de entregas.,Permission assignment
+Desktop message and notification features.,Funciones de mensajes y notificaciones del escritorio.,Permission assignment
+Desktop notifications,Notificaciones del escritorio,Permission assignment
+Document approval workflows and state transitions.,Flujos de aprobación de documentos y transiciones de estado.,Permission assignment
+Draft notifications,Notificaciones de documentos por reglas,Permission assignment
+ERP and MES production and inventory integration.,Integración de producción e inventario entre ERP y MES.,Permission assignment
+ERPNext integrations,Integraciones de ERPNext,Permission assignment
+Electronic business data exchange features.,Funciones de intercambio electrónico de datos de negocio.,Permission assignment
+Electronic data interchange,Intercambio electrónico de datos,Permission assignment
+Email,Correo electrónico,Permission assignment
+"Email accounts, messages and related settings.","Cuentas de correo, mensajes y configuración relacionada.",Permission assignment
+Employee self-service and related personal records.,Autoservicio del empleado y registros personales relacionados.,Permission assignment
+Employees,Empleados,Permission assignment
+Equipment maintenance and service records.,Mantenimiento de equipos y registros de servicio.,Permission assignment
+"Equipment maintenance plans, visits and service records.","Planes de mantenimiento de equipos, visitas y registros de servicio.",Permission assignment
+External service connections and integration settings.,Conexiones con servicios externos y configuración de integración.,Permission assignment
+Filters and login extensions,Extensiones de filtros e inicio de sesión,Permission assignment
+Finance and tax,Finanzas e impuestos,Permission assignment
+Finance supervisors,Supervisores de finanzas,Permission assignment
+Financial review and audit enquiries; check actual write and export permissions.,Revisión financiera y consultas de auditoría; compruebe los permisos reales de escritura y exportación.,Permission assignment
+For: {0},Para: {0},Permission assignment
+From template: {0},Del perfil de puesto: {0},Permission assignment
+General tools and utility records.,Herramientas generales y registros auxiliares.,Permission assignment
+Geographical data,Datos geográficos,Permission assignment
+Human resources staff,Personal de recursos humanos,Permission assignment
+Human resources supervision and configuration.,Supervisión y configuración de recursos humanos.,Permission assignment
+Human resources supervisors,Supervisores de recursos humanos,Permission assignment
+Integration features provided by ERPNext.,Funciones de integración proporcionadas por ERPNext.,Permission assignment
+Integrations,Integraciones,Permission assignment
+Inventory and production,Inventario y producción,Permission assignment
+Inventory supervision and management of stock documents.,Supervisión de inventario y gestión de documentos de existencias.,Permission assignment
+Inventory supervisors,Supervisores de inventario,Permission assignment
+Item master data maintainers,Responsables de datos maestros de artículos,Permission assignment
+"Items, warehouses, stock movements and inventory enquiries.","Artículos, almacenes, movimientos y consultas de inventario.",Permission assignment
+Job permission templates,Perfiles de permisos por puesto,Permission assignment
+Job template,Perfil de puesto,Permission assignment
+Job templates: {0},Perfiles de puesto: {0},Permission assignment
+Key responsibility,Responsabilidad clave,Permission assignment
+Knowledge base articles and content maintenance.,Artículos y mantenimiento de contenido de la base de conocimientos.,Permission assignment
+"Leads, opportunities and customer relationship work.","Contactos potenciales, oportunidades y gestión de relaciones con clientes.",Permission assignment
+Loading template sources...,Cargando los perfiles de origen...,Permission assignment
+MES integration,Integración de MES,Permission assignment
+Mailing list administrators,Administradores de listas de correo,Permission assignment
+Mailing lists and newsletter publishing.,Listas de correo y publicación de boletines.,Permission assignment
+Maintenance,Mantenimiento,Permission assignment
+Maintenance of interface translations.,Mantenimiento de traducciones de la interfaz.,Permission assignment
+Maintenance of items and related master data.,Mantenimiento de artículos y datos maestros relacionados.,Permission assignment
+Maintenance of shared sales master data.,Mantenimiento de datos maestros compartidos de ventas.,Permission assignment
+Maintenance staff,Personal de mantenimiento,Permission assignment
+Maintenance supervision and service configuration.,Supervisión de mantenimiento y configuración del servicio.,Permission assignment
+Maintenance supervisors,Supervisores de mantenimiento,Permission assignment
+Manufacturing,Fabricación,Permission assignment
+Manufacturing supervision and production configuration.,Supervisión de fabricación y configuración de producción.,Permission assignment
+Mobile operations,Operaciones móviles,Permission assignment
+Mobile warehouse and on-site operations.,Operaciones móviles de almacén y en planta.,Permission assignment
+Module visibility,Visibilidad de módulos,Permission assignment
+Module visibility template,Perfil de visibilidad de módulos,Permission assignment
+No job template selected; roles are assigned individually.,No hay ningún perfil de puesto seleccionado; los roles se asignan individualmente.,Permission assignment
+No matching items,No hay elementos coincidentes,Permission assignment
+None,Ninguno,Permission assignment
+OA purchase collaboration,Colaboración de compras OA,Permission assignment
+OA purchase requests and related purchasing collaboration.,Solicitudes de compra OA y colaboración de compras relacionada.,Permission assignment
+Other / needs explanation,Otros / explicación pendiente,Permission assignment
+"Overseas cost batches, allocation and related procurement.","Lotes de costos en el extranjero, distribución y compras relacionadas.",Permission assignment
+Overseas cost workbench access; related document permissions still apply.,Acceso al panel de costos en el extranjero; también se requieren permisos de los documentos relacionados.,Permission assignment
+Overseas costing,Cálculo de costos en el extranjero,Permission assignment
+Overseas costing staff,Personal de costos en el extranjero,Permission assignment
+Portal,Portal,Permission assignment
+Posting of accounting vouchers in the China finance extension.,Contabilización de comprobantes en la extensión de finanzas de China.,Permission assignment
+Preparation of accounting vouchers in the China finance extension.,Preparación de comprobantes contables en la extensión de finanzas de China.,Permission assignment
+Preview and add job template,Previsualizar y añadir perfil de puesto,Permission assignment
+Preview job template,Previsualizar perfil de puesto,Permission assignment
+"Print formats, print settings and output configuration.","Formatos de impresión, ajustes de impresión y configuración de salida.",Permission assignment
+Printing and formats,Impresión y formatos,Permission assignment
+Production orders and daily manufacturing operations.,Órdenes de producción y operaciones diarias de fabricación.,Permission assignment
+Production staff,Personal de producción,Permission assignment
+Production supervisors,Supervisores de producción,Permission assignment
+Project staff,Personal de proyectos,Permission assignment
+Project supervision and project configuration.,Supervisión y configuración de proyectos.,Permission assignment
+Project supervisors,Supervisores de proyectos,Permission assignment
+Projects,Proyectos,Permission assignment
+Projects and operations,Proyectos y operaciones,Permission assignment
+"Projects, tasks and daily project follow-up.","Proyectos, tareas y seguimiento diario de proyectos.",Permission assignment
+"Projects, tasks and project follow-up.","Proyectos, tareas y seguimiento de proyectos.",Permission assignment
+Purchasing,Gestión de compras,Permission assignment
+Purchasing staff,Personal de compras,Permission assignment
+Purchasing supervision and management of purchasing documents.,Supervisión de compras y gestión de documentos de compra.,Permission assignment
+Purchasing supervisors,Supervisores de compras,Permission assignment
+Purpose not documented yet. Check actual permissions and related business settings.,La finalidad aún no está documentada. Compruebe los permisos reales y la configuración de negocio relacionada.,Permission assignment
+Quality Management,Gestión de calidad,Permission assignment
+"Quality goals, procedures and review records.","Objetivos, procedimientos y registros de revisión de calidad.",Permission assignment
+"Quality inspections, goals and quality management records.","Inspecciones, objetivos y registros de gestión de calidad.",Permission assignment
+Quality staff,Personal de calidad,Permission assignment
+Regional,Funciones regionales,Permission assignment
+Regional business features and localization.,Funciones de negocio regionales y localización.,Permission assignment
+Report administrators,Administradores de informes,Permission assignment
+Review of accounting vouchers in the China finance extension.,Revisión de comprobantes contables en la extensión de finanzas de China.,Permission assignment
+Roles define operations. Module visibility controls navigation. User Permissions restrict records such as companies and warehouses.,Los roles definen las operaciones. La visibilidad de módulos controla la navegación. Los permisos de usuario restringen registros como empresas y almacenes.,Permission assignment
+Roles follow the selected templates. Updating a shared template also affects its other users.,Los roles siguen los perfiles seleccionados. Modificar un perfil compartido también afecta a sus otros usuarios.,Permission assignment
+Roles retained,Roles conservados,Permission assignment
+Roles to add,Roles que se añadirán,Permission assignment
+Roles to remove,Roles que se eliminarán,Permission assignment
+Rule-based business document notifications.,Notificaciones de documentos de negocio basadas en reglas.,Permission assignment
+SMS administrators,Administradores de SMS,Permission assignment
+SMS sending and related configuration.,Envío de SMS y configuración relacionada.,Permission assignment
+Sales Production Release Operator,Operador de liberación de producción de ventas,Permission assignment
+Sales and customer service,Ventas y atención al cliente,Permission assignment
+"Sales documents, customers and sales analysis.","Documentos de ventas, clientes y análisis de ventas.",Permission assignment
+Sales master data maintainers,Responsables de datos maestros de ventas,Permission assignment
+Sales staff,Personal de ventas,Permission assignment
+Sales supervision and management of sales documents.,Supervisión de ventas y gestión de documentos de ventas.,Permission assignment
+Sales supervisors,Supervisores de ventas,Permission assignment
+Save the user first to inspect the saved permission configuration.,Guarde primero el usuario para consultar la configuración de permisos guardada.,Permission assignment
+Script maintenance that can affect system behavior.,Mantenimiento de scripts que pueden afectar al comportamiento del sistema.,Permission assignment
+Search by name or purpose,Buscar por nombre o finalidad,Permission assignment
+Selected only,Solo seleccionados,Permission assignment
+Selected roles: {0},Roles seleccionados: {0},Permission assignment
+Selling,Ventas,Permission assignment
+Setup,Configuración básica,Permission assignment
+Shared business settings and basic configuration.,Ajustes compartidos de negocio y configuración básica.,Permission assignment
+"Shared navigation, sales, purchasing, inventory and expense extensions.","Navegación compartida y extensiones de ventas, compras, inventario y gastos.",Permission assignment
+Shared report or dashboard configuration.,Configuración de informes o paneles compartidos.,Permission assignment
+Shared workspace layout and navigation configuration.,Configuración del diseño y navegación de espacios de trabajo compartidos.,Permission assignment
+Stock,Inventario,Permission assignment
+Stock quantity enquiries,Consulta de cantidades en inventario,Permission assignment
+Stock quantity enquiry features supplied by the installed app.,Funciones de consulta de cantidades de inventario de la aplicación instalada.,Permission assignment
+Subcontracted orders and supplied materials.,Órdenes subcontratadas y materiales suministrados.,Permission assignment
+Subcontracting,Subcontratación,Permission assignment
+Subcontracting documents and material coordination.,Documentos de subcontratación y coordinación de materiales.,Permission assignment
+Subcontracting staff,Personal de subcontratación,Permission assignment
+Subcontracting supervision and document management.,Supervisión de subcontratación y gestión de documentos.,Permission assignment
+Subcontracting supervisors,Supervisores de subcontratación,Permission assignment
+"Supplier enquiries, purchasing and purchase analysis.","Consultas a proveedores, compras y análisis de compras.",Permission assignment
+Support,Soporte,Permission assignment
+System administrators,Administradores del sistema,Permission assignment
+System and platform,Sistema y plataforma,Permission assignment
+"System configuration, users and permission administration.","Configuración del sistema, usuarios y administración de permisos.",Permission assignment
+System core,Núcleo del sistema,Permission assignment
+Tax invoice processing and input tax deduction work.,Procesamiento de facturas fiscales y deducción de IVA soportado.,Permission assignment
+Tax staff,Personal fiscal,Permission assignment
+Telephony,Telefonía,Permission assignment
+Telephony connections and call-related features.,Conexiones de telefonía y funciones de llamadas.,Permission assignment
+Template sources could not be read. Check Role Profile read permission and retry by refreshing.,No se pudieron leer los perfiles de origen. Compruebe el permiso de lectura de perfiles de roles y actualice para reintentar.,Permission assignment
+The selected templates replace individually assigned roles. Review removals before applying. Changes take effect after saving.,Los perfiles seleccionados sustituyen los roles asignados individualmente. Revise las eliminaciones antes de aplicarlos. Los cambios entran en vigor al guardar.,Permission assignment
+This is the current form configuration. Saved permissions and business conditions determine actual access.,Esta es la configuración actual del formulario. Los permisos guardados y las condiciones de negocio determinan el acceso real.,Permission assignment
+Translation maintainers,Responsables de traducciones,Permission assignment
+Unable to preview this template. Check read permission and retry.,No se puede previsualizar este perfil. Compruebe el permiso de lectura y vuelva a intentarlo.,Permission assignment
+Use Preview and add to review role changes. Selected templates control the complete role list.,Use la previsualización para revisar los cambios. Los perfiles seleccionados controlan la lista completa de roles.,Permission assignment
+"Users, roles and framework management features.","Usuarios, roles y funciones de administración del sistema.",Permission assignment
+Utilities,Utilidades,Permission assignment
+View permissions,Ver permisos,Permission assignment
+View saved user permissions,Ver permisos de usuario guardados,Permission assignment
+Visible modules: {0},Módulos visibles: {0},Permission assignment
+Voucher posting staff,Personal de contabilización de comprobantes,Permission assignment
+Voucher reviewers,Revisores de comprobantes,Permission assignment
+"Warehouse documents, receipts, issues and stock movements.","Documentos de almacén, recepciones, salidas y movimientos de inventario.",Permission assignment
+Warehouse staff,Personal de almacén,Permission assignment
+Website,Sitio web,Permission assignment
+Website administrators,Administradores del sitio web,Permission assignment
+"Website pages, content and website configuration.","Páginas, contenido y configuración del sitio web.",Permission assignment
+"Website pages, portal content and website settings.","Páginas del sitio web, contenido del portal y configuración web.",Permission assignment
+Workflow,Flujo de trabajo,Permission assignment
+Workspace administrators,Administradores de espacios de trabajo,Permission assignment
+{0} · {1} selected / {2},{0} · {1} seleccionados / {2},Permission assignment
+Unable to apply the template. Review the current form before saving or retrying.,No se pudo aplicar el perfil. Revise el formulario actual antes de guardar o reintentar.,Permission assignment
+Applying job template...,Aplicando perfil de puesto...,Permission assignment
+About {0},Acerca de {0},Permission assignment
+View permissions for {0},Ver permisos de {0},Permission assignment
+Configuration help,Ayuda de configuración,Permission assignment

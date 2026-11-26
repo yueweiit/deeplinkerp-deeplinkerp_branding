@@ -1333,3 +1333,233 @@ Trend unavailable,趋势暂不可用
 OA Incremental Sync State,OA 增量同步状态
 OA synchronization storage requires a site migration.,OA 同步存储需要更新站点结构，请联系管理员执行迁移。
 Expense Management,支出管理
+AI Assistant,AI 助手,Permission assignment
+AI assistant settings and business query features.,AI 助手设置与业务查询功能。,Permission assignment
+Accounting,会计核算,Permission assignment
+Accounting archive preparation and enquiries.,会计档案整理与查询。,Permission assignment
+Accounting archive staff,会计档案人员,Permission assignment
+"Accounting documents, receivables, payables and financial reports.",会计单据、应收应付与财务报表。,Permission assignment
+Accounting staff,会计人员,Permission assignment
+Accounting supervision and financial configuration.,会计业务管理与财务配置。,Permission assignment
+Add to current form,添加到当前表单,Permission assignment
+Administrator uses framework-wide privileges; the selected role list does not represent its full access.,Administrator 使用框架级管理权限；已选角色列表不能代表其全部访问能力。,Permission assignment
+All business groups,全部业务分组,Permission assignment
+"Asset records, depreciation and asset movements.",资产台账、折旧与资产变动。,Permission assignment
+Assets,资产,Permission assignment
+Assign permissions by job responsibility,按岗位职责分配权限,Permission assignment
+Auditors,审计人员,Permission assignment
+Authorized production release staff,获授权的生产放行人员,Permission assignment
+Authorized technical administrators,获授权的技术管理员,Permission assignment
+Automatic assignment and other automation rules.,自动分配及其他自动化规则。,Permission assignment
+Automation,自动化规则,Permission assignment
+Batch processing of supported business documents.,对支持的业务单据进行批量处理。,Permission assignment
+"Bills of materials, work orders and production processing.",物料清单、工单与生产作业。,Permission assignment
+Blog posts and related website content.,博客文章与相关网站内容。,Permission assignment
+Budget and expense management features supplied by the installed app.,已安装应用提供的预算与支出管理功能。,Permission assignment
+Bulk transactions,批量业务处理,Permission assignment
+Business group,业务分组,Permission assignment
+Buying,采购,Permission assignment
+CRM,客户关系,Permission assignment
+"CRM and ERP data exchange, settings and integration logs.",CRM 与 ERP 数据交换、配置及集成日志。,Permission assignment
+CRM integration,CRM 集成,Permission assignment
+Cashier processing in the China finance extension.,中国财务扩展中的出纳业务。,Permission assignment
+Cashiers,出纳人员,Permission assignment
+Check the actual binding to Sales Production Release Permission before assigning this role.,分配前请核对该角色是否实际绑定“销售生产放行许可”。,Permission assignment
+China Finance,中国财务,Permission assignment
+"China accounting vouchers, reconciliation, tax and closing.",中国会计凭证、对账、税务与结账。,Permission assignment
+"China finance configuration, closing and financial controls.",中国财务配置、结账与财务管控。,Permission assignment
+Communication,沟通记录,Permission assignment
+Communication records linked to business documents.,关联业务单据的沟通记录。,Permission assignment
+Configure company / warehouse scope,配置公司／仓库数据范围,Permission assignment
+Contacts,联系人,Permission assignment
+Contacts and addresses shared by business documents.,业务单据共用的联系人与地址。,Permission assignment
+Content editors,内容编辑人员,Permission assignment
+Controls module navigation. Checking a module does not grant document operations or data access.,控制模块入口显示；勾选模块不会授予单据操作或数据访问权限。,Permission assignment
+"Country, region and geographical reference data.",国家、地区与地理基础资料。,Permission assignment
+"Custom fields, forms and system customization.",自定义字段、表单与系统定制。,Permission assignment
+"Custom filters, Desk enhancements and login integrations.",自定义筛选、工作台增强与登录集成。,Permission assignment
+"Customer issues, service requests and support follow-up.",客户问题、服务请求与售后跟进。,Permission assignment
+"Customer issues, support and service follow-up.",客户问题、售后支持与服务跟进。,Permission assignment
+Customer or supplier portal features.,客户或供应商门户功能。,Permission assignment
+Customer service staff,客服人员,Permission assignment
+Customer service supervision and service configuration.,客服业务管理与服务配置。,Permission assignment
+Customer service supervisors,客服主管,Permission assignment
+Customization,自定义配置,Permission assignment
+Daily accounting documents and financial processing.,日常会计单据与财务业务处理。,Permission assignment
+Daily human resources records and processing.,日常人事资料与人事业务处理。,Permission assignment
+Daily purchasing documents and supplier follow-up.,日常采购单据与供应商跟进。,Permission assignment
+Daily sales documents and customer follow-up.,日常销售单据与客户跟进。,Permission assignment
+Daily work in the China finance extension.,中国财务扩展中的日常核算工作。,Permission assignment
+DeepLinkERP business extensions,DeepLinkERP 业务扩展,Permission assignment
+Delivery staff,配送人员,Permission assignment
+Delivery supervision and delivery configuration.,配送业务管理与配送配置。,Permission assignment
+Delivery supervisors,配送主管,Permission assignment
+Delivery trips and delivery coordination.,配送行程与配送协调。,Permission assignment
+Desktop message and notification features.,桌面消息与通知功能。,Permission assignment
+Desktop notifications,桌面通知,Permission assignment
+Document approval workflows and state transitions.,单据审批工作流与状态流转。,Permission assignment
+Draft notifications,单据规则通知,Permission assignment
+ERP and MES production and inventory integration.,ERP 与 MES 的生产及库存集成。,Permission assignment
+ERPNext integrations,ERPNext 集成,Permission assignment
+Electronic business data exchange features.,电子业务数据交换功能。,Permission assignment
+Electronic data interchange,电子数据交换,Permission assignment
+Email,邮件,Permission assignment
+"Email accounts, messages and related settings.",邮件账户、邮件消息与相关设置。,Permission assignment
+Employee self-service and related personal records.,员工自助服务及相关个人记录。,Permission assignment
+Employees,员工,Permission assignment
+Equipment maintenance and service records.,设备维护保养与服务记录。,Permission assignment
+"Equipment maintenance plans, visits and service records.",设备保养计划、维护访问与服务记录。,Permission assignment
+External service connections and integration settings.,外部服务连接与集成设置。,Permission assignment
+Filters and login extensions,筛选与登录扩展,Permission assignment
+Finance and tax,财务与税务,Permission assignment
+Finance supervisors,财务主管,Permission assignment
+Financial review and audit enquiries; check actual write and export permissions.,财务复核与审计查询；请核对实际写入及导出权限。,Permission assignment
+For: {0},适用：{0},Permission assignment
+From template: {0},来自岗位模板：{0},Permission assignment
+General tools and utility records.,通用工具与辅助业务记录。,Permission assignment
+Geographical data,地理基础资料,Permission assignment
+Human resources staff,人事人员,Permission assignment
+Human resources supervision and configuration.,人事业务管理与配置。,Permission assignment
+Human resources supervisors,人事主管,Permission assignment
+Integration features provided by ERPNext.,ERPNext 提供的集成功能。,Permission assignment
+Integrations,系统集成,Permission assignment
+Inventory and production,库存与生产,Permission assignment
+Inventory supervision and management of stock documents.,库存业务管理与库存单据管理。,Permission assignment
+Inventory supervisors,库存主管,Permission assignment
+Item master data maintainers,物料主数据维护人员,Permission assignment
+"Items, warehouses, stock movements and inventory enquiries.",物料、仓库、库存移动与库存查询。,Permission assignment
+Job permission templates,岗位权限模板,Permission assignment
+Job template,岗位模板,Permission assignment
+Job templates: {0},岗位模板：{0},Permission assignment
+Key responsibility,关键职责,Permission assignment
+Knowledge base articles and content maintenance.,知识库文章与内容维护。,Permission assignment
+"Leads, opportunities and customer relationship work.",线索、商机与客户关系维护。,Permission assignment
+Loading template sources...,正在读取岗位模板来源……,Permission assignment
+MES integration,MES 集成,Permission assignment
+Mailing list administrators,邮件群发管理员,Permission assignment
+Mailing lists and newsletter publishing.,邮件列表与群发邮件发布。,Permission assignment
+Maintenance,维护保养,Permission assignment
+Maintenance of interface translations.,界面翻译维护。,Permission assignment
+Maintenance of items and related master data.,物料与相关主数据维护。,Permission assignment
+Maintenance of shared sales master data.,销售共用主数据维护。,Permission assignment
+Maintenance staff,维护保养人员,Permission assignment
+Maintenance supervision and service configuration.,维护保养业务管理与服务配置。,Permission assignment
+Maintenance supervisors,维护保养主管,Permission assignment
+Manufacturing,生产制造,Permission assignment
+Manufacturing supervision and production configuration.,生产业务管理与生产配置。,Permission assignment
+Mobile operations,移动作业,Permission assignment
+Mobile warehouse and on-site operations.,移动端仓库与现场作业。,Permission assignment
+Module visibility,模块入口显示,Permission assignment
+Module visibility template,模块显示模板,Permission assignment
+No job template selected; roles are assigned individually.,尚未选择岗位模板，当前按角色逐项分配。,Permission assignment
+No matching items,没有匹配的项目,Permission assignment
+None,无,Permission assignment
+OA purchase collaboration,OA 采购协同,Permission assignment
+OA purchase requests and related purchasing collaboration.,OA 采购申请与相关采购协同。,Permission assignment
+Other / needs explanation,其他／待补充说明,Permission assignment
+"Overseas cost batches, allocation and related procurement.",海外成本批次、成本分摊与关联采购。,Permission assignment
+Overseas cost workbench access; related document permissions still apply.,海外成本工作台访问；仍需相关业务单据权限。,Permission assignment
+Overseas costing,海外成本核算,Permission assignment
+Overseas costing staff,海外成本核算人员,Permission assignment
+Portal,门户,Permission assignment
+Posting of accounting vouchers in the China finance extension.,中国财务扩展中的会计凭证过账。,Permission assignment
+Preparation of accounting vouchers in the China finance extension.,中国财务扩展中的会计凭证编制。,Permission assignment
+Preview and add job template,预览并添加岗位模板,Permission assignment
+Preview job template,预览岗位模板,Permission assignment
+"Print formats, print settings and output configuration.",打印格式、打印设置与输出配置。,Permission assignment
+Printing and formats,打印与格式,Permission assignment
+Production orders and daily manufacturing operations.,生产工单与日常生产作业。,Permission assignment
+Production staff,生产人员,Permission assignment
+Production supervisors,生产主管,Permission assignment
+Project staff,项目人员,Permission assignment
+Project supervision and project configuration.,项目业务管理与项目配置。,Permission assignment
+Project supervisors,项目主管,Permission assignment
+Projects,项目,Permission assignment
+Projects and operations,项目与运营,Permission assignment
+"Projects, tasks and daily project follow-up.",项目、任务与日常项目跟进。,Permission assignment
+"Projects, tasks and project follow-up.",项目、任务与项目跟进。,Permission assignment
+Purchasing,采购管理,Permission assignment
+Purchasing staff,采购人员,Permission assignment
+Purchasing supervision and management of purchasing documents.,采购业务管理与采购单据管理。,Permission assignment
+Purchasing supervisors,采购主管,Permission assignment
+Purpose not documented yet. Check actual permissions and related business settings.,用途说明待补充，请查看实际权限及相关业务设置。,Permission assignment
+Quality Management,质量管理,Permission assignment
+"Quality goals, procedures and review records.",质量目标、质量流程与评审记录。,Permission assignment
+"Quality inspections, goals and quality management records.",质量检验、质量目标与质量管理记录。,Permission assignment
+Quality staff,质量人员,Permission assignment
+Regional,区域化功能,Permission assignment
+Regional business features and localization.,区域业务功能与本地化配置。,Permission assignment
+Report administrators,报表管理员,Permission assignment
+Review of accounting vouchers in the China finance extension.,中国财务扩展中的会计凭证审核。,Permission assignment
+Roles define operations. Module visibility controls navigation. User Permissions restrict records such as companies and warehouses.,角色决定操作能力，模块显示控制导航入口，用户权限限制公司、仓库等数据范围。,Permission assignment
+Roles follow the selected templates. Updating a shared template also affects its other users.,角色由所选岗位模板统一管理；修改共用模板也会影响使用它的其他用户。,Permission assignment
+Roles retained,保留角色,Permission assignment
+Roles to add,新增角色,Permission assignment
+Roles to remove,移除角色,Permission assignment
+Rule-based business document notifications.,按规则发送业务单据通知。,Permission assignment
+SMS administrators,短信管理员,Permission assignment
+SMS sending and related configuration.,短信发送与相关配置。,Permission assignment
+Sales Production Release Operator,销售生产放行操作员,Permission assignment
+Sales and customer service,销售与客服,Permission assignment
+"Sales documents, customers and sales analysis.",销售单据、客户与销售分析。,Permission assignment
+Sales master data maintainers,销售主数据维护人员,Permission assignment
+Sales staff,销售人员,Permission assignment
+Sales supervision and management of sales documents.,销售业务管理与销售单据管理。,Permission assignment
+Sales supervisors,销售主管,Permission assignment
+Save the user first to inspect the saved permission configuration.,请先保存用户，再查看已保存的权限配置。,Permission assignment
+Script maintenance that can affect system behavior.,脚本维护，可能影响系统运行行为。,Permission assignment
+Search by name or purpose,按名称或用途搜索,Permission assignment
+Selected only,只看已选,Permission assignment
+Selected roles: {0},已选角色：{0},Permission assignment
+Selling,销售,Permission assignment
+Setup,基础设置,Permission assignment
+Shared business settings and basic configuration.,共用业务设置与基础配置。,Permission assignment
+"Shared navigation, sales, purchasing, inventory and expense extensions.",共用导航及销售、采购、库存、支出等业务扩展。,Permission assignment
+Shared report or dashboard configuration.,共用报表或仪表板配置。,Permission assignment
+Shared workspace layout and navigation configuration.,共用工作区布局与导航配置。,Permission assignment
+Stock,库存,Permission assignment
+Stock quantity enquiries,库存数量查询,Permission assignment
+Stock quantity enquiry features supplied by the installed app.,已安装应用提供的库存数量查询功能。,Permission assignment
+Subcontracted orders and supplied materials.,委外订单与供料业务。,Permission assignment
+Subcontracting,委外加工,Permission assignment
+Subcontracting documents and material coordination.,委外单据与供料协调。,Permission assignment
+Subcontracting staff,委外人员,Permission assignment
+Subcontracting supervision and document management.,委外业务管理与单据管理。,Permission assignment
+Subcontracting supervisors,委外主管,Permission assignment
+"Supplier enquiries, purchasing and purchase analysis.",供应商询价、采购与采购分析。,Permission assignment
+Support,售后支持,Permission assignment
+System administrators,系统管理员,Permission assignment
+System and platform,系统与平台,Permission assignment
+"System configuration, users and permission administration.",系统配置、用户与权限管理。,Permission assignment
+System core,系统核心,Permission assignment
+Tax invoice processing and input tax deduction work.,税务发票处理与进项税抵扣业务。,Permission assignment
+Tax staff,税务人员,Permission assignment
+Telephony,电话集成,Permission assignment
+Telephony connections and call-related features.,电话连接与通话相关功能。,Permission assignment
+Template sources could not be read. Check Role Profile read permission and retry by refreshing.,无法读取岗位模板来源，请核对角色配置的读取权限后刷新重试。,Permission assignment
+The selected templates replace individually assigned roles. Review removals before applying. Changes take effect after saving.,所选岗位模板会替换逐项分配的角色，请先核对移除项；保存后生效。,Permission assignment
+This is the current form configuration. Saved permissions and business conditions determine actual access.,这里展示当前表单配置；实际访问能力以保存后的权限和业务条件为准。,Permission assignment
+Translation maintainers,翻译维护人员,Permission assignment
+Unable to preview this template. Check read permission and retry.,无法预览该岗位模板，请核对读取权限后重试。,Permission assignment
+Use Preview and add to review role changes. Selected templates control the complete role list.,可通过“预览并添加”核对角色变化；所选岗位模板决定完整角色列表。,Permission assignment
+"Users, roles and framework management features.",用户、角色与框架管理功能。,Permission assignment
+Utilities,通用工具,Permission assignment
+View permissions,查看权限,Permission assignment
+View saved user permissions,查看已保存的用户权限,Permission assignment
+Visible modules: {0},显示模块：{0},Permission assignment
+Voucher posting staff,凭证过账人员,Permission assignment
+Voucher reviewers,凭证审核人员,Permission assignment
+"Warehouse documents, receipts, issues and stock movements.",仓库单据、收货、发料与库存移动。,Permission assignment
+Warehouse staff,仓库人员,Permission assignment
+Website,网站,Permission assignment
+Website administrators,网站管理员,Permission assignment
+"Website pages, content and website configuration.",网站页面、内容与网站配置。,Permission assignment
+"Website pages, portal content and website settings.",网站页面、门户内容与网站设置。,Permission assignment
+Workflow,审批工作流,Permission assignment
+Workspace administrators,工作区管理员,Permission assignment
+{0} · {1} selected / {2},{0} · 已选 {1}／{2},Permission assignment
+Unable to apply the template. Review the current form before saving or retrying.,无法应用岗位模板，请在保存或重试前核对当前表单。,Permission assignment
+Applying job template...,正在应用岗位模板……,Permission assignment
+About {0},{0}的用途说明,Permission assignment
+View permissions for {0},查看{0}的权限明细,Permission assignment
+Configuration help,配置说明,Permission assignment

@@ -2730,3 +2730,233 @@ Trend unavailable,Trend unavailable
 OA Incremental Sync State,OA Incremental Sync State
 OA synchronization storage requires a site migration.,OA synchronization storage requires a site migration.
 Expense Management,Expense Management
+AI Assistant,AI Assistant,Permission assignment
+AI assistant settings and business query features.,AI assistant settings and business query features.,Permission assignment
+Accounting,Accounting,Permission assignment
+Accounting archive preparation and enquiries.,Accounting archive preparation and enquiries.,Permission assignment
+Accounting archive staff,Accounting archive staff,Permission assignment
+"Accounting documents, receivables, payables and financial reports.","Accounting documents, receivables, payables and financial reports.",Permission assignment
+Accounting staff,Accounting staff,Permission assignment
+Accounting supervision and financial configuration.,Accounting supervision and financial configuration.,Permission assignment
+Add to current form,Add to current form,Permission assignment
+Administrator uses framework-wide privileges; the selected role list does not represent its full access.,Administrator uses framework-wide privileges; the selected role list does not represent its full access.,Permission assignment
+All business groups,All business groups,Permission assignment
+"Asset records, depreciation and asset movements.","Asset records, depreciation and asset movements.",Permission assignment
+Assets,Assets,Permission assignment
+Assign permissions by job responsibility,Assign permissions by job responsibility,Permission assignment
+Auditors,Auditors,Permission assignment
+Authorized production release staff,Authorized production release staff,Permission assignment
+Authorized technical administrators,Authorized technical administrators,Permission assignment
+Automatic assignment and other automation rules.,Automatic assignment and other automation rules.,Permission assignment
+Automation,Automation,Permission assignment
+Batch processing of supported business documents.,Batch processing of supported business documents.,Permission assignment
+"Bills of materials, work orders and production processing.","Bills of materials, work orders and production processing.",Permission assignment
+Blog posts and related website content.,Blog posts and related website content.,Permission assignment
+Budget and expense management features supplied by the installed app.,Budget and expense management features supplied by the installed app.,Permission assignment
+Bulk transactions,Bulk transactions,Permission assignment
+Business group,Business group,Permission assignment
+Buying,Buying,Permission assignment
+CRM,CRM,Permission assignment
+"CRM and ERP data exchange, settings and integration logs.","CRM and ERP data exchange, settings and integration logs.",Permission assignment
+CRM integration,CRM integration,Permission assignment
+Cashier processing in the China finance extension.,Cashier processing in the China finance extension.,Permission assignment
+Cashiers,Cashiers,Permission assignment
+Check the actual binding to Sales Production Release Permission before assigning this role.,Check the actual binding to Sales Production Release Permission before assigning this role.,Permission assignment
+China Finance,China Finance,Permission assignment
+"China accounting vouchers, reconciliation, tax and closing.","China accounting vouchers, reconciliation, tax and closing.",Permission assignment
+"China finance configuration, closing and financial controls.","China finance configuration, closing and financial controls.",Permission assignment
+Communication,Communication,Permission assignment
+Communication records linked to business documents.,Communication records linked to business documents.,Permission assignment
+Configure company / warehouse scope,Configure company / warehouse scope,Permission assignment
+Contacts,Contacts,Permission assignment
+Contacts and addresses shared by business documents.,Contacts and addresses shared by business documents.,Permission assignment
+Content editors,Content editors,Permission assignment
+Controls module navigation. Checking a module does not grant document operations or data access.,Controls module navigation. Checking a module does not grant document operations or data access.,Permission assignment
+"Country, region and geographical reference data.","Country, region and geographical reference data.",Permission assignment
+"Custom fields, forms and system customization.","Custom fields, forms and system customization.",Permission assignment
+"Custom filters, Desk enhancements and login integrations.","Custom filters, Desk enhancements and login integrations.",Permission assignment
+"Customer issues, service requests and support follow-up.","Customer issues, service requests and support follow-up.",Permission assignment
+"Customer issues, support and service follow-up.","Customer issues, support and service follow-up.",Permission assignment
+Customer or supplier portal features.,Customer or supplier portal features.,Permission assignment
+Customer service staff,Customer service staff,Permission assignment
+Customer service supervision and service configuration.,Customer service supervision and service configuration.,Permission assignment
+Customer service supervisors,Customer service supervisors,Permission assignment
+Customization,Customization,Permission assignment
+Daily accounting documents and financial processing.,Daily accounting documents and financial processing.,Permission assignment
+Daily human resources records and processing.,Daily human resources records and processing.,Permission assignment
+Daily purchasing documents and supplier follow-up.,Daily purchasing documents and supplier follow-up.,Permission assignment
+Daily sales documents and customer follow-up.,Daily sales documents and customer follow-up.,Permission assignment
+Daily work in the China finance extension.,Daily work in the China finance extension.,Permission assignment
+DeepLinkERP business extensions,DeepLinkERP business extensions,Permission assignment
+Delivery staff,Delivery staff,Permission assignment
+Delivery supervision and delivery configuration.,Delivery supervision and delivery configuration.,Permission assignment
+Delivery supervisors,Delivery supervisors,Permission assignment
+Delivery trips and delivery coordination.,Delivery trips and delivery coordination.,Permission assignment
+Desktop message and notification features.,Desktop message and notification features.,Permission assignment
+Desktop notifications,Desktop notifications,Permission assignment
+Document approval workflows and state transitions.,Document approval workflows and state transitions.,Permission assignment
+Draft notifications,Draft notifications,Permission assignment
+ERP and MES production and inventory integration.,ERP and MES production and inventory integration.,Permission assignment
+ERPNext integrations,ERPNext integrations,Permission assignment
+Electronic business data exchange features.,Electronic business data exchange features.,Permission assignment
+Electronic data interchange,Electronic data interchange,Permission assignment
+Email,Email,Permission assignment
+"Email accounts, messages and related settings.","Email accounts, messages and related settings.",Permission assignment
+Employee self-service and related personal records.,Employee self-service and related personal records.,Permission assignment
+Employees,Employees,Permission assignment
+Equipment maintenance and service records.,Equipment maintenance and service records.,Permission assignment
+"Equipment maintenance plans, visits and service records.","Equipment maintenance plans, visits and service records.",Permission assignment
+External service connections and integration settings.,External service connections and integration settings.,Permission assignment
+Filters and login extensions,Filters and login extensions,Permission assignment
+Finance and tax,Finance and tax,Permission assignment
+Finance supervisors,Finance supervisors,Permission assignment
+Financial review and audit enquiries; check actual write and export permissions.,Financial review and audit enquiries; check actual write and export permissions.,Permission assignment
+For: {0},For: {0},Permission assignment
+From template: {0},From template: {0},Permission assignment
+General tools and utility records.,General tools and utility records.,Permission assignment
+Geographical data,Geographical data,Permission assignment
+Human resources staff,Human resources staff,Permission assignment
+Human resources supervision and configuration.,Human resources supervision and configuration.,Permission assignment
+Human resources supervisors,Human resources supervisors,Permission assignment
+Integration features provided by ERPNext.,Integration features provided by ERPNext.,Permission assignment
+Integrations,Integrations,Permission assignment
+Inventory and production,Inventory and production,Permission assignment
+Inventory supervision and management of stock documents.,Inventory supervision and management of stock documents.,Permission assignment
+Inventory supervisors,Inventory supervisors,Permission assignment
+Item master data maintainers,Item master data maintainers,Permission assignment
+"Items, warehouses, stock movements and inventory enquiries.","Items, warehouses, stock movements and inventory enquiries.",Permission assignment
+Job permission templates,Job permission templates,Permission assignment
+Job template,Job template,Permission assignment
+Job templates: {0},Job templates: {0},Permission assignment
+Key responsibility,Key responsibility,Permission assignment
+Knowledge base articles and content maintenance.,Knowledge base articles and content maintenance.,Permission assignment
+"Leads, opportunities and customer relationship work.","Leads, opportunities and customer relationship work.",Permission assignment
+Loading template sources...,Loading template sources...,Permission assignment
+MES integration,MES integration,Permission assignment
+Mailing list administrators,Mailing list administrators,Permission assignment
+Mailing lists and newsletter publishing.,Mailing lists and newsletter publishing.,Permission assignment
+Maintenance,Maintenance,Permission assignment
+Maintenance of interface translations.,Maintenance of interface translations.,Permission assignment
+Maintenance of items and related master data.,Maintenance of items and related master data.,Permission assignment
+Maintenance of shared sales master data.,Maintenance of shared sales master data.,Permission assignment
+Maintenance staff,Maintenance staff,Permission assignment
+Maintenance supervision and service configuration.,Maintenance supervision and service configuration.,Permission assignment
+Maintenance supervisors,Maintenance supervisors,Permission assignment
+Manufacturing,Manufacturing,Permission assignment
+Manufacturing supervision and production configuration.,Manufacturing supervision and production configuration.,Permission assignment
+Mobile operations,Mobile operations,Permission assignment
+Mobile warehouse and on-site operations.,Mobile warehouse and on-site operations.,Permission assignment
+Module visibility,Module visibility,Permission assignment
+Module visibility template,Module visibility template,Permission assignment
+No job template selected; roles are assigned individually.,No job template selected; roles are assigned individually.,Permission assignment
+No matching items,No matching items,Permission assignment
+None,None,Permission assignment
+OA purchase collaboration,OA purchase collaboration,Permission assignment
+OA purchase requests and related purchasing collaboration.,OA purchase requests and related purchasing collaboration.,Permission assignment
+Other / needs explanation,Other / needs explanation,Permission assignment
+"Overseas cost batches, allocation and related procurement.","Overseas cost batches, allocation and related procurement.",Permission assignment
+Overseas cost workbench access; related document permissions still apply.,Overseas cost workbench access; related document permissions still apply.,Permission assignment
+Overseas costing,Overseas costing,Permission assignment
+Overseas costing staff,Overseas costing staff,Permission assignment
+Portal,Portal,Permission assignment
+Posting of accounting vouchers in the China finance extension.,Posting of accounting vouchers in the China finance extension.,Permission assignment
+Preparation of accounting vouchers in the China finance extension.,Preparation of accounting vouchers in the China finance extension.,Permission assignment
+Preview and add job template,Preview and add job template,Permission assignment
+Preview job template,Preview job template,Permission assignment
+"Print formats, print settings and output configuration.","Print formats, print settings and output configuration.",Permission assignment
+Printing and formats,Printing and formats,Permission assignment
+Production orders and daily manufacturing operations.,Production orders and daily manufacturing operations.,Permission assignment
+Production staff,Production staff,Permission assignment
+Production supervisors,Production supervisors,Permission assignment
+Project staff,Project staff,Permission assignment
+Project supervision and project configuration.,Project supervision and project configuration.,Permission assignment
+Project supervisors,Project supervisors,Permission assignment
+Projects,Projects,Permission assignment
+Projects and operations,Projects and operations,Permission assignment
+"Projects, tasks and daily project follow-up.","Projects, tasks and daily project follow-up.",Permission assignment
+"Projects, tasks and project follow-up.","Projects, tasks and project follow-up.",Permission assignment
+Purchasing,Purchasing,Permission assignment
+Purchasing staff,Purchasing staff,Permission assignment
+Purchasing supervision and management of purchasing documents.,Purchasing supervision and management of purchasing documents.,Permission assignment
+Purchasing supervisors,Purchasing supervisors,Permission assignment
+Purpose not documented yet. Check actual permissions and related business settings.,Purpose not documented yet. Check actual permissions and related business settings.,Permission assignment
+Quality Management,Quality Management,Permission assignment
+"Quality goals, procedures and review records.","Quality goals, procedures and review records.",Permission assignment
+"Quality inspections, goals and quality management records.","Quality inspections, goals and quality management records.",Permission assignment
+Quality staff,Quality staff,Permission assignment
+Regional,Regional,Permission assignment
+Regional business features and localization.,Regional business features and localization.,Permission assignment
+Report administrators,Report administrators,Permission assignment
+Review of accounting vouchers in the China finance extension.,Review of accounting vouchers in the China finance extension.,Permission assignment
+Roles define operations. Module visibility controls navigation. User Permissions restrict records such as companies and warehouses.,Roles define operations. Module visibility controls navigation. User Permissions restrict records such as companies and warehouses.,Permission assignment
+Roles follow the selected templates. Updating a shared template also affects its other users.,Roles follow the selected templates. Updating a shared template also affects its other users.,Permission assignment
+Roles retained,Roles retained,Permission assignment
+Roles to add,Roles to add,Permission assignment
+Roles to remove,Roles to remove,Permission assignment
+Rule-based business document notifications.,Rule-based business document notifications.,Permission assignment
+SMS administrators,SMS administrators,Permission assignment
+SMS sending and related configuration.,SMS sending and related configuration.,Permission assignment
+Sales Production Release Operator,Sales Production Release Operator,Permission assignment
+Sales and customer service,Sales and customer service,Permission assignment
+"Sales documents, customers and sales analysis.","Sales documents, customers and sales analysis.",Permission assignment
+Sales master data maintainers,Sales master data maintainers,Permission assignment
+Sales staff,Sales staff,Permission assignment
+Sales supervision and management of sales documents.,Sales supervision and management of sales documents.,Permission assignment
+Sales supervisors,Sales supervisors,Permission assignment
+Save the user first to inspect the saved permission configuration.,Save the user first to inspect the saved permission configuration.,Permission assignment
+Script maintenance that can affect system behavior.,Script maintenance that can affect system behavior.,Permission assignment
+Search by name or purpose,Search by name or purpose,Permission assignment
+Selected only,Selected only,Permission assignment
+Selected roles: {0},Selected roles: {0},Permission assignment
+Selling,Selling,Permission assignment
+Setup,Setup,Permission assignment
+Shared business settings and basic configuration.,Shared business settings and basic configuration.,Permission assignment
+"Shared navigation, sales, purchasing, inventory and expense extensions.","Shared navigation, sales, purchasing, inventory and expense extensions.",Permission assignment
+Shared report or dashboard configuration.,Shared report or dashboard configuration.,Permission assignment
+Shared workspace layout and navigation configuration.,Shared workspace layout and navigation configuration.,Permission assignment
+Stock,Stock,Permission assignment
+Stock quantity enquiries,Stock quantity enquiries,Permission assignment
+Stock quantity enquiry features supplied by the installed app.,Stock quantity enquiry features supplied by the installed app.,Permission assignment
+Subcontracted orders and supplied materials.,Subcontracted orders and supplied materials.,Permission assignment
+Subcontracting,Subcontracting,Permission assignment
+Subcontracting documents and material coordination.,Subcontracting documents and material coordination.,Permission assignment
+Subcontracting staff,Subcontracting staff,Permission assignment
+Subcontracting supervision and document management.,Subcontracting supervision and document management.,Permission assignment
+Subcontracting supervisors,Subcontracting supervisors,Permission assignment
+"Supplier enquiries, purchasing and purchase analysis.","Supplier enquiries, purchasing and purchase analysis.",Permission assignment
+Support,Support,Permission assignment
+System administrators,System administrators,Permission assignment
+System and platform,System and platform,Permission assignment
+"System configuration, users and permission administration.","System configuration, users and permission administration.",Permission assignment
+System core,System core,Permission assignment
+Tax invoice processing and input tax deduction work.,Tax invoice processing and input tax deduction work.,Permission assignment
+Tax staff,Tax staff,Permission assignment
+Telephony,Telephony,Permission assignment
+Telephony connections and call-related features.,Telephony connections and call-related features.,Permission assignment
+Template sources could not be read. Check Role Profile read permission and retry by refreshing.,Template sources could not be read. Check Role Profile read permission and retry by refreshing.,Permission assignment
+The selected templates replace individually assigned roles. Review removals before applying. Changes take effect after saving.,The selected templates replace individually assigned roles. Review removals before applying. Changes take effect after saving.,Permission assignment
+This is the current form configuration. Saved permissions and business conditions determine actual access.,This is the current form configuration. Saved permissions and business conditions determine actual access.,Permission assignment
+Translation maintainers,Translation maintainers,Permission assignment
+Unable to preview this template. Check read permission and retry.,Unable to preview this template. Check read permission and retry.,Permission assignment
+Use Preview and add to review role changes. Selected templates control the complete role list.,Use Preview and add to review role changes. Selected templates control the complete role list.,Permission assignment
+"Users, roles and framework management features.","Users, roles and framework management features.",Permission assignment
+Utilities,Utilities,Permission assignment
+View permissions,View permissions,Permission assignment
+View saved user permissions,View saved user permissions,Permission assignment
+Visible modules: {0},Visible modules: {0},Permission assignment
+Voucher posting staff,Voucher posting staff,Permission assignment
+Voucher reviewers,Voucher reviewers,Permission assignment
+"Warehouse documents, receipts, issues and stock movements.","Warehouse documents, receipts, issues and stock movements.",Permission assignment
+Warehouse staff,Warehouse staff,Permission assignment
+Website,Website,Permission assignment
+Website administrators,Website administrators,Permission assignment
+"Website pages, content and website configuration.","Website pages, content and website configuration.",Permission assignment
+"Website pages, portal content and website settings.","Website pages, portal content and website settings.",Permission assignment
+Workflow,Workflow,Permission assignment
+Workspace administrators,Workspace administrators,Permission assignment
+{0} · {1} selected / {2},{0} · {1} selected / {2},Permission assignment
+Unable to apply the template. Review the current form before saving or retrying.,Unable to apply the template. Review the current form before saving or retrying.,Permission assignment
+Applying job template...,Applying job template...,Permission assignment
+About {0},About {0},Permission assignment
+View permissions for {0},View permissions for {0},Permission assignment
+Configuration help,Configuration help,Permission assignment

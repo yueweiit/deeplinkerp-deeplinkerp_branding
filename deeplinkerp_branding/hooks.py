@@ -33,6 +33,7 @@ app_include_css = [
 	"/assets/deeplinkerp_branding/css/sales_order_list.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/inventory_detail.bundle.css?v=0.0.15",
 	"/assets/deeplinkerp_branding/css/form_grid_insert.css?v=0.0.1",
+	"/assets/deeplinkerp_branding/css/permission_editor.css?v=0.0.2",
 ]
 app_include_js = [
 	"/assets/deeplinkerp_branding/js/compact_list.js?v=0.0.35",
@@ -88,6 +89,8 @@ doctype_js["Stock Entry"] = [
 	"public/js/stock_entry_quantity_labels.js",
 	"public/js/stock_entry_zero_receipt.js",
 ]
+for permission_doctype in ("User", "Role Profile", "Module Profile"):
+	doctype_js[permission_doctype] = "public/js/permission_editor.js"
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
