@@ -46,3 +46,26 @@ test("refresh and pagination cannot discard edited rows",()=>{
     workbench.reload();workbench.turnPage(1);
     assert.equal(loaded,false);assert.equal(workbench.start,0);assert.equal(alerts.length,2);
 });
+
+test('unified journal breadcrumbs keep source ownership and standalone pages intact',()=>{
+    let route=['china-cash-journal'];
+    const entries=[], native=[];
+    const root={__:value=>value,frappe:{boot:{expense_cash_journal:true},get_route:()=>route,
+        utils:{escape_html:value=>value},breadcrumbs:{
+            set_custom_breadcrumbs(options){native.push(options);},
+            append_breadcrumb_element(...args){entries.push(args);}
+        }}};
+    const api=factory(root);
+    api.installNavigation();
+    const installed=root.frappe.breadcrumbs.set_custom_breadcrumbs;
+    api.installNavigation();
+    assert.equal(root.frappe.breadcrumbs.set_custom_breadcrumbs,installed);
+    installed.call(root.frappe.breadcrumbs,{});
+    assert.deepEqual(entries,[['/desk/expense-management?sidebar=Expense%20Management','Expense Management'],[null,'CN Cash Journal Entry']]);
+    route=['expense-details'];installed.call(root.frappe.breadcrumbs,{other:true});
+    assert.deepEqual(native,[{other:true}]);
+    route=['china-cash-journal'];root.frappe.boot.expense_cash_journal=false;
+    installed.call(root.frappe.breadcrumbs,{standalone:true});
+    assert.deepEqual(native.at(-1),{standalone:true});
+    assert.equal(entries.length,2);
+});

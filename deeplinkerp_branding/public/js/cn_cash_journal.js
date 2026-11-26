@@ -26,8 +26,22 @@
         // native save retains attachments and detects concurrent changes.
         return {...row.doc, doctype, ...values};
     }
+    function installNavigation() {
+        const breadcrumbs = root.frappe.breadcrumbs;
+        if (!root.frappe.boot?.expense_cash_journal || !breadcrumbs || breadcrumbs.cash_journal_installed) return;
+        const original = breadcrumbs.set_custom_breadcrumbs;
+        breadcrumbs.set_custom_breadcrumbs = function (options) {
+            const route = root.frappe.get_route();
+            if (!root.frappe.boot?.expense_cash_journal || route.length !== 1 || route[0] !== "china-cash-journal")
+                return original.call(this, options);
+            this.append_breadcrumb_element("/desk/expense-management?sidebar=Expense%20Management", esc(t("Expense Management")));
+            this.append_breadcrumb_element(null, esc(t(doctype)));
+        };
+        breadcrumbs.cash_journal_installed = true;
+    }
     class Workbench {
         constructor(wrapper) {
+            installNavigation();
             this.wrapper = wrapper;
             this.rows = [];
             this.start = 0;
@@ -225,5 +239,5 @@
             }
         }
     }
-    return {Workbench, columns, changed, payload};
+    return {Workbench, columns, changed, payload, installNavigation};
 });
