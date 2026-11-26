@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 
 from . import mexico_expense_contract as c
 from . import mexico_expense_templates as templates
+from . import expense_template_mapping as bindings
 
 
 def text(value):
@@ -71,7 +72,7 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
     path += [text(f.get('value')) for f in components if f.get('id') in category_ids and f.get('value')]
     business_category=' / '.join(dict.fromkeys(path))
     source_key=c.digest([row['corp_id'],row['process_instance_id']]);lines=[];seen=set();details=[]
-    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None,owner_id=''):
+    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None,owner_id='',row_currency=None):
         owner,multi=c._entity(owner);problems=[issue for issue in errors if issue != 'allocation' or table_id == 'header']
         if multi:problems.append('allocation')
         parsed=c.exact_amount(raw_amount)
@@ -81,7 +82,7 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
         seen.add((table_id,str(row_id)))
         selected=forced_sub or sub
         facts=dict(source_entity=owner,entity_kind=kind,entity_key=c.entity_key(kind,owner),category=c.SUBCATEGORIES[selected][0] if selected else None,
-            subcategory=selected,amount_raw=str(raw_amount if raw_amount is not None else ''),amount=parsed,currency=currency,description=text(description),
+            subcategory=selected,amount_raw=str(raw_amount if raw_amount is not None else ''),amount=parsed,currency=row_currency or currency,description=text(description),
             table_id=table_id,source_row_id=str(row_id),approval_type=family,business_category=business_category,salary_type=text(value('salary_type')))
         lines.append(dict(facts,**period,line_key=c.digest([source_key,table_id,row_id]),row_fingerprint=c.digest(facts),base_issues=problems,source=source_key,_source_entity_id=owner_id))
     known_tables={f.get('id'):k for k,f in fields.items() if k.endswith('_table') and f}
@@ -93,26 +94,27 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
             if not isinstance(entries,list) or len(entries)>2000:raise ValueError()
             if not entries:continue
             if not kind:errors.append('structure')
+            if kind == 'allocation_table' and family != 'operating':errors.append('structure')
             table_rows=[];totals=[];seen_rows=set()
             for entry in entries:
                 if not isinstance(entry,dict) or not isinstance(entry.get('rowValue'),list):raise ValueError()
                 cells=entry['rowValue']
                 if any(not isinstance(v,dict) for v in cells) or len({v.get('key') for v in cells})!=len(cells):raise ValueError()
+                if bindings.missing_children(template, kind, cells):errors.append('structure')
                 row_id=entry.get('rowNumber')
                 if not row_id or row_id in seen_rows:errors.append('identity')
                 seen_rows.add(row_id)
                 # Exact ID first; exact label aliases for historical copies only.
-                def cell_field(ids=(),labels=()):
-                    matches=[v for v in cells if v.get('key') in ids]
-                    if not matches:matches=[v for v in cells if c.normalized(v.get('label')) in {c.normalized(x) for x in labels}]
-                    return matches[0] if len(matches)==1 else {}
-                def cell(ids=(),labels=()):
-                    return cell_field(ids,labels).get('value')
-                total=cell(('CalculateField_1D7YT3J5Z4YO0','CalculateField_FV6G9ZJPPEG0','MoneyField_X5KBWAODJ1S0'),('总金额Monto Total','总金额（元）Importe Total (CNY)','金额（元）Monto (yuan)'))
+                def cell_field(ids=(),labels=(),role=None):
+                    return bindings.child(template, kind, role, cells, ids, labels)
+                def cell(ids=(),labels=(),role=None):
+                    return cell_field(ids,labels,role).get('value')
+                total=(cell(*templates.ALLOCATION_AMOUNT_FIELD, role='amount') if kind == 'allocation_table' else
+                    cell(('CalculateField_1D7YT3J5Z4YO0','CalculateField_FV6G9ZJPPEG0','MoneyField_X5KBWAODJ1S0'),('总金额Monto Total','总金额（元）Importe Total (CNY)','金额（元）Monto (yuan)'), role='amount'))
                 parsed=c.exact_amount(total);totals.append(parsed)
                 if family=='purchase' and kind in ('items_table','processors_table'):
-                    qty=cell(('NumberField_6Q22XFQ51VW0','NumberField_1VD3WWVT2QCG0'),('数量Cantidad',))
-                    price=cell(('NumberField_1P237DCILQKG0','NumberField_10YZCWTPVZR40'),('单价Precio','单价Precio Unitario'))
+                    qty=cell(('NumberField_6Q22XFQ51VW0','NumberField_1VD3WWVT2QCG0'),('数量Cantidad',), role='quantity')
+                    price=cell(('NumberField_1P237DCILQKG0','NumberField_10YZCWTPVZR40'),('单价Precio','单价Precio Unitario'), role='unit_price')
                     try:
                         quantity,unit_price=Decimal(str(qty)),Decimal(str(price))
                         if not quantity.is_finite() or not unit_price.is_finite() or quantity<0 or unit_price<0:raise ValueError()
@@ -120,16 +122,25 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
                         if quantity>0 and unit_price==0:errors.append('amount_pending')
                     except (InvalidOperation,ValueError):errors.append('amount')
                 table_rows.append({'row_id':str(row_id or ''),'cells':[{'label':str(v.get('label') or v.get('key') or ''),'value':text(v.get('value'))} for v in cells if v.get('value') not in (None,'') and not str(v.get('key','')).startswith(('DDPhoto','DDAttachment')) and '电话' not in str(v.get('label',''))]})
+                if family=='operating' and kind=='allocation_table':
+                    owner_field=cell_field(('DepartmentField_1C2A4A8ZG8TC0',),('部门Departamento',), role='entity')
+                    add(table_id,row_id,owner_field.get('value'),total,
+                        cell(('TextField_1AZVE05LBECG0',),('备注Nota',), role='description'), 'department',
+                        owner_id=c.organization_id(owner_field),row_currency=bindings.allocation_currency(template, currency))
+                    if not lines[-1]['source_entity']:lines[-1]['base_issues'].append('allocation')
+                    if 'allocation' in lines[-1]['base_issues']:lines[-1]['base_issues'].append('structure')
                 if family=='operating' and kind in ('salary_table','social_table','office_table'):
-                    owner_field=cell_field(labels=('部门Departamento',)) if kind!='office_table' else fields.get('entity',{})
+                    owner_field=cell_field(labels=('部门Departamento',),role='entity') if kind!='office_table' else fields.get('entity',{})
                     owner=owner_field.get('value') if kind!='office_table' else entity
-                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos')), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None, c.organization_id(owner_field))
+                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos'),role='description'), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None, c.organization_id(owner_field))
             details.append({'label':str(f.get('name') or table_id),'rows':table_rows})
             if family=='purchase' and kind in ('items_table','processors_table'):
                 if any(v is None for v in totals) or amount is not None and sum((Decimal(v) for v in totals if v is not None),Decimal(0))!=Decimal(amount):errors.append('total')
         except (ValueError,TypeError,KeyError):errors.append('structure')
     if not lines:add('header','header',entity,value('amount'),value('description'),owner_id=c.organization_id(fields.get('entity',{})))
-    if family=='operating' and amount is not None and (any(l['amount'] is None for l in lines) or sum((Decimal(l['amount']) for l in lines if l['amount'] is not None),Decimal(0))!=Decimal(amount)):errors.append('total')
+    if family=='operating':
+        if any(l['currency'] != currency for l in lines):errors.append('currency')
+        elif amount is not None and (any(l['amount'] is None for l in lines) or sum((Decimal(l['amount']) for l in lines if l['amount'] is not None),Decimal(0))!=Decimal(amount)):errors.append('total')
     for line in lines:
         inherited=[issue for issue in errors if issue != 'allocation' or line['table_id'] == 'header']
         line['base_issues']=sorted(set(line['base_issues']+inherited));line['row_fingerprint']=c.digest([line['row_fingerprint'],line['base_issues'],amount])

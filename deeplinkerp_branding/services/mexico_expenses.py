@@ -439,7 +439,7 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
 def _period_version(settings):
     # The shared cache guard also blocks facts projected before the mapping and
     # zero-amount fixes. Reprojection keeps the finance dates themselves unchanged.
-    return digest(["mx-finance-period-v4.3-expense-scope", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
+    return digest(["mx-finance-period-v4.4-department-allocation", settings.business_timezone or "America/Mexico_City", _template_facts(settings)])
 
 
 def _projection_version(settings):
@@ -700,7 +700,7 @@ def _preview_template(template, business_timezone, *, management=False):
         issues.update(issue for line in lines for issue in line["base_issues"])
         if management:
             from .regional_expenses import application_date_info, management_date
-            applied, date_state = application_date_info(row)
+            applied, date_state = application_date_info(row, template)
             applied, _basis = management_date(applied, date_state, source.get("request_date"), allow_submission=True)
             if not applied:
                 issues.add("period")

@@ -3,6 +3,7 @@ import json
 import re
 
 from . import mexico_expense_contract as c
+from . import expense_template_mapping as mapping_rules
 
 CONFIG_FIELDS = ('enabled', 'approval_type', 'template_name', 'corp_id', 'process_code',
                  'finance_node_names', 'finance_activity_ids', 'field_mapping', 'classification_fields')
@@ -14,9 +15,10 @@ DEFAULT_CODES = {
 }
 # Logical field -> known component IDs, exact historical names, allowed component kinds.
 FIELDS = {
- 'entity': (('CascadeField_G8SEQLCWG1S0','DDSelectField_1G5IFPI8IKQO0'), ('服务主体Cliente',), ('CascadeField','DDSelectField','DDMultiSelectField')),
+ 'entity': (('CascadeField_G8SEQLCWG1S0','DDSelectField_1G5IFPI8IKQO0'), ('服务主体Cliente',), ('CascadeField','DDSelectField','DDMultiSelectField','DepartmentField')),
  'amount': (('MoneyField_1FPZGEQOZ4M80',), ('金额importe',), ('MoneyField','CalculateField','NumberField')),
  'currency': (('DDSelectField_199XDJ3I2RMO0',), ('币种Moneda',), ('DDSelectField',)),
+ 'application_date': mapping_rules.APPLICATION_DATE,
  'planned': (('DDDateField_1Q7ARFPRW8OW0',), ('付款日期Fecha de pago',), ('DDDateField',)),
  'description': (('TextareaField_11O6SVHWPA0W0','TextareaField_S0G37XGF2TC0'), ('事项说明Explicación de asuntos','规格明细需求说明Descripción de las necesidades de detalles'), ('TextareaField','TextField')),
  'payee': (('TextareaField_FS04VIPFB4W0',), ('收款人beneficiario',), ('TextareaField','TextField')),
@@ -35,9 +37,24 @@ FIELDS = {
  'salary_table': ((), ('薪酬税费总支出(分部门)Gasto total salarial-fiscal por depa',), ('TableField',)),
  'social_table': (('TableField_G2ELEALN0S80',), ('社保公积金seguridad social y fondo de vivienda',), ('TableField',)),
  'office_table': ((), ('办公场地总费用Gtos. tot. oficinas (alq., luz, internet)',), ('TableField',)),
+ # This CNY allocation table carries departments, amounts and notes, not payroll categories.
+ 'allocation_table': (('TableField_1T6MS9XEQUE80',), (), ('TableField',)),
  'items_table': (('TableField_119WFD19L8R40',), ('需求明细Desglose de los gastos',), ('TableField',)),
  'processors_table': (('TableField_19CDW7WYJFZ40',), ('加工商明细detalles de los procesadores',), ('TableField',)),
 }
+
+# Shared by monetary lines and CN detail validation; labels may change while IDs remain stable.
+ALLOCATION_AMOUNT_FIELD = (('MoneyField_D5PL7PJDHD40',), ('金额（元）Monto (yuan)',))
+
+
+def resolve_table_cell(cells, ids=(), labels=()):
+    """Prefer exact component IDs; only one exact historical label may be a fallback."""
+    matches = [cell for cell in cells if cell.get('key') in ids]
+    if not matches:
+        aliases = {c.normalized(label) for label in labels}
+        matches = [cell for cell in cells if c.normalized(cell.get('label')) in aliases]
+    return matches[0] if len(matches) == 1 else {}
+
 
 # Gastos has a different field layout; overrides retain the archived component identity.
 EXPENSE_IDS = {
@@ -54,6 +71,7 @@ EXPENSE_IDS = {
 EXPENSE_FIELDS = {key: ((component_id,), (),
     ('TableField',) if key.endswith('_table') else FIELDS[key][2] if key in FIELDS else ('DDSelectField',))
     for key, component_id in EXPENSE_IDS.items()}
+EXPENSE_FIELDS['application_date'] = mapping_rules.APPLICATION_DATE
 
 def default_templates():
     return [dict(enabled=1, approval_type=kind, template_name=c.APPROVAL_FORMS[kind][0]+' '+str(index+1),
@@ -75,10 +93,7 @@ def normalize(entry, *, require_finance=True):
         out[key]=value.strip()
     if out['approval_type'] not in c.APPROVAL_FORMS or not re.fullmatch(r'PROC-[A-Fa-f0-9-]{36}',out['process_code']) or not re.fullmatch(r'[A-Za-z0-9_-]{1,140}',out['corp_id']):raise ValueError('Invalid approval template')
     mapping=json.loads(out['field_mapping'] or '{}')
-    schema = EXPENSE_FIELDS if out['approval_type']=='expense' else FIELDS
-    if not isinstance(mapping,dict) or set(mapping)-schema.keys():raise ValueError('Invalid template field mapping')
-    for key,value in mapping.items():
-        if not isinstance(value,list) or not value or len(value)>20 or any(not isinstance(v,str) or not re.fullmatch(r'[A-Za-z0-9_-]{1,140}',v) for v in value):raise ValueError('Invalid template field mapping')
+    mapping_rules.validate(mapping, out['approval_type'])
     out['field_mapping']=json.dumps(mapping,sort_keys=True)
     if require_finance and not tokens(out['finance_node_names']) and not tokens(out['finance_activity_ids']):raise ValueError('Finance nodes are required')
     from .mexico_expense_classification import validate_fields
@@ -103,4 +118,7 @@ def resolve(components,template, schema=None):
         populated=[f for f in found if f.get('value') not in (None,'','[]')]
         if len(populated)>1 or any(f.get('componentType') not in kinds for f in found):issues.append('structure');continue
         result[key]=(populated or found or [{}])[0]
+    table_ids=[field['id'] for key,field in result.items() if key.endswith('_table') and field.get('id')]
+    if len(table_ids) != len(set(table_ids)):
+        issues.append('structure')
     return result,issues

@@ -293,7 +293,7 @@ def project(row, business_timezone="America/Mexico_City", template=None, *, incl
                 canonical = bindings.EXPENSE_IDS[logical]
                 table_bindings.pop(canonical, None)
                 replaced_tables.update([canonical, *component_ids])
-        for logical in overrides:
+        for logical in overrides.keys() & bindings.EXPENSE_IDS.keys():
             canonical = bindings.EXPENSE_IDS[logical]
             selected = fields.get(logical, {})
             by_id[canonical] = selected
@@ -396,7 +396,17 @@ def project(row, business_timezone="America/Mexico_City", template=None, *, incl
                     cells[cell.get("key")] = cell.get("value")
                     if cell.get("key") == entity_field:
                         owner_id = organization_id(cell)
-                add(key, entry.get("rowNumber"), cells.get(entity_field), cells.get(amount_field), cells.get(text_field), fixed_sub, kind, ("structure",) if duplicates else (), owner_id)
+                from . import expense_template_mapping as child_bindings
+                from .mexico_expense_templates import EXPENSE_IDS
+                logical = next(logical for logical, identity in EXPENSE_IDS.items() if identity == canonical_key)
+                valid_cells = [cell for cell in entry["rowValue"] if isinstance(cell, dict)]
+                if child_bindings.missing_children(template, logical, valid_cells):
+                    errors.append("structure")
+                owner = child_bindings.child(template or {}, logical, "entity", valid_cells, (entity_field,))
+                money = child_bindings.child(template or {}, logical, "amount", valid_cells, (amount_field,))
+                note = child_bindings.child(template or {}, logical, "description", valid_cells, (text_field,))
+                add(key, entry.get("rowNumber"), owner.get("value"), money.get("value"), note.get("value"), fixed_sub, kind,
+                    ("structure",) if duplicates else (), organization_id(owner))
         except (ValueError, TypeError):
             errors.append("structure")
     if "amount" in overrides:

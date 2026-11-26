@@ -143,11 +143,21 @@ def application_date(raw):
     return application_date_info(raw)[0]
 
 
-def application_date_info(raw):
+def application_date_info(raw, template=None):
     """Read an explicit form date without borrowing finance or payment dates."""
     from .mexico_expense_projection import text
     from datetime import date
     components = decode(raw.get("form_component_values") or (raw.get("raw_payload") or {}).get("formComponentValues") or [])
+    if template:
+        from . import expense_template_mapping as bindings, mexico_expense_templates as templates
+        mapping = bindings.decode(template)
+        if "application_date" in mapping:
+            resolved, errors = templates.resolve(components, template, schema={"application_date": bindings.APPLICATION_DATE})
+            value = text(resolved.get("application_date", {}).get("value"))
+            try:
+                return (date.fromisoformat(value).isoformat(), "form") if not errors else (None, "invalid")
+            except (TypeError, ValueError):
+                return None, "invalid"
     fields = [field for field in components if (
         field.get("id") in {"DDDateField_29I59O630HUS", "DDDateField_B0K470VSL0O0"}
         or str(field.get("name", "")).startswith(("申请日期", "Fecha de solicitud")))]
@@ -171,7 +181,7 @@ def management_date(applied, date_state, submitted, *, allow_submission=False):
 def facts(raw, template, timezone, ignore_region=False):
     from .mexico_expense_projection import project, text
     source, lines = project(raw, template, timezone, ignore_region=ignore_region)
-    source["cn_application_date"], source["application_date_state"] = application_date_info(raw)
+    source["cn_application_date"], source["application_date_state"] = application_date_info(raw, template)
     components = decode(raw.get("form_component_values") or (raw.get("raw_payload") or {}).get("formComponentValues") or [])
     # Match the native CN project precedence: component ID first, then the
     # historical label. Never choose one project from conflicting values.
