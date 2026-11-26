@@ -105,6 +105,44 @@ def test_non_mexico_targets_require_shared_routing_storage(runtime, monkeypatch)
     assert runtime.saved == []
 
 
+def test_management_read_keeps_native_permission_failures_and_resets_scope(runtime, monkeypatch):
+    monkeypatch.setattr(frappe, "db", SimpleNamespace(escape=lambda value: "'" + value + "'"))
+    get_list = frappe.get_list
+    original = mx.permission_query_conditions()
+    calls = []
+    def denied(doctype, **kwargs):
+        if doctype == "Company":
+            return get_list(doctype, **kwargs)
+        assert doctype == mx.LINE
+        assert not kwargs.get("ignore_permissions")
+        assert "'China A'" in mx.permission_query_conditions().split(" AND ")[0]
+        calls.append(kwargs)
+        raise frappe.PermissionError("Native role or field access denied")
+    monkeypatch.setattr(frappe, "get_list", denied)
+    with pytest.raises(frappe.PermissionError, match="Native role or field"):
+        mx._get_management_lines(filters={"is_active": 1}, fields=["name", "amount"], limit_page_length=20)
+    assert mx.permission_query_conditions() == original
+    assert calls == [dict(filters={"is_active": 1}, fields=["name", "amount"], pluck=None, limit_page_length=20)]
+
+
+def test_nested_management_reads_restore_the_enclosing_scope(runtime, monkeypatch):
+    monkeypatch.setattr(frappe, "db", SimpleNamespace(escape=lambda value: "'" + value + "'"))
+    get_list = frappe.get_list
+    original = mx.permission_query_conditions()
+    def nested(doctype, **kwargs):
+        if doctype == "Company":
+            return get_list(doctype, **kwargs)
+        scope = mx.permission_query_conditions()
+        assert "'China A'" in scope.split(" AND ")[0]
+        if kwargs["filters"]["source"] == "outer":
+            assert mx._get_management_lines(filters={"source": "inner"}, pluck="name") == ["inner"]
+            assert mx.permission_query_conditions() == scope
+        return [kwargs["filters"]["source"]]
+    monkeypatch.setattr(frappe, "get_list", nested)
+    assert mx._get_management_lines(filters={"source": "outer"}, pluck="name") == ["outer"]
+    assert mx.permission_query_conditions() == original
+
+
 def test_entity_recommendations_include_chinese_companies_without_assigning_them(runtime, monkeypatch):
     query = MagicMock()
     for method in ("where", "groupby", "orderby", "offset", "limit"):

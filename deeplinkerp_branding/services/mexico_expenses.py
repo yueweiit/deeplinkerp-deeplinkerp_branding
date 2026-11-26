@@ -37,6 +37,7 @@ FIELDS = ("name", "source", "source_version", "row_fingerprint", "modified", "ap
     "currency", "approval_status", "request_date", "planned_payment_date", "finance_approved_at", "finance_approved_date", "period_month", "period_start",
     "period_end", "period_kind", "period_version", "review_state", "issues", "base_issues", "review_note", "reviewed_by", "reviewed_at", "company_basis", "mapping_version")
 _managed = ContextVar("mexico_expense_managed_write", default=False)
+_management_read = ContextVar("mexico_expense_management_read", default=False)
 
 
 @contextmanager
@@ -135,9 +136,26 @@ def _company_access(company):
         frappe.throw(_("Not permitted to access this subsidiary"), frappe.PermissionError)
 
 
+def _get_management_lines(*, filters, fields=None, pluck=None, limit_page_length=50001):
+    """Read legacy siblings for unified reporting under native Frappe permissions.
+
+    An approval with a manual decision remains in this DocType even when a
+    mapped sibling now belongs to another country. Only this internal read
+    changes the country scope; roles, field/user permissions, mapping freshness
+    and regional ownership checks still apply. Ordinary MX reads stay scoped
+    to Mexico, including after a failed or nested management read.
+    """
+    token = _management_read.set(True)
+    try:
+        return frappe.get_list(LINE, filters=filters, fields=fields, pluck=pluck,
+                               limit_page_length=limit_page_length)
+    finally:
+        _management_read.reset(token)
+
+
 def permission_query_conditions(user=None):
     user = user or frappe.session.user
-    companies = _companies(user)
+    companies = _mapping_companies(user) if _management_read.get() else _companies(user)
     values = ",".join(frappe.db.escape(c) for c in companies)
     clauses = [f"company IN ({values})"] if companies else []
     if _manager(user):
