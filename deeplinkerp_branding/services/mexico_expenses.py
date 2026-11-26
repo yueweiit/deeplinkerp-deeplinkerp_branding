@@ -1365,13 +1365,15 @@ def _line(name, lock=False):
     return doc
 
 
-def _whole_source_allowed(source):
+def _whole_source_allowed(source, *, companies=None):
     # Historic memberships still protect comments/attachments on shared approvals.
     from .regional_expenses import membership_fields, allowed_companies
     extra = membership_fields()
     regional_allowed = allowed_companies() if extra else set()
     docs = frappe.get_all(LINE, filters={"source": source}, fields=["name", "company", "is_active", "company_basis", "mapping_version"] + extra)
-    companies, manager = set(_companies()), _manager()
+    # Unified reporting supplies its already-authorized CN/MX company scope;
+    # ordinary MX callers retain their original Mexico-only scope.
+    companies, manager = set(_companies() if companies is None else companies), _manager()
     version = _mapping_version(_settings())
     return bool(docs) and all(
         ((not row.company and manager) or row.company in companies)
