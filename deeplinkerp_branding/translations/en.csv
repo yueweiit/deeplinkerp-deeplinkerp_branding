@@ -2619,7 +2619,7 @@ Choose a valid currency for the cash journal.,Choose a valid currency for the ca
 Description and DingTalk approval number must be text.,Description and DingTalk approval number must be text.
 Save or discard the edited rows before changing the view.,Save or discard the edited rows before changing the view.
 Select a company and currency to record cash transactions.,Select a company and currency to record cash transactions.
-No cash transactions yet. Click Add Row to begin.,No cash transactions yet. Click Add Row to begin.
+No transactions match these filters.,No transactions match these filters.
 Could not load cash transactions. Please refresh and try again.,Could not load cash transactions. Please refresh and try again.
 "Enter a date, receipt or payment, and an amount greater than zero.","Enter a date, receipt or payment, and an amount greater than zero."
 Row not saved. Your edits have been kept; check the error and retry.,Row not saved. Your edits have been kept; check the error and retry.
@@ -2730,3 +2730,29 @@ Trend unavailable,Trend unavailable
 OA Incremental Sync State,OA Incremental Sync State
 OA synchronization storage requires a site migration.,OA synchronization storage requires a site migration.
 Expense Management,Expense Management
+Journal Category,Journal Category
+Journal Subcategory,Journal Subcategory
+Journal Detail Category,Journal Detail Category
+Income,Income
+Expense,Expense
+Running Balance,Running Balance
+Journal currency must match the account currency.,Journal currency must match the account currency.
+Enter a date and a positive amount in either income or expense.,Enter a date and a positive amount in either income or expense.
+Journal source fields cannot be edited.,Journal source fields cannot be edited.
+Source Row Key,Source Row Key
+Source Book,Source Book
+Source Row Order,Source Row Order
+Journal Period,Journal Period
+Edit,Edit
+All Months,All Months
+Single Month,Single Month
+Transaction Month,Transaction Month
+Apply Period,Apply Period
+This amount cannot be edited safely in the ledger.,This amount cannot be edited safely in the ledger.
+Opening Balance,Opening Balance
+Total Income,Total Income
+Total Expense,Total Expense
+Closing Balance,Closing Balance
+Visible transactions: {0},Visible transactions: {0}
+Enter both months in YYYY-MM format.,Enter both months in YYYY-MM format.
+The start month must not be after the end month.,The start month must not be after the end month.

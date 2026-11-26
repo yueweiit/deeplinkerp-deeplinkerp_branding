@@ -1,0 +1,114 @@
+.cn-cash-journal {
+	padding-block: var(--padding-md);
+	color: var(--text-color);
+}
+
+.cn-cash-journal .journal-period,
+.cn-cash-journal .journal-footer,
+.cn-cash-journal .journal-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--padding-sm);
+}
+
+.cn-cash-journal .journal-period {
+	align-items: flex-end;
+	margin-bottom: var(--margin-md);
+}
+
+.cn-cash-journal .journal-period label {
+	margin: 0;
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+}
+
+.cn-cash-journal .journal-period .form-control {
+	margin-top: var(--margin-xs);
+	min-width: 10em;
+}
+
+.cn-cash-journal .journal-status {
+	margin-inline-start: auto;
+	padding-block: var(--padding-xs);
+}
+
+.cn-cash-journal .journal-summary {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: var(--padding-md);
+	margin: 0;
+	padding: var(--padding-md);
+	background: var(--card-bg);
+	border: 1px solid var(--border-color);
+	border-radius: var(--border-radius-md) var(--border-radius-md) 0 0;
+}
+
+@media (max-width: 767px) {
+	.cn-cash-journal .journal-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.cn-cash-journal .journal-summary dt {
+	color: var(--text-muted);
+	font-size: var(--text-sm);
+	font-weight: 500;
+}
+
+.cn-cash-journal .journal-summary dd {
+	margin: var(--margin-xs) 0 0;
+	font-size: var(--text-lg);
+	font-weight: 600;
+	font-variant-numeric: tabular-nums;
+	overflow-wrap: anywhere;
+}
+
+.cn-cash-journal .journal-table {
+	overflow-x: auto;
+	border: 1px solid var(--table-border-color);
+	border-top: 0;
+	background: var(--card-bg);
+}
+
+.cn-cash-journal table {
+	width: 100%;
+	min-width: 840px;
+	table-layout: fixed;
+	margin: 0;
+}
+
+.cn-cash-journal .journal-table :is(th, td) {
+	padding: var(--padding-sm);
+	border: 0;
+	border-right: 1px solid var(--table-border-color);
+	border-bottom: 1px solid var(--table-border-color);
+	vertical-align: middle;
+	overflow-wrap: anywhere;
+}
+
+.cn-cash-journal .journal-table th {
+	background: var(--subtle-fg);
+	font-weight: 600;
+}
+
+.cn-cash-journal th:nth-child(n+6):not(:last-child),
+.cn-cash-journal .journal-number {
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
+
+.cn-cash-journal .journal-detail { text-decoration: underline; text-underline-offset: 2px; }
+.cn-cash-journal .journal-description { white-space: pre-line; }
+.cn-cash-journal .journal-editor {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+	gap: var(--padding-sm) var(--padding-md);
+	padding: var(--padding-sm);
+}
+.cn-cash-journal .journal-editor .frappe-control { margin: 0; }
+.cn-cash-journal .journal-table .form-group { margin: 0; }
+.cn-cash-journal .journal-editor textarea { height: 54px !important; min-height: 32px; resize: vertical; }
+.cn-cash-journal tr.is-dirty { background: var(--control-bg); }
+.cn-cash-journal .journal-actions { padding: var(--padding-sm); }
+.cn-cash-journal .journal-footer { justify-content: space-between; margin-top: var(--margin-md); }
+.cn-cash-journal .journal-page { margin-inline-end: var(--margin-sm); }
+.cn-cash-journal td.journal-message { padding: var(--padding-xl); text-align: center; color: var(--text-muted); }

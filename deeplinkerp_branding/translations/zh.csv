@@ -1218,7 +1218,7 @@ Choose a valid currency for the cash journal.,请选择有效的日记账币种�
 Description and DingTalk approval number must be text.,说明和钉钉审批号必须是文本。
 Save or discard the edited rows before changing the view.,请先保存或撤销已编辑的行，再切换视图。
 Select a company and currency to record cash transactions.,请选择公司和币种，开始登记日记账。
-No cash transactions yet. Click Add Row to begin.,暂无流水，点击“新增一行”开始登记。
+No transactions match these filters.,没有符合筛选条件的流水。
 Could not load cash transactions. Please refresh and try again.,日记账读取失败，请刷新后重试。
 "Enter a date, receipt or payment, and an amount greater than zero.",请填写日期、选择收入或支出，并输入大于零的金额。
 Row not saved. Your edits have been kept; check the error and retry.,该行未保存，已保留填写内容，请检查错误后重试。
@@ -1333,3 +1333,29 @@ Trend unavailable,趋势暂不可用
 OA Incremental Sync State,OA 增量同步状态
 OA synchronization storage requires a site migration.,OA 同步存储需要更新站点结构，请联系管理员执行迁移。
 Expense Management,支出管理
+Journal Category,类别
+Journal Subcategory,二级明细
+Journal Detail Category,三级明细
+Income,收入
+Expense,支出
+Running Balance,逐笔余额
+Journal currency must match the account currency.,日记账币种必须与账户币种一致。
+Enter a date and a positive amount in either income or expense.,请填写日期，并仅在收入或支出一列填写正金额。
+Journal source fields cannot be edited.,不允许修改日记账来源字段。
+Source Row Key,来源行标识
+Source Book,来源账簿
+Source Row Order,来源顺序
+Journal Period,账期
+Edit,编辑
+All Months,全部月份
+Single Month,单月
+Transaction Month,交易月份
+Apply Period,应用账期
+This amount cannot be edited safely in the ledger.,该金额超出表内安全编辑范围。
+Opening Balance,期初余额
+Total Income,收入合计
+Total Expense,支出合计
+Closing Balance,期末余额
+Visible transactions: {0},可见流水：{0}
+Enter both months in YYYY-MM format.,请按 YYYY-MM 格式填写起止月份。
+The start month must not be after the end month.,起始月份不能晚于结束月份。

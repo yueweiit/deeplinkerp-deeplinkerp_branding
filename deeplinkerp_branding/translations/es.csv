@@ -2890,7 +2890,7 @@ Choose a valid currency for the cash journal.,Seleccione una moneda válida para
 Description and DingTalk approval number must be text.,La descripción y el número de aprobación de DingTalk deben ser texto.
 Save or discard the edited rows before changing the view.,Guarde o descarte las filas editadas antes de cambiar de vista.
 Select a company and currency to record cash transactions.,Seleccione una empresa y una moneda para registrar movimientos de caja.
-No cash transactions yet. Click Add Row to begin.,No hay movimientos. Haga clic en Añadir fila para empezar.
+No transactions match these filters.,No hay movimientos que coincidan con estos filtros.
 Could not load cash transactions. Please refresh and try again.,No se pudieron cargar los movimientos. Actualice e inténtelo de nuevo.
 "Enter a date, receipt or payment, and an amount greater than zero.","Indique una fecha, ingreso o gasto y un importe mayor que cero."
 Row not saved. Your edits have been kept; check the error and retry.,La fila no se guardó. Se conservaron los cambios; revise el error e inténtelo de nuevo.
@@ -3005,3 +3005,29 @@ Trend unavailable,Tendencia no disponible
 OA Incremental Sync State,Estado de sincronización incremental de OA
 OA synchronization storage requires a site migration.,El almacenamiento de sincronización de OA requiere una migración del sitio.
 Expense Management,Gestión de gastos
+Journal Category,Categoría
+Journal Subcategory,Subcategoría
+Journal Detail Category,Detalle de categoría
+Income,Ingreso
+Expense,Egreso
+Running Balance,Saldo acumulado
+Journal currency must match the account currency.,La moneda del libro debe coincidir con la de la cuenta.
+Enter a date and a positive amount in either income or expense.,Indique la fecha y un importe positivo solo en ingreso o egreso.
+Journal source fields cannot be edited.,No se pueden editar los campos de origen del libro.
+Source Row Key,Identificador de fila de origen
+Source Book,Libro de origen
+Source Row Order,Orden de origen
+Journal Period,Período del libro
+Edit,Editar
+All Months,Todos los meses
+Single Month,Un solo mes
+Transaction Month,Mes del movimiento
+Apply Period,Aplicar período
+This amount cannot be edited safely in the ledger.,Este importe no se puede editar con precisión en el libro.
+Opening Balance,Saldo inicial
+Total Income,Total de ingresos
+Total Expense,Total de egresos
+Closing Balance,Saldo final
+Visible transactions: {0},Movimientos visibles: {0}
+Enter both months in YYYY-MM format.,Indique ambos meses en formato YYYY-MM.
+The start month must not be after the end month.,El mes inicial no puede ser posterior al mes final.

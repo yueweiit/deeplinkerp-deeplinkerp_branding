@@ -9,6 +9,17 @@ from deeplinkerp_branding.services.operating_expense_contract import money
 
 
 class CNCashJournalEntry(Document):
+    def before_validate(self):
+        from deeplinkerp_branding.services.cn_cash_book_import import IMPORT_TOKEN
+        if self.is_new() and self.flags.cash_book_import is IMPORT_TOKEN:
+            return
+        if self.is_new():
+            if self.import_key or self.source_book or self.source_order:
+                frappe.throw(_("Journal source fields cannot be edited."))
+            self.source_order = 2147483647  # Manual entries follow imported rows on the same date.
+        elif any(self.has_value_changed(k) for k in ("import_key", "source_book", "source_order")):
+            frappe.throw(_("Journal source fields cannot be edited."))
+
     def validate(self):
         if not isinstance(self.direction, str) or self.direction not in {"income", "expense"}:
             frappe.throw(_("Choose whether this entry is a receipt or a payment."))
@@ -34,3 +45,10 @@ class CNCashJournalEntry(Document):
         self.currency = self.currency or company.default_currency
         if not frappe.db.exists("Currency", self.currency):
             frappe.throw(_("Choose a valid currency for the cash journal."))
+        if getattr(self, "account", None) and (self.is_new() or any(
+            self.has_value_changed(key) for key in ("account", "company", "currency")
+        )):
+            from deeplinkerp_branding.services.operating_expenses import _account
+            account = _account(self.account, self.company, {"Cash", "Bank"})
+            if account.account_currency != self.currency:
+                frappe.throw(_("Journal currency must match the account currency."))

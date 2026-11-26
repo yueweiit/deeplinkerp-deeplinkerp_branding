@@ -5,15 +5,16 @@
 	"use strict";
 	const escape = (value) => String(value).replace(/[&<>"']/g,
 		(char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+	const withinNativeRange = value => value != null && value !== "" && Math.abs(Number(value)) < 1e12;
 
 	function format(value, currency) {
 		if (value == null) return "—";
 		const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(String(value));
 		if (!match) return "—";
-		// Keep the standard Desk formatter for normal amounts. Above a conservative
-		// trillion-unit boundary, never coerce the amount to a JavaScript Number.
-		if (BigInt(match[2]) < 1000000000000n) {
-			return root.frappe.format(value,
+		// Format large totals from exact digits; Desk rounds through a Number.
+		if (withinNativeRange(value)) {
+			// Desk parses strings as localized input, not as API decimal strings.
+			return root.frappe.format(Number(value),
 				{ fieldtype: currency ? "Currency" : "Float", options: currency ? "currency" : undefined, precision: 2 },
 				{ inline: true, only_value: true }, { currency });
 		}
@@ -38,5 +39,5 @@
 		const right = root.frappe.model?.get_value(":Currency", currency, "symbol_on_right");
 		return escape(right ? `${amount} ${label}` : `${label} ${amount}`);
 	}
-	return { format };
+	return { format, withinNativeRange };
 });

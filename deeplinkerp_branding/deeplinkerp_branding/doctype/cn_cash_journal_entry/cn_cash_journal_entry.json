@@ -21,12 +21,18 @@
   "column_break",
   "company",
   "currency",
+  "account",
+  "journal_category",
+  "journal_subcategory",
+  "journal_detail",
   "details_section",
   "counterparty",
   "reference_number",
   "attachment",
   "remarks",
-  "account"
+  "import_key",
+  "source_book",
+  "source_order"
  ],
  "fields": [
   {
@@ -133,9 +139,14 @@
    "in_list_view": 0,
    "in_standard_filter": 0,
    "search_index": 1,
-   "description": "Choose an enabled cash or bank account belonging to the selected company.",
-   "hidden": 1
-  }
+   "description": "Choose an enabled cash or bank account belonging to the selected company."
+  },
+  {"fieldname":"journal_category","fieldtype":"Data","label":"Journal Category"},
+  {"fieldname":"journal_subcategory","fieldtype":"Data","label":"Journal Subcategory"},
+  {"fieldname":"journal_detail","fieldtype":"Data","label":"Journal Detail Category"},
+  {"fieldname":"import_key","fieldtype":"Data","label":"Source Row Key","unique":1,"hidden":1,"read_only":1,"no_copy":1},
+  {"fieldname":"source_book","fieldtype":"Data","label":"Source Book","search_index":1,"hidden":1,"read_only":1,"no_copy":1},
+  {"fieldname":"source_order","fieldtype":"Int","label":"Source Row Order","hidden":1,"read_only":1,"no_copy":1}
  ],
  "permissions": [
   {
