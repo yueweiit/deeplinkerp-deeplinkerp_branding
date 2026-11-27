@@ -489,10 +489,16 @@ def copy_erpnext_settings_sidebar_items():
 		for item in source.items
 	]
 	if frappe.db.exists("DocType", "AI Assistant Settings"):
-		items.insert(2, {
-			"type": "Link", "label": "AI Model Settings", "icon": "settings",
-			"link_type": "DocType", "link_to": "AI Assistant Settings",
-		})
+		items.insert(
+			2,
+			{
+				"type": "Link",
+				"label": "AI Model Settings",
+				"icon": "settings",
+				"link_type": "DocType",
+				"link_to": "AI Assistant Settings",
+			},
+		)
 	target.set("items", items)
 
 	target.flags.ignore_permissions = True
