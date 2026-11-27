@@ -341,7 +341,8 @@ class TemplateSettingsTests(unittest.TestCase):
             s._period_version(settings),s._template_key(template)])
         template.sync_state=json.dumps(policy.completed({},legacy_scope,{'mode':'full'},at.isoformat()))
         with patch.object(s,'_require_manager'),patch.object(s,'_require_settings_access'), \
-                patch.object(s,'_company_access'),patch.object(s,'_settings',return_value=settings), \
+                patch.object(s,'_mapping_companies',return_value=['Company MX']),patch.object(frappe,'has_permission',return_value=True), \
+                patch.object(s,'_settings',return_value=settings), \
                 patch.object(s.http,'configuration',return_value=('http://qa',[s.contract.CORP_ID])), \
                 patch.object(s.http,'read_template_page') as read,patch.object(s,'_save'), \
                 patch.object(regional_expenses,'installed',return_value=True), \

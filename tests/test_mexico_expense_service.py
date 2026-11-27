@@ -22,6 +22,23 @@ PERIOD_VERSION = s._period_version(Doc(business_timezone="America/Mexico_City"))
 
 
 class MexicoServiceTests(unittest.TestCase):
+    def test_native_mx_writer_cannot_override_a_group_alias(self):
+        from budget.services import expense_group_mappings as groups
+        settings = Doc(config_version="v1", company_mappings=[], templates=[], mapping_version="v1")
+        rule = {"match_kind": "department", "corp_id": "", "source_name": "CEO office"}
+        with patch.object(s, "_require_manager"), patch.object(s, "_require_settings_access"), \
+                patch.object(s, "_settings", return_value=settings), patch.object(s, "_mapping_companies", return_value=["A"]), \
+                patch.object(frappe, "has_permission", return_value=True), \
+                patch.object(frappe, "local", SimpleNamespace(site="group-conflict-qa")), \
+                patch.object(frappe, "get_installed_apps", return_value=["budget"]), \
+                patch.object(groups, "read", return_value=[rule]), patch.object(groups, "_", side_effect=lambda text: text), \
+                patch.object(s, "_save") as save, patch.object(frappe, "enqueue") as enqueue:
+            with self.assertRaisesRegex(frappe.ValidationError, "assigned to Group"):
+                s.save_settings([{"source_entity": "CEO office", "entity_kind": "department", "company": "A"}],
+                    "America/Mexico_City", 0, "v1")
+            save.assert_not_called()
+            enqueue.assert_not_called()
+
     def setUp(self):
         def throw(message, exc=frappe.ValidationError, **kwargs):
             raise exc(message)

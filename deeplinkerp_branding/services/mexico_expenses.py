@@ -400,6 +400,9 @@ def save_settings(company_mappings, business_timezone, enabled, expected_config_
     _require_settings_access(settings)
     if (settings.config_version or "") != expected_config_version:
         frappe.throw(_("Settings changed; reload and try again"))
+    if getattr(frappe.local, "site", None) and "budget" in frappe.get_installed_apps():
+        from budget.services.expense_group_mappings import require_no_conflicts
+        require_no_conflicts([{"match_kind": row["entity_kind"], "source_name": row["source_entity"]} for row in clean])
     # Upgrade verifiable legacy watermarks before a local mapping edit changes
     # the configuration digest used by the old sync implementation.
     if any(t.get("sync_state") for t in _templates(settings)):

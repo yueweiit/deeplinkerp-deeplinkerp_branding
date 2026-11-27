@@ -228,6 +228,72 @@ def test_unified_projection_returns_each_split_once_and_respects_permissions(mon
     assert [row["company"] for row in s.management_projection({"companies": {"Mexico B"}})[1]] == ["Mexico B"]
 
 
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+@pytest.mark.parametrize("scenario", ["known", "pending", "manual", "stale", "unavailable", "old_version"])
+def test_named_group_mapping_retains_company_provenance_and_financial_guards(monkeypatch, origin, scenario):
+    from deeplinkerp_branding.services import regional_expense_automatic as automatic
+    record, source, lines = make_record(origin)
+    lines[0]["source_entity"] = "CEO office"
+    record.facts_json = s.encode([source, lines])
+    entry = dict(line_key="original", region="pending" if scenario == "pending" else "cn", company="" if scenario == "pending" else "China A",
+        amount="100.00", management_category="service", assignment_mode="manual" if scenario == "manual" else "automatic",
+        assignment_issue="unmapped_company", assignment_version="old" if scenario == "old_version" else "v1",
+        source_available=scenario != "unavailable", matched_company="")
+    record.allocations_json = s.encode([entry])
+    original = record.allocations_json
+    if scenario == "stale": record.state = "stale"
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda: {})
+    monkeypatch.setattr(automatic, "configuration", lambda _: {"version": "v1"})
+    context = {"companies": {"China A"}, "manager": True}
+    row = s.management_projection(context, include_legacy=False, group_unassigned=True,
+        group_sources={("corp", None, "CEO office")})[1][0]
+    assert row["company"] == entry["company"] and row["is_group_expense"] == int(scenario != "manual")
+    assert row["amount"] == (None if scenario in {"stale", "unavailable", "old_version"} else "100.00")
+    if entry["company"]:
+        assert not s.management_projection({"companies": set(), "manager": True}, include_legacy=False,
+            group_unassigned=True, group_sources={("corp", None, "CEO office")})[1]
+    assert record.allocations_json == original
+
+
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+@pytest.mark.parametrize("signal", ["base", "entry", "both"])
+def test_group_alias_cannot_resolve_a_multiple_bearer_allocation(monkeypatch, origin, signal):
+    from budget.services import expense_management as reporting
+    from deeplinkerp_branding.services import regional_expense_automatic as automatic
+    record, source, lines = make_record(origin)
+    label = "Company A / Company B"
+    lines[0].update(source_entity=label, entity_kind="entity", base_issues=["allocation"] if signal != "entry" else [])
+    config = {"companies": {"China A": "China", "Mexico B": "Mexico"}, "aliases": {}, "organizations": {},
+        "rules": {"category_mappings": []}, "version": "v1"}
+    entries, record.state = automatic.plan(source, lines, config)
+    entries[0]["assignment_issue"] = "unmapped_company" if signal == "base" else "multiple_companies"
+    record.facts_json, record.allocations_json = s.encode([source, lines]), s.encode(entries)
+    original = record.allocations_json
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda: {})
+    monkeypatch.setattr(automatic, "configuration", lambda _: config)
+    row = s.management_projection({"companies": set(config["companies"]), "manager": True},
+        include_legacy=False, group_unassigned=True, group_sources={("corp", "entity", label)})[1][0]
+    row = reporting.normalize(row)
+    assert row["is_group_expense"] == 1 and not row["eligible"] and row["amount"] is None
+    assert "allocation" in row["issues"] and "regional_allocation" in row["issues"]
+    assert record.allocations_json == original
+
+
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+def test_balanced_manual_split_still_resolves_the_original_allocation_issue(monkeypatch, origin):
+    from budget.services import expense_management as reporting
+    record, source, lines = make_record(origin)
+    lines[0].update(source_entity="Company A / Company B", base_issues=["allocation"])
+    record.facts_json = s.encode([source, lines])
+    monkeypatch.setattr(s, "records", lambda: [record])
+    rows = s.management_projection({"companies": {"China A", "Mexico B"}, "manager": True},
+        include_legacy=False, group_unassigned=True, group_sources={("corp", None, "Company A / Company B")})[1]
+    assert [row["amount"] for row in rows] == ["30.00", "70.00"]
+    assert all(reporting.normalize(row)["eligible"] and not row["is_group_expense"] for row in rows)
+
+
 @pytest.mark.parametrize("label,mappings,expected", [
     ("Salaries", [], "salary"),
     ("Services", [{"kind": "operating", "source_path": ["Services"], "category": "service"}], "service"),

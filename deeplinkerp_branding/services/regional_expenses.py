@@ -436,7 +436,7 @@ def cn_projection(context):
 
 
 def management_projection(context, *, regions=("cn", "mx"), include_legacy=True, submission_fallback=False,
-        management_rules=None, group_unassigned=False):
+        management_rules=None, group_unassigned=False, group_sources=()):
     """Read allocations once; permissions apply before returning any line."""
     from budget.services.cn_approval_management_rules import CATEGORIES, classify
     from . import regional_expense_automatic as automatic
@@ -479,16 +479,24 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
             if not pending and (entry["region"] not in regions or entry["company"] not in context["companies"]):
                 continue
             original = originals.get(entry["line_key"], {})
-            group = bool(group_unassigned and pending and auto and original
-                and not entry.get("matched_company") and entry.get("assignment_issue") == "unmapped_company"
-                and not str(original.get("source_entity") or "").strip())
-            valid = record.state == "confirmed" and bool(original) and (not pending or group)
+            explicit_group = False
+            if group_unassigned and group_sources and auto and original:
+                from budget.services.expense_group_mappings import matches
+                explicit_group = matches(group_sources, record.corp_id, original.get("entity_kind"), original.get("source_entity"))
+            group = bool(group_unassigned and auto and original and (explicit_group
+                or pending and not entry.get("matched_company") and entry.get("assignment_issue") == "unmapped_company"
+                and not str(original.get("source_entity") or "").strip()))
+            allocation_pending = auto and (entry.get("assignment_issue") == "multiple_companies"
+                or "allocation" in (original.get("base_issues") or []))
+            valid = record.state == "confirmed" and bool(original) and (not pending or group) and not allocation_pending
             if auto:
                 valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
             applied, date_basis = management_date(source.get("cn_application_date"),
                 source.get("application_date_state") or date_states.get(record.name), source.get("request_date"),
                 allow_submission=record.name in fallback_records)
             issues = [] if valid else ["regional_allocation"]
+            if allocation_pending:
+                issues.append("allocation")
             if pending and not group:
                 issues.append("organization")
             if not applied:
@@ -510,6 +518,7 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
                 "number": source.get("approval_no") or record.process_instance_id, "applicant": source.get("applicant") or "",
                 "company": entry["company"], "entity": original.get("source_entity", ""), "department": "",
                 "is_group_expense": int(group),
+                "_group_mapping": explicit_group,
                 "scope_company": entry.get("matched_company", "") if pending else "",
                 "application_date": applied, "month": applied[:7] if applied else None, "status": source["approval_status"],
                 "date_basis": date_basis,
