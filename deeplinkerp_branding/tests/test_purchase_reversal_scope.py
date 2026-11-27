@@ -615,6 +615,45 @@ class ReversalScopeTests(unittest.TestCase):
 		with self.assertRaises(frappe.PermissionError):
 			self.scope.collect_document_scope(root)
 
+	def test_retired_warehouse_history_collects_real_ledgers_but_new_document_stays_blocked(self):
+		root = self.add(document("Purchase Receipt", "PR", items=[item("R")]))
+		self.sle(root, root.items[0])
+		self.docs["Warehouse", "W1"] = document("Warehouse", "W1", is_group=0, disabled=1)
+		task = document("Repost Item Valuation", "RIV", item_code="A", warehouse="W1")
+
+		def locked_rows(*args, **kwargs):
+			self.assertTrue(kwargs.pop("for_update", False))
+			return self.rows(*args, **kwargs)
+
+		with patch.object(frappe.db, "get_values", side_effect=locked_rows):
+			with self.assertRaises(frappe.ValidationError):
+				self.scope.collect_repost_pair_scope(task)
+			result = self.scope.collect_repost_pair_scope(task, allow_disabled_warehouses=True)
+		self.assertEqual(result.company, "C")
+		self.assertEqual(result.pairs, (self.scope.StockPair("A", "W1"),))
+		self.assertEqual(result.sles, (self.sles[0].name,))
+		self.assertEqual(self.docs["Warehouse", "W1"].disabled, 1)
+		with self.assertRaises(frappe.ValidationError):
+			self.scope.collect_document_scope(root)
+
+	def test_historical_repost_scope_still_rejects_cross_company_and_group_warehouse(self):
+		root = self.add(document("Purchase Receipt", "PR", items=[item("R")]))
+		self.sle(root, root.items[0])
+		task = document("Repost Item Valuation", "RIV", item_code="A", warehouse="W1")
+
+		def locked_rows(*args, **kwargs):
+			kwargs.pop("for_update", None)
+			return self.rows(*args, **kwargs)
+
+		for values in ({"company": "OTHER"}, {"is_group": 1}):
+			with self.subTest(values=values):
+				self.docs["Warehouse", "W1"] = document(
+					"Warehouse", "W1", **({"disabled": 1, "is_group": 0} | values)
+				)
+				with patch.object(frappe.db, "get_values", side_effect=locked_rows):
+					with self.assertRaises(frappe.ValidationError):
+						self.scope.collect_repost_pair_scope(task, allow_disabled_warehouses=True)
+
 	def test_actual_from_rejected_and_old_subcontract_pairs_are_in_footprint(self):
 		root = self.add(
 			document(

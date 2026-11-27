@@ -1436,10 +1436,10 @@ class PointerBoundary:
 		if fieldname == POINTER or (isinstance(fieldname, dict) and POINTER in fieldname):
 			frappe.throw(_i18n("库存保护指针不能由普通单据写入、清除或替换"), frappe.PermissionError)
 		if self.doctype == "Repost Item Valuation":
-			from .purchase_native_repost import _task_fields
+			from .purchase_native_repost import TASK_OPTION_FIELDS, _task_fields
 
 			fields = {fieldname} if isinstance(fieldname, str) else set(fieldname)
-			if fields & _task_fields(self).keys():
+			if fields & (_task_fields(self).keys() | TASK_OPTION_FIELDS):
 				frappe.throw(_i18n("原生重算范围必须通过单据保存核查，不能直接改写"), frappe.PermissionError)
 			return self._pointer_call(super().db_set, fieldname, *args, **kwargs)
 		return super().db_set(fieldname, *args, **kwargs)

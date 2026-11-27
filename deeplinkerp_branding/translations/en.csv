@@ -2986,3 +2986,8 @@ Applying job template...,Applying job template...,Permission assignment
 About {0},About {0},Permission assignment
 View permissions for {0},View permissions for {0},Permission assignment
 Configuration help,Configuration help,Permission assignment
+库存重算任务与仓库所属公司不一致,The stock reposting task and warehouse belong to different companies.
+库存重算不能使用分组仓库,Stock reposting cannot use a group warehouse.
+停用仓库仅允许范围未改变的已提交历史重算任务,Disabled warehouses only allow existing submitted reposting tasks with an unchanged scope.
+库存重算的总账子任务来源不一致,The parent of the stock reposting GL task does not match.
+库存重算的总账子任务未完整创建，请核查后重试,Not all GL reposting tasks were created. Please investigate before retrying.

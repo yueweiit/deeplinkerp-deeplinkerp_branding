@@ -273,12 +273,16 @@ class _Collector:
 		boundary_gate=False,
 		budget=None,
 		cancellation=False,
+		allow_disabled_warehouses=False,
 	):
 		self.current = current
 		self.stock_entry_lifecycle = stock_entry_lifecycle
 		self.opaque = opaque
 		self.boundary_gate = boundary_gate
 		self.cancellation = cancellation
+		# Only an existing RIV's historical closure uses this. New stock writes
+		# and cancellation acceptance retain the enabled-warehouse requirement.
+		self.allow_disabled_warehouses = allow_disabled_warehouses
 		# Native ordinary non-stock PI drafts may preserve a manual draft PR
 		# reference (existing auto-invoice completeness scenario). This is only
 		# a protected read identity, never a submit/repost/cancel capability.
@@ -350,7 +354,9 @@ class _Collector:
 			location = self.warehouses[warehouse] = service._read(
 				"Warehouse", warehouse, {"company", "is_group", "disabled"}
 			)
-		if location.company != self.company or location.is_group or location.disabled:
+		if location.company != self.company or location.is_group or (
+			location.disabled and not self.allow_disabled_warehouses
+		):
 			_reject("仓库公司或状态不一致")
 		pair = StockPair(item_code, warehouse)
 		if self.budget is not None:
@@ -932,7 +938,10 @@ def collect_cancellation_scope(persisted_doc) -> ReversalScope:
 	return collector.result()
 
 
-def collect_boundary_scope(doc, *, current=False, stock_entry_lifecycle=True, opaque=False, budget=None):
+def collect_boundary_scope(
+	doc, *, current=False, stock_entry_lifecycle=True, opaque=False, budget=None,
+	allow_disabled_warehouses=False,
+):
 	"""Internal ordinary native write footprint; NOT a new cancellation API.
 
 	Submitted stock writes may reach real future selectors. LCV valuation uses
@@ -949,6 +958,7 @@ def collect_boundary_scope(doc, *, current=False, stock_entry_lifecycle=True, op
 			opaque=opaque,
 			boundary_gate=True,
 			budget=budget,
+			allow_disabled_warehouses=allow_disabled_warehouses,
 		)
 		if doc.docstatus == 1 and not opaque:
 			if doc.doctype in _STOCK:
@@ -963,7 +973,7 @@ def collect_boundary_scope(doc, *, current=False, stock_entry_lifecycle=True, op
 		return collector.result()
 
 
-def collect_repost_pair_scope(task):
+def collect_repost_pair_scope(task, *, allow_disabled_warehouses=False):
 	"""Actual Item/Warehouse RIV footprint, without inventing a source document."""
 	anchor = _datetime(task)
 	rows = frappe.db.get_values(
@@ -985,7 +995,9 @@ def collect_repost_pair_scope(task):
 	if not rows:
 		return ReversalScope(task.company, anchor, (StockPair(task.item_code, task.warehouse),), (), ())
 	root = service._read(rows[0].voucher_type, rows[0].voucher_no)
-	collector = _Collector(root, current=True, boundary_gate=True)
+	collector = _Collector(
+		root, current=True, boundary_gate=True, allow_disabled_warehouses=allow_disabled_warehouses,
+	)
 	collector.add_pair(task.item_code, task.warehouse, anchor)
 	collector.consume(rows, propagate=True)
 	collector.expand_frontier(require_bins=False)
