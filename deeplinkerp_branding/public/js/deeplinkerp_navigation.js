@@ -45,6 +45,7 @@
 		["manufacturing", "生产"],
 		["assets", "资产"],
 		["china finance", "中国财务", "财务"],
+		["expense management", "支出管理", "gestión de gastos"],
 		["overseas costing", "overseas cost", "overseas cost workbench", "海外成本核算"],
 		["mexico expenses", "operating expenses (mx)", "运营支出（mx）", "gastos operativos (mx)", "expenses (mx)", "费用支出（mx）", "gastos (mx)", "支出（mx）"],
 		["china operating expenses", "operating expenses (cn)", "运营支出（cn）", "gastos operativos (cn)", "支出（cn）", "expenses (cn)", "gastos (cn)"],

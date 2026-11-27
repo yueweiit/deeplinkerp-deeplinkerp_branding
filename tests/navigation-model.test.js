@@ -262,6 +262,7 @@ test("applies the approved fixed DL root order", () => {
 		{ name: "Subcontracting", label: "Subcontracting" },
 		{ name: "Projects", label: "Projects" },
 		{ name: "Accounting", label: "Accounting" },
+		{ name: "Expense Management", label: "Expense Management" },
 	];
 	const snapshot = structuredClone(icons);
 
@@ -275,6 +276,7 @@ test("applies the approved fixed DL root order", () => {
 			"Manufacturing",
 			"Assets",
 			"China Finance",
+			"Expense Management",
 			"Overseas Costing",
 			"Mexico Expenses",
 			"Projects",
@@ -925,7 +927,7 @@ test("keeps the Desk assets separate from website CSS and loads the model before
 	);
 	assert.ok(hooks.indexOf(modelAsset) < hooks.indexOf(interfaceModeAsset));
 	assert.ok(hooks.indexOf(interfaceModeAsset) < hooks.indexOf(lifecycleAsset));
-	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.24/);
+	assert.match(hooks, /deeplinkerp_navigation\.js\?v=0\.0\.25/);
 	assert.match(hooks, /deeplinkerp_interface_mode\.js\?v=0\.0\.3/);
   assert.match(hooks, /deeplinkerp_branding\.js\?v=\d+\.\d+\.\d+/);
 	assert.match(hooks, /web_include_css\s*=\s*"\/assets\/deeplinkerp_branding\/css\/deeplinkerp_branding\.css"/);
