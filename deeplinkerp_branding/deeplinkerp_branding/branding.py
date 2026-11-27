@@ -484,12 +484,16 @@ def copy_erpnext_settings_sidebar_items():
 	source = frappe.get_doc("Workspace Sidebar", "ERPNext Settings")
 	target = frappe.get_doc("Workspace Sidebar", SETTINGS_DOCNAME)
 
-	target.set("items", [])
-	for source_item in source.items:
-		target.append(
-			"items",
-			{field: source_item.get(field) for field in SIDEBAR_ITEM_FIELDS if source_item.get(field) is not None},
-		)
+	items = [
+		{field: item.get(field) for field in SIDEBAR_ITEM_FIELDS if item.get(field) is not None}
+		for item in source.items
+	]
+	if frappe.db.exists("DocType", "AI Assistant Settings"):
+		items.insert(2, {
+			"type": "Link", "label": "AI Model Settings", "icon": "settings",
+			"link_type": "DocType", "link_to": "AI Assistant Settings",
+		})
+	target.set("items", items)
 
 	target.flags.ignore_permissions = True
 	target.flags.ignore_links = True
