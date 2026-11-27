@@ -397,3 +397,189 @@ class TemplateSettingsTests(unittest.TestCase):
             with self.assertRaisesRegex(frappe.ValidationError,'Disable historical'):
                 s.save_settings([],'America/Mexico_City',0,'v1',[t.default_templates()[0]])
         save.assert_not_called()
+
+
+class SubjectFallbackTests(unittest.TestCase):
+    setUp = TemplateProjectionTests.setUp
+
+    def test_empty_default_field_variants_use_the_same_unique_copy(self):
+        config, _ = sample()
+        for empty in (None, '', '  ', [], '[]', ' [ ] '):
+            with self.subTest(empty=empty):
+                fields = [component('CascadeField_G8SEQLCWG1S0', empty, 'CascadeField', '服务主体Cliente'),
+                          component('CascadeField_copy', 'Company MX/HR', 'CascadeField', '服务主体Cliente')]
+                found, issues = t.resolve(fields, config, schema={'entity': t.FIELDS['entity']})
+                self.assertEqual(issues, [])
+                self.assertEqual(found['entity']['id'], 'CascadeField_copy')
+                explicit = {**config, 'field_mapping': '{"entity":["CascadeField_G8SEQLCWG1S0"]}'}
+                found, issues = t.resolve(fields, explicit, schema={'entity': t.FIELDS['entity']})
+                self.assertEqual(issues, [])
+                self.assertEqual(found['entity']['id'], 'CascadeField_G8SEQLCWG1S0')
+
+    def test_nonempty_or_invalid_default_fields_are_not_hidden_by_copy(self):
+        config, _ = sample()
+        for value in ('Company A', {}, '[broken', ['Company A', 'Company B']):
+            with self.subTest(value=value):
+                fields = [component('CascadeField_G8SEQLCWG1S0', value, 'CascadeField', '服务主体Cliente'),
+                          component('CascadeField_copy', 'Company MX/HR', 'CascadeField', '服务主体Cliente')]
+                found, _ = t.resolve(fields, config, schema={'entity': t.FIELDS['entity']})
+                self.assertEqual(found['entity']['id'], 'CascadeField_G8SEQLCWG1S0')
+        fields = [component('CascadeField_G8SEQLCWG1S0', [], 'CascadeField', '服务主体Cliente'),
+                  component('CascadeField_A', 'Company A', 'CascadeField', '服务主体Cliente'),
+                  component('CascadeField_B', 'Company B', 'CascadeField', '服务主体Cliente')]
+        found, issues = t.resolve(fields, config, schema={'entity': t.FIELDS['entity']})
+        self.assertNotIn('entity', found)
+        self.assertIn('structure', issues)
+
+    def test_ambiguous_or_invalid_salary_owner_cannot_inherit_or_auto_confirm(self):
+        from deeplinkerp_branding.services import regional_expense_automatic as automatic
+        context = {'companies': {'Company MX': 'Mexico', 'Company A': 'China', 'Company B': 'Mexico'},
+                   'aliases': {}, 'rules': {}, 'version': 'test'}
+        candidates = [
+            [dict(key='DepartmentField_A', label='部门Departamento', value='Company A'),
+             dict(key='DepartmentField_B', label='部门Departamento', value='Company B')],
+            [dict(key='DepartmentField_A', label='部门Departamento', value={})],
+            [dict(key='TextField_A', label='部门Departamento', value='')],
+            [dict(key='DepartmentField_A', label='部门Departamento', value=['Company A', 'Company B'])],
+        ]
+        for owners in candidates:
+            with self.subTest(owners=owners):
+                config, row = sample()
+                cells = owners + [dict(key='MoneyField_X5KBWAODJ1S0', value='100')]
+                row['raw_payload']['formComponentValues'].append(component('TableField_salary',
+                    json.dumps([dict(rowNumber='1', rowValue=cells)]), 'TableField',
+                    '薪酬税费总支出(分部门)Gasto total salarial-fiscal por depa'))
+                source, lines = p.project(row, config, 'Asia/Shanghai', include_finance=False)
+                self.assertNotEqual(lines[0]['source_entity'], 'Company MX')
+                self.assertIn('allocation', lines[0]['base_issues'])
+                with patch('frappe.get_installed_apps', return_value=[]):
+                    allocations, state = automatic.plan(source, lines, context)
+                self.assertFalse(any(item['company'] for item in allocations))
+                self.assertTrue(state == 'stale' or allocations[0]['region'] == 'pending')
+
+    def test_empty_salary_owner_inherits_only_without_id_or_explicit_binding(self):
+        for empty in (None, '', '  ', [], '[]', ' [ ] '):
+            config, row = sample()
+            cells = [dict(key='DepartmentField_A', label='部门Departamento', value=empty),
+                     dict(key='MoneyField_X5KBWAODJ1S0', value='100')]
+            form = row['raw_payload']['formComponentValues']
+            form.append(component('TableField_salary', '', 'TableField',
+                '薪酬税费总支出(分部门)Gasto total salarial-fiscal por depa'))
+            with self.subTest(empty=empty):
+                form[-1]['value'] = json.dumps([dict(rowNumber='1', rowValue=cells)])
+                self.assertEqual(p.project(row, config, 'Asia/Shanghai')[1][0]['source_entity'], 'Company MX')
+                cells[0]['extValue'] = {'id': 'detail-id'}
+                form[-1]['value'] = json.dumps([dict(rowNumber='1', rowValue=cells)])
+                line = p.project(row, config, 'Asia/Shanghai')[1][0]
+                self.assertFalse(line['source_entity'])
+                self.assertEqual(line['_source_entity_id'], 'detail-id')
+                cells[0].pop('extValue')
+                form[-1]['value'] = json.dumps([dict(rowNumber='1', rowValue=cells)])
+                config['field_mapping'] = '{"table_fields":{"salary_table":{"entity":["DepartmentField_A"]}}}'
+                line = p.project(row, config, 'Asia/Shanghai')[1][0]
+                self.assertFalse(line['source_entity'])
+                self.assertIn('allocation', line['base_issues'])
+
+    def test_expense_ambiguous_or_invalid_owner_never_inherits_service(self):
+        from test_mexico_expense_contract import approval, table
+        config = next(v for v in t.default_templates() if v['approval_type'] == 'expense')
+        for case in ('duplicate', 'invalid_value', 'invalid_type', 'multiple'):
+            with self.subTest(case=case):
+                field = table(entity='Company A', amount='100')
+                entries = json.loads(field['value'])
+                cells = entries[0]['rowValue']
+                if case == 'duplicate':
+                    cells.append({**cells[0], 'value': 'Company B'})
+                elif case == 'invalid_value':
+                    cells[0]['value'] = {}
+                elif case == 'invalid_type':
+                    cells[0].update(componentType='TextField', value='')
+                else:
+                    cells[0]['value'] = ['Company A', 'Company B']
+                field['value'] = json.dumps(entries)
+                row = approval([field, component('CascadeField_G8SEQLCWG1S0', 'Company MX/HR', 'CascadeField')])
+                line = p.project(row, config, 'Asia/Shanghai', include_finance=False)[1][0]
+                self.assertNotEqual(line['source_entity'], 'Company MX')
+                self.assertIn('allocation', line['base_issues'])
+
+    def test_purchase_grouped_quantity_and_unit_price_preserve_decimal_precision(self):
+        for quantity, price, total in (('1', '1,000.00', '1,000.00'),
+                                       ('1,000.00', '0.125', '125.00'),
+                                       ('2', '1,000.125', '2,000.25')):
+            with self.subTest(quantity=quantity, price=price):
+                config, row = sample('purchase')
+                row['raw_payload']['formComponentValues'][1]['value'] = total
+                row['raw_payload']['formComponentValues'].append(component('TableField_119WFD19L8R40',
+                    json.dumps([table_row('1', total, quantity, price)]), 'TableField'))
+                source, lines = p.project(row, config, 'Asia/Shanghai', include_finance=False)
+                self.assertEqual(source['total_amount'], total.replace(',', ''))
+                self.assertEqual(lines[0]['base_issues'], [])
+
+    def test_malformed_grouped_quantity_and_prices_still_require_review(self):
+        for invalid in ('1,00', '1.000,00', '1,234,56', 'NaN', '-1'):
+            for role in ('quantity', 'price'):
+                with self.subTest(invalid=invalid, role=role):
+                    config, row = sample('purchase')
+                    row['raw_payload']['formComponentValues'].append(component('TableField_119WFD19L8R40',
+                        json.dumps([table_row('1', **{role: invalid})]), 'TableField'))
+                    self.assertIn('amount', p.project(row, config, 'Asia/Shanghai')[1][0]['base_issues'])
+        self.assertIsNone(p.c.exact_amount('1,000.125'))
+
+    def test_blank_legacy_amount_id_uses_unique_same_label_and_valid_thousands(self):
+        config, row = sample('purchase')
+        row['raw_payload']['formComponentValues'][1]['value'] = ''
+        row['raw_payload']['formComponentValues'].append(component('MoneyField_copy', '6,400.00', 'MoneyField', '金额 importe'))
+        source, lines = p.project(row, config, 'America/Mexico_City')
+        self.assertEqual(source['total_amount'], '6400.00')
+        self.assertNotIn('amount', lines[0]['base_issues'])
+        config['field_mapping'] = '{"amount":["MoneyField_1FPZGEQOZ4M80"]}'
+        self.assertIsNone(p.project(row, config, 'America/Mexico_City')[0]['total_amount'])
+        config['field_mapping'] = '{}'
+        row['raw_payload']['formComponentValues'].append(component('MoneyField_second', '500', 'MoneyField', '金额importe'))
+        self.assertIn('structure', p.project(row, config, 'America/Mexico_City')[1][0]['base_issues'])
+        for value in ('6,40', '6.400,00', '1,234,56', 'NaN'):
+            self.assertIsNone(p.c.exact_amount(value))
+
+    def test_blank_detail_uses_single_service_subject_but_explicit_binding_never_falls_back(self):
+        config, row = sample()
+        cells = [dict(key='DepartmentField_1C2A4A8ZG8TC0', label='部门Departamento', value=''),
+                 dict(key='MoneyField_D5PL7PJDHD40', value='100')]
+        row['raw_payload']['formComponentValues'].append(component('TableField_1T6MS9XEQUE80',
+            json.dumps([dict(rowNumber='1',rowValue=cells)]),'TableField'))
+        before = copy.deepcopy(row)
+        line = p.project(row, config, 'America/Mexico_City')[1][0]
+        self.assertEqual((line['source_entity'],line['entity_kind']), ('Company MX','entity'))
+        self.assertNotIn('allocation',line['base_issues'])
+        self.assertEqual(row,before)
+        config['field_mapping'] = json.dumps({'table_fields': {'allocation_table': {'entity':['DepartmentField_1C2A4A8ZG8TC0']}}})
+        line = p.project(row, config, 'America/Mexico_City')[1][0]
+        self.assertFalse(line['source_entity'])
+        self.assertIn('allocation',line['base_issues'])
+        config['field_mapping']='{}'
+        cells[0]['value']='Other Department'
+        row['raw_payload']['formComponentValues'][-1]['value']=json.dumps([dict(rowNumber='1',rowValue=cells)])
+        self.assertEqual(p.project(row, config, 'America/Mexico_City')[1][0]['source_entity'],'Other Department')
+
+    def test_actual_purchase_mismatch_keeps_known_amount_and_blocks_confirmation(self):
+        config, row = sample('purchase')
+        row['raw_payload']['formComponentValues'][1]['value']='6400'
+        amounts = [('3015','4710'),('768','1200'),('445','695'),('1853','2895'),('320','500')]
+        row['raw_payload']['formComponentValues'].append(component('TableField_119WFD19L8R40',
+            json.dumps([table_row(str(i),amount,qty,'0.64') for i,(amount,qty) in enumerate(amounts,1)]),'TableField'))
+        source, lines = p.project(row,config,'America/Mexico_City')
+        self.assertEqual(source['total_amount'],'6400.00')
+        self.assertEqual(lines[0]['amount'],'6400.00')
+        self.assertIn('total',lines[0]['base_issues'])
+
+    def test_expense_details_inherit_service_subject_without_overriding_existing_owner(self):
+        from test_mexico_expense_contract import approval, table
+        config = next(v for v in t.default_templates() if v['approval_type']=='expense')
+        row=approval([table(entity='', amount='100')])
+        row['form_component_values'].append(component('CascadeField_G8SEQLCWG1S0','UV IMPRESION MX/PG7','CascadeField','服务主体Cliente'))
+        source,lines=p.project(row,config,'America/Mexico_City')
+        self.assertEqual(lines[0]['source_entity'],'UV IMPRESION MX')
+        self.assertEqual(lines[0]['entity_kind'],'entity')
+        row['form_component_values'][-1]=component('DDSelectField_1G5IFPI8IKQO0','["A","B"]','DDMultiSelectField','服务主体Cliente')
+        lines=p.project(row,config,'America/Mexico_City')[1]
+        self.assertIn('allocation',lines[0]['base_issues'])
+        self.assertFalse(lines[0]['source_entity'])

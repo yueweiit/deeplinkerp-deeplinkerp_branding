@@ -132,9 +132,17 @@ def _entity(value):
     return "", False
 
 
+def ungrouped_number(value):
+    # OA display exports may include grouped thousands; accept only the
+    # unambiguous 1,234.56 form, not arbitrary commas or decimal-locale guesses.
+    if isinstance(value, str) and re.fullmatch(r"\d{1,3}(?:,\d{3})+(?:\.\d+)?", value.strip()):
+        return value.strip().replace(",", "")
+    return value
+
+
 def exact_amount(value):
     try:
-        amount = money(value, precision=2)
+        amount = money(ungrouped_number(value), precision=2)
         # Frappe Currency is DECIMAL(21,9): at most twelve integer digits.
         return format(amount, ".2f") if 0 <= amount < Decimal("1e12") else None
     except ValueError:
@@ -338,7 +346,27 @@ def project(row, business_timezone="America/Mexico_City", template=None, *, incl
         "finance_approved_at": period["finance_approved_at"], "finance_approved_date": period["finance_approved_date"]}
     lines, seen = [], set()
 
-    def add(table_id, row_number, entity, amount, description, forced_sub, kind, extra=(), owner_id=""):
+    from . import mexico_expense_templates as templates
+    service_fields, service_issues = templates.resolve(components, template or {}, schema={"entity": templates.FIELDS["entity"]})
+    service = service_fields.get("entity", {}) if not service_issues else {}
+    service_entity, service_multiple = _entity(service.get("value"))
+    if service.get("componentType") == "CascadeField" and not service_multiple:
+        service_entity = service_entity.split("/", 1)[0].strip()
+
+    def add(table_id, row_number, entity, amount, description, forced_sub, kind, extra=(), owner_id="", owner_status="present"):
+        from .expense_template_mapping import child_configured
+        logical = next((key for key, identity in templates.EXPENSE_IDS.items()
+            if identity == table_bindings.get(table_id)), None)
+        blank_owner = owner_status in ("missing", "empty") and templates.empty_value(entity)
+        explicit_owner = child_configured(template, logical, "entity")
+        if owner_status in ("ambiguous", "invalid"):
+            extra = (*extra, "structure", "allocation")
+        if blank_owner and explicit_owner:
+            extra = (*extra, "allocation")
+        if blank_owner and not owner_id and (service_multiple or service_issues):
+            extra = (*extra, "allocation" if service_multiple else "structure")
+        if (blank_owner and not owner_id and service_entity and not service_multiple and not explicit_owner):
+            entity, kind, owner_id = service_entity, "entity", organization_id(service)
         entity, multiple = _entity(entity)
         selected_sub = forced_sub or sub
         selected_category = SUBCATEGORIES[selected_sub][0] if selected_sub else main
@@ -402,11 +430,11 @@ def project(row, business_timezone="America/Mexico_City", template=None, *, incl
                 valid_cells = [cell for cell in entry["rowValue"] if isinstance(cell, dict)]
                 if child_bindings.missing_children(template, logical, valid_cells):
                     errors.append("structure")
-                owner = child_bindings.child(template or {}, logical, "entity", valid_cells, (entity_field,))
+                owner, owner_status = child_bindings.child_with_status(template or {}, logical, "entity", valid_cells, (entity_field,))
                 money = child_bindings.child(template or {}, logical, "amount", valid_cells, (amount_field,))
                 note = child_bindings.child(template or {}, logical, "description", valid_cells, (text_field,))
                 add(key, entry.get("rowNumber"), owner.get("value"), money.get("value"), note.get("value"), fixed_sub, kind,
-                    ("structure",) if duplicates else (), organization_id(owner))
+                    ("structure",) if duplicates else (), organization_id(owner), owner_status)
         except (ValueError, TypeError):
             errors.append("structure")
     if "amount" in overrides:
@@ -420,7 +448,8 @@ def project(row, business_timezone="America/Mexico_City", template=None, *, incl
         errors.append("amount")
     if not lines:
         add("header", "header", value("DDMultiSelectField_RWULY2WAUCG0"), header_amount,
-            value("TextareaField_70ISZLEAO8G0"), None, "entity", owner_id=organization_id(by_id.get("DDMultiSelectField_RWULY2WAUCG0", {})))
+            value("TextareaField_70ISZLEAO8G0"), None, "entity", owner_id=organization_id(by_id.get("DDMultiSelectField_RWULY2WAUCG0", {})),
+            owner_status="empty" if templates.empty_value(value("DDMultiSelectField_RWULY2WAUCG0")) else "present")
     if header_amount not in (None, "") and (header_total is None or any(l["amount"] is None for l in lines)
             or sum((Decimal(l["amount"]) for l in lines if l["amount"] is not None), Decimal(0)) != Decimal(header_total or 0)):
         errors.append("total")

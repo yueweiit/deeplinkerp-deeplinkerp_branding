@@ -1,12 +1,13 @@
 """Operating and purchase adapters. Monetary ledger lines and item detail stay separate."""
 import json
 from datetime import date, datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from . import mexico_expense_contract as c
 from . import mexico_expense_templates as templates
 from . import expense_template_mapping as bindings
+from . import expense_amount_review as amount_review
 
 
 def text(value):
@@ -72,8 +73,17 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
     path += [text(f.get('value')) for f in components if f.get('id') in category_ids and f.get('value')]
     business_category=' / '.join(dict.fromkeys(path))
     source_key=c.digest([row['corp_id'],row['process_instance_id']]);lines=[];seen=set();details=[]
-    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None,owner_id='',row_currency=None):
+    def add(table_id,row_id,owner,raw_amount,description,kind='entity',forced_sub=None,owner_id='',row_currency=None,owner_status='present'):
+        # A populated detail owner always wins. An unconfigured blank detail
+        # can inherit a single explicit service subject from the approval.
+        blank_owner = owner_status in ('missing', 'empty') and templates.empty_value(owner)
+        explicit_owner = bindings.child_configured(template, known_tables.get(table_id), 'entity')
+        if (table_id != 'header' and blank_owner and not owner_id and entity and not multiple
+                and not explicit_owner):
+            owner,kind,owner_id=entity,'entity',c.organization_id(fields.get('entity',{}))
         owner,multi=c._entity(owner);problems=[issue for issue in errors if issue != 'allocation' or table_id == 'header']
+        if owner_status in ('ambiguous', 'invalid'):problems.extend(('structure', 'allocation'))
+        if blank_owner and (explicit_owner or multiple):problems.append('allocation')
         if multi:problems.append('allocation')
         parsed=c.exact_amount(raw_amount)
         if parsed is None:problems.append('amount')
@@ -112,28 +122,28 @@ def _project(row, template, business_timezone, *, ignore_region=False, include_f
                 total=(cell(*templates.ALLOCATION_AMOUNT_FIELD, role='amount') if kind == 'allocation_table' else
                     cell(('CalculateField_1D7YT3J5Z4YO0','CalculateField_FV6G9ZJPPEG0','MoneyField_X5KBWAODJ1S0'),('总金额Monto Total','总金额（元）Importe Total (CNY)','金额（元）Monto (yuan)'), role='amount'))
                 parsed=c.exact_amount(total);totals.append(parsed)
+                amount_check = None
                 if family=='purchase' and kind in ('items_table','processors_table'):
                     qty=cell(('NumberField_6Q22XFQ51VW0','NumberField_1VD3WWVT2QCG0'),('数量Cantidad',), role='quantity')
                     price=cell(('NumberField_1P237DCILQKG0','NumberField_10YZCWTPVZR40'),('单价Precio','单价Precio Unitario'), role='unit_price')
-                    try:
-                        quantity,unit_price=Decimal(str(qty)),Decimal(str(price))
-                        if not quantity.is_finite() or not unit_price.is_finite() or quantity<0 or unit_price<0:raise ValueError()
-                        if parsed is None or (quantity*unit_price).quantize(Decimal('.01'),rounding=ROUND_HALF_UP)!=Decimal(parsed):errors.append('total')
-                        if quantity>0 and unit_price==0:errors.append('amount_pending')
-                    except (InvalidOperation,ValueError):errors.append('amount')
+                    amount_check = amount_review.purchase_row(qty, price, total)
+                    errors.extend(amount_check.pop('issues'))
                 table_rows.append({'row_id':str(row_id or ''),'cells':[{'label':str(v.get('label') or v.get('key') or ''),'value':text(v.get('value'))} for v in cells if v.get('value') not in (None,'') and not str(v.get('key','')).startswith(('DDPhoto','DDAttachment')) and '电话' not in str(v.get('label',''))]})
+                if amount_check is not None:table_rows[-1]['amount_check'] = amount_check
                 if family=='operating' and kind=='allocation_table':
-                    owner_field=cell_field(('DepartmentField_1C2A4A8ZG8TC0',),('部门Departamento',), role='entity')
+                    owner_field,owner_status=bindings.child_with_status(template, kind, 'entity', cells,
+                        ('DepartmentField_1C2A4A8ZG8TC0',), ('部门Departamento',))
                     add(table_id,row_id,owner_field.get('value'),total,
                         cell(('TextField_1AZVE05LBECG0',),('备注Nota',), role='description'), 'department',
-                        owner_id=c.organization_id(owner_field),row_currency=bindings.allocation_currency(template, currency))
+                        owner_id=c.organization_id(owner_field),row_currency=bindings.allocation_currency(template, currency),owner_status=owner_status)
                     if not lines[-1]['source_entity']:lines[-1]['base_issues'].append('allocation')
                     if 'allocation' in lines[-1]['base_issues']:lines[-1]['base_issues'].append('structure')
                 if family=='operating' and kind in ('salary_table','social_table','office_table'):
-                    owner_field=cell_field(labels=('部门Departamento',),role='entity') if kind!='office_table' else fields.get('entity',{})
+                    owner_field,owner_status=(bindings.child_with_status(template, kind, 'entity', cells, labels=('部门Departamento',))
+                        if kind!='office_table' else (fields.get('entity',{}), 'present'))
                     owner=owner_field.get('value') if kind!='office_table' else entity
-                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos'),role='description'), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None, c.organization_id(owner_field))
-            details.append({'label':str(f.get('name') or table_id),'rows':table_rows})
+                    add(table_id,row_id,owner,total,cell(labels=('备注Nota','费用明细Detalle de gastos'),role='description'), 'department' if kind!='office_table' else 'entity', 'social' if kind=='social_table' else 'salary' if kind=='salary_table' else None, c.organization_id(owner_field),owner_status=owner_status)
+            details.append({'label':str(f.get('name') or table_id),'kind':kind,'rows':table_rows})
             if family=='purchase' and kind in ('items_table','processors_table'):
                 if any(v is None for v in totals) or amount is not None and sum((Decimal(v) for v in totals if v is not None),Decimal(0))!=Decimal(amount):errors.append('total')
         except (ValueError,TypeError,KeyError):errors.append('structure')

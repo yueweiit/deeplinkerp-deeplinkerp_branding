@@ -320,10 +320,11 @@ def test_unified_mx_categories_use_current_rules_without_changing_cn_allocations
 
 @pytest.mark.parametrize("fields,expected", [([], "2026-10"),
     ([{"name": "申请日期", "value": "not-a-date"}], None),
-    ([{"name": "申请日期", "value": ""}], None),
+    ([{"name": "申请日期", "value": ""}], "2026-10"),
+    ([{"name": "申请日期", "value": "  "}], "2026-10"),
     ([{"name": "申请日期", "value": "2026-11-01"}, {"name": "申请日期", "value": "2026-10-01"}], None)])
 @pytest.mark.parametrize("origin", ["cn", "mx"])
-def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch, fields, expected, origin):
+def test_creation_fallback_accepts_absent_and_blank_fields_not_invalid_dates(monkeypatch, fields, expected, origin):
     from deeplinkerp_branding.services import mexico_expenses as mx
     record, source, lines = make_record(origin)
     monkeypatch.setattr(mx, "_settings", lambda: frappe._dict(templates=[
@@ -344,14 +345,14 @@ def test_submission_fallback_requires_missing_field_not_invalid_date(monkeypatch
 
 
 @pytest.mark.parametrize("template,expected", [
-    (None, None),
-    ({"corp_id": "another", "process_code": "PROC-test"}, None),
-    ({"corp_id": "corp", "process_code": "PROC-another"}, None),
+    (None, "2026-10"),
+    ({"corp_id": "another", "process_code": "PROC-test"}, "2026-10"),
+    ({"corp_id": "corp", "process_code": "PROC-another"}, "2026-10"),
     ({"corp_id": "corp", "process_code": "PROC-test", "enabled": 0}, "2026-10"),
     ({"corp_id": "corp", "process_code": "PROC-test", "enabled": 1}, "2026-10"),
 ])
 @pytest.mark.parametrize("submitted", [None, "2026-10-31"])
-def test_cn_owned_submission_fallback_requires_exact_expense_template(monkeypatch, template, expected, submitted):
+def test_cn_creation_fallback_is_independent_of_the_mx_template_list(monkeypatch, template, expected, submitted):
     from deeplinkerp_branding.services import mexico_expenses as mx
     record, source, lines = make_record("cn")
     source.update(cn_application_date=None, application_date_state="missing", request_date=submitted)
@@ -364,6 +365,35 @@ def test_cn_owned_submission_fallback_requires_exact_expense_template(monkeypatc
     assert len(rows) == 1 and rows[0]["company"] == "Mexico B"
     assert rows[0]["month"] == (expected if submitted else None)
     assert record == before  # No changes to manual decisions, ownership or stored facts.
+
+
+@pytest.mark.parametrize("fields,expected", [([], "2026-10-31"),
+    ([{"id": "DDDateField_custom", "componentType": "DDDateField", "value": ""}], "2026-10-31"),
+    ([{"id": "DDDateField_custom", "componentType": "DDDateField", "value": "invalid"}], None)])
+def test_old_invalid_metadata_rechecks_local_bound_date_without_writing_facts(monkeypatch, fields, expected):
+    record, source, lines = make_record("cn")
+    source.update(cn_application_date=None, application_date_state="invalid", request_date="2026-10-31")
+    record.facts_json = s.encode([source, lines])
+    record.source_json = s.encode({"form_component_values": fields})
+    record.template_json = s.encode({"field_mapping": '{"application_date":["DDDateField_custom"]}'})
+    before = deepcopy(record)
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(frappe, "get_all", lambda *a, **k: [record])
+    rows = s.management_projection({"companies": {"China A", "Mexico B"}},
+        include_legacy=False, submission_fallback=True)[1]
+    assert all(row["application_date"] == expected for row in rows)
+    assert all(("period" in row["issues"]) is (expected is None) for row in rows)
+    assert record == before
+
+
+@pytest.mark.parametrize("timezone,expected", [("Asia/Shanghai", "2026-11-01"), ("America/Mexico_City", "2026-10-31")])
+def test_approval_creation_fallback_uses_source_timezone_and_rejects_invalid_creation(timezone, expected):
+    raw = {"create_time": "2026-11-01T00:30:00Z", "form_component_values": []}
+    assert s.management_application_date(raw, {}, timezone) == (expected, "submission")
+    for created in (None, "invalid", "2026-11-01T00:30:00"):
+        assert s.management_application_date({**raw, "create_time": created}, {}, timezone) == (None, "submission")
+    for submitted in (None, "not-a-date", "2026-02-30"):
+        assert s.management_date(None, "empty", submitted, allow_submission=True)[0] is None
 
 
 @pytest.mark.parametrize("origin", ["cn", "mx"])

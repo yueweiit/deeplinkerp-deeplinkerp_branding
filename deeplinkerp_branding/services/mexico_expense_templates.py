@@ -47,12 +47,25 @@ FIELDS = {
 ALLOCATION_AMOUNT_FIELD = (('MoneyField_D5PL7PJDHD40',), ('金额（元）Monto (yuan)',))
 
 
-def resolve_table_cell(cells, ids=(), labels=()):
-    """Prefer exact component IDs; only one exact historical label may be a fallback."""
+def empty_value(value):
+    """Only absent values and empty OA selections count as blank, not malformed data."""
+    if isinstance(value, str):
+        value = value.strip()
+        return value == '' or re.fullmatch(r'\[\s*\]', value) is not None
+    return value is None or isinstance(value, list) and not value
+
+
+def table_cell_candidates(cells, ids=(), labels=()):
+    """Prefer exact component IDs over exact historical labels."""
     matches = [cell for cell in cells if cell.get('key') in ids]
     if not matches:
         aliases = {c.normalized(label) for label in labels}
         matches = [cell for cell in cells if c.normalized(cell.get('label')) in aliases]
+    return matches
+
+
+def resolve_table_cell(cells, ids=(), labels=()):
+    matches = table_cell_candidates(cells, ids, labels)
     return matches[0] if len(matches) == 1 else {}
 
 
@@ -113,9 +126,12 @@ def resolve(components,template, schema=None):
     for key,(ids,names,kinds) in (schema or FIELDS).items():
         ids=overrides.get(key,ids)
         found=[f for f in components if f.get('id') in ids]
-        if not found and key not in overrides:
-            found=[f for f in components if c.normalized(f.get('name')) in {c.normalized(n) for n in names}]
-        populated=[f for f in found if f.get('value') not in (None,'','[]')]
+        # Historical copies can retain an empty old ID alongside a populated
+        # replacement with the same exact label. Explicit bindings never fall
+        # back, and conflicting populated candidates still require review.
+        if key not in overrides and all(empty_value(f.get('value')) for f in found):
+            found += [f for f in components if f not in found and c.normalized(f.get('name')) in {c.normalized(n) for n in names}]
+        populated=[f for f in found if not empty_value(f.get('value'))]
         if len(populated)>1 or any(f.get('componentType') not in kinds for f in found):issues.append('structure');continue
         result[key]=(populated or found or [{}])[0]
     table_ids=[field['id'] for key,field in result.items() if key.endswith('_table') and field.get('id')]

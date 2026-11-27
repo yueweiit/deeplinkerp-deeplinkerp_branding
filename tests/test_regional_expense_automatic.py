@@ -25,7 +25,7 @@ def context(monkeypatch):
     ("China A", "entity", "China A", "cn", ""),
     ("Mexico B", "entity", "Mexico B", "mx", ""),
     ("Department A", "department", "China A", "cn", ""),
-    ("China A", "department", "", "pending", "unmapped_company"),
+    ("China A", "department", "China A", "cn", ""),
     ("China A / Mexico B", "entity", "", "pending", "unmapped_company"),
     ("China A Ltd", "entity", "", "pending", "unmapped_company"),
     ("Other", "entity", "Other", "pending", "company_country"),
@@ -78,7 +78,7 @@ def test_country_rules_are_independent_of_currency_and_approval_status(context):
 @pytest.mark.parametrize("kind", ["operating", "purchase"])
 @pytest.mark.parametrize("order", [("cn", "mx"), ("mx", "cn")])
 @pytest.mark.parametrize("date_value,expected_month", [
-    (None, "2026-10"), ("2026-11-02", "2026-11"), ("", None), ("invalid", None),
+    (None, "2026-10"), ("2026-11-02", "2026-11"), ("", "2026-10"), ("invalid", None),
 ])
 def test_shared_template_reporting_is_independent_of_sync_order(monkeypatch, kind, order, date_value, expected_month):
     from test_mexico_expense_templates import sample as approval_sample, component
@@ -114,7 +114,7 @@ def test_shared_template_reporting_is_independent_of_sync_order(monkeypatch, kin
         assert item["month"] == expected_month
         assert item["eligible"] is bool(expected_month)
         assert item["status"] == "approved" and item["amount"] == "100.00"
-        assert item["date_basis"] == ("submission" if date_value is None else "application")
+        assert item["date_basis"] == ("submission" if date_value in (None, "") else "application")
         assert ("period" in item["issues"]) is (not expected_month)
         assert saved[0].origin == order[0]
     # Report fallback does not rewrite the saved evidence or legacy CN dates.
@@ -425,3 +425,36 @@ def test_internal_organization_metadata_preserves_existing_manual_review_fingerp
     assert after[0]["_source_entity_id"] == "org-1"
     assert before[0]["row_fingerprint"] == after[0]["row_fingerprint"]
     assert contract.fingerprint(source, before) == contract.fingerprint(updated, after)
+
+
+@pytest.mark.parametrize('label,company', [
+    ('UV IMPRESION MX', 'UV IMPRESION'), ('uv  impresión (MX)', 'UV IMPRESION'),
+    ('YW MOLDES  MX', 'YW MOLDES'), ('Amigomart', 'AmigoMart'),
+    ('LATÍNGO MX', 'LATINGO MX'),
+])
+def test_unique_formatted_company_names_are_recognized_without_manual_alias(context, label, company):
+    context['companies'] = {company: 'Mexico'}
+    context['aliases'] = {}
+    assert a.resolve_company('corp', {'source_entity': label, 'entity_kind': 'entity'}, context) == (company, '')
+
+
+def test_automatic_name_matching_is_unique_country_aware_and_not_fuzzy(context):
+    context['companies'] = {'UV IMPRESION': 'Mexico', 'UV IMPRESIÓN': 'Mexico'}
+    line = {'source_entity': 'uv impresion MX', 'entity_kind': 'entity'}
+    assert a.resolve_company('corp', line, context) == ('', 'conflicting_company_mapping')
+    context['companies'] = {'UV IMPRESION': 'China'}
+    assert a.resolve_company('corp', line, context) == ('', 'unmapped_company')
+    context['companies'] = {'UV IMPRESION': 'Mexico'}
+    for label in ('UV IMPRESION II', 'UV IMPRESON', 'UV', 'UV IMPRESION / China A'):
+        assert a.resolve_company('corp', {**line, 'source_entity': label}, context) == ('', 'unmapped_company')
+    context['aliases'][('corp', 'entity', 'uv impresion MX')] = {'China A'}
+    context['companies']['China A'] = 'China'
+    assert a.resolve_company('corp', line, context) == ('China A', '')
+
+
+def test_normalized_aliases_preserve_corporation_and_entity_kind_scope(context):
+    context['aliases'] = {('corp', 'department', 'Service Á'): {'China A'}}
+    line = {'source_entity': 'SERVICE A', 'entity_kind': 'department'}
+    assert a.resolve_company('corp', line, context) == ('China A', '')
+    assert a.resolve_company('another-corp', line, context) == ('', 'unmapped_company')
+    assert a.resolve_company('corp', {**line, 'entity_kind': 'entity'}, context) == ('', 'unmapped_company')

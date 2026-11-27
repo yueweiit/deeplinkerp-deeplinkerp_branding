@@ -153,7 +153,10 @@ def application_date_info(raw, template=None):
         mapping = bindings.decode(template)
         if "application_date" in mapping:
             resolved, errors = templates.resolve(components, template, schema={"application_date": bindings.APPLICATION_DATE})
-            value = text(resolved.get("application_date", {}).get("value"))
+            field = resolved.get("application_date", {})
+            value = text(field.get("value"))
+            if not errors and not value.strip():
+                return None, "empty" if field else "missing"
             try:
                 return (date.fromisoformat(value).isoformat(), "form") if not errors else (None, "invalid")
             except (TypeError, ValueError):
@@ -163,7 +166,9 @@ def application_date_info(raw, template=None):
         or str(field.get("name", "")).startswith(("申请日期", "Fecha de solicitud")))]
     if not fields:
         return None, "missing"
-    dates = {text(field.get("value")) for field in fields if field.get("value")}
+    dates = {text(field.get("value")).strip() for field in fields if text(field.get("value")).strip()}
+    if not dates:
+        return None, "empty"
     try:
         applied = date.fromisoformat(next(iter(dates))).isoformat() if len(dates) == 1 else None
         return applied, "form" if applied else "invalid"
@@ -172,10 +177,27 @@ def application_date_info(raw, template=None):
 
 
 def management_date(applied, date_state, submitted, *, allow_submission=False):
-    """Shared reporting/preview policy; absent fields alone permit fallback."""
-    if not applied and date_state == "missing" and allow_submission:
-        return str(submitted) if submitted else None, "submission"
+    """Use the OA creation date for absent/blank dates, retaining invalid dates."""
+    if not applied and date_state in {"missing", "empty"} and allow_submission:
+        from datetime import date
+        try:
+            return date.fromisoformat(str(submitted)).isoformat(), "submission"
+        except (TypeError, ValueError):
+            return None, "submission"
     return applied, "application"
+
+
+def management_application_date(raw, template, business_timezone):
+    """Preview/native reporting fallback uses the source instant, never import time."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    applied, state = application_date_info(raw, template)
+    try:
+        created = datetime.fromisoformat(str(raw.get("create_time")).replace("Z", "+00:00"))
+        submitted = created.astimezone(ZoneInfo(business_timezone)).date().isoformat() if created.tzinfo else None
+    except (TypeError, ValueError):
+        submitted = None
+    return management_date(applied, state, submitted, allow_submission=True)
 
 
 def facts(raw, template, timezone, ignore_region=False):
@@ -193,6 +215,8 @@ def facts(raw, template, timezone, ignore_region=False):
     source["cn_project"] = text(populated[0]["value"]) if len(populated) == 1 else ""
     for line in lines:
         line.pop("_legacy_row_fingerprint", None)
+    from . import expense_amount_review as amount_review
+    source[amount_review.EVIDENCE] = amount_review.evidence(source, components)
     return source, lines
 
 
@@ -303,6 +327,9 @@ def save_allocation(origin, key, allocations, note, expected_revision, expected_
         if origin == "cn":
             template[field] = value.strip()
     source, lines = facts(raw, template, settings.business_timezone or "America/Mexico_City", origin == "cn")
+    from . import expense_amount_review as amount_review
+    if existing:
+        amount_review.preserve(source, lines, decode(existing.facts_json)[0])
     stamp = contract.fingerprint(source, lines)
     if stamp != expected_fingerprint:
         frappe.throw(_("Expense source changed; reload and review again"))
@@ -363,6 +390,9 @@ def project_for_mx(row, template, settings, origin="mx", source_available=True):
         template.update({key: (match.get(key) if match else "") or ""
             for key in ("finance_activity_ids", "finance_node_names")})
     source, lines = facts(row, template, settings.business_timezone or "America/Mexico_City", owner == "cn")
+    from . import expense_amount_review as amount_review
+    if record:
+        amount_review.preserve(source, lines, decode(record.facts_json)[0])
     if auto and not lines:
         # Do not make existing allocations disappear on a malformed refresh.
         if not record:
@@ -398,6 +428,8 @@ def project_for_mx(row, template, settings, origin="mx", source_available=True):
     # This is an internal source annotation, not a Mexico Expense Source field.
     source.pop("cn_application_date", None)
     source.pop("cn_project", None)
+    source.pop(amount_review.EVIDENCE, None)
+    source.pop(amount_review.REVIEW, None)
     return source, routed
 
 
@@ -436,7 +468,7 @@ def cn_projection(context):
 
 
 def management_projection(context, *, regions=("cn", "mx"), include_legacy=True, submission_fallback=False,
-        management_rules=None, group_unassigned=False, group_sources=()):
+        management_rules=None, group_unassigned=False, group_sources=(), amount_reviews=False):
     """Read allocations once; permissions apply before returning any line."""
     from budget.services.cn_approval_management_rules import CATEGORIES, classify
     from . import regional_expense_automatic as automatic
@@ -444,31 +476,23 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
     current_version = None
     saved = records()
     parsed = {record.name: decode(record.facts_json) for record in saved}
-    fallback_records = {record.name for record in saved if submission_fallback and record.origin == "mx"}
-    if submission_fallback and any(record.origin == "cn" and not parsed[record.name][0].get("cn_application_date")
-            for record in saved):
-        from .mexico_expenses import _settings
-        # A shared template has the same date policy whichever feed published
-        # first. Include disabled templates: their retained history still uses
-        # the configured policy. Keep CN-only templates and legacy CN APIs strict.
-        expense_templates = {(item.get("corp_id"), item.get("process_code"))
-            for item in (_settings().get("templates") or [])}
-        fallback_records.update(record.name for record in saved
-            if (record.corp_id, record.process_code) in expense_templates)
-    # Older facts do not carry field-presence metadata. Inspect only those
-    # local source payloads, in one bounded read, without changing the snapshot.
+    fallback_records = {record.name for record in saved if submission_fallback}
+    # Older facts classified blank fields as invalid. Recheck only undated
+    # legacy candidates, using their stored bindings and local source payload.
     candidates = [record.name for record in saved if record.name in fallback_records
         and not parsed[record.name][0].get("cn_application_date")
-        and not parsed[record.name][0].get("application_date_state")]
-    date_states = {row.name: application_date_info(decode(row.source_json))[1]
+        and parsed[record.name][0].get("application_date_state") in (None, "", "invalid")]
+    date_states = {row.name: application_date_info(decode(row.source_json), decode(row.get("template_json")))[1]
         for row in frappe.get_all(DOCTYPE, filters={"name": ["in", candidates]},
-            fields=["name", "source_json"], limit_page_length=10000)} if candidates else {}
+            fields=["name", "source_json", "template_json"], limit_page_length=10000)} if candidates else {}
     for record in saved:
         identities.add((record.corp_id, record.process_instance_id))
         source, lines = parsed[record.name]
         originals = {line["line_key"]: line for line in lines}
         entries = decode(record.allocations_json)
         auto = automatic.is_automatic(entries)
+        from . import expense_amount_review as amount_review
+        amount_accepted = amount_reviews and auto and amount_review.accepted(source, lines, entries)
         if auto and current_version is None:
             from .mexico_expenses import _settings
             current_version = automatic.configuration(_settings())["version"]
@@ -479,20 +503,17 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
             if not pending and (entry["region"] not in regions or entry["company"] not in context["companies"]):
                 continue
             original = originals.get(entry["line_key"], {})
-            explicit_group = False
-            if group_unassigned and group_sources and auto and original:
-                from budget.services.expense_group_mappings import matches
-                explicit_group = matches(group_sources, record.corp_id, original.get("entity_kind"), original.get("source_entity"))
-            group = bool(group_unassigned and auto and original and (explicit_group
-                or pending and not entry.get("matched_company") and entry.get("assignment_issue") == "unmapped_company"
-                and not str(original.get("source_entity") or "").strip()))
+            group, explicit_group = False, False
+            if group_unassigned and auto:
+                from budget.services.expense_group_mappings import allocation_scope
+                group, explicit_group = allocation_scope(group_sources, record.corp_id, original, entry)
             allocation_pending = auto and (entry.get("assignment_issue") == "multiple_companies"
                 or "allocation" in (original.get("base_issues") or []))
-            valid = record.state == "confirmed" and bool(original) and (not pending or group) and not allocation_pending
+            valid = (record.state == "confirmed" or amount_accepted) and bool(original) and (not pending or group) and not allocation_pending
             if auto:
                 valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
             applied, date_basis = management_date(source.get("cn_application_date"),
-                source.get("application_date_state") or date_states.get(record.name), source.get("request_date"),
+                date_states.get(record.name, source.get("application_date_state")), source.get("request_date"),
                 allow_submission=record.name in fallback_records)
             issues = [] if valid else ["regional_allocation"]
             if allocation_pending:
@@ -532,7 +553,8 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
                 "table_index": -1, "detail_index": -1,
                 "allocation_origin": record.origin, "regional_allocation": record.name,
                 "source_family": source.get("approval_type"),
-                "original_issues": original.get("base_issues") or [],
+                "original_issues": [issue for issue in original.get("base_issues") or [] if not (amount_accepted and issue == "total")],
+                "amount_reviewed": bool(amount_accepted),
                 "allocation_modified": str(record.modified)})
             if len(output) > 50000:
                 frappe.throw(_("CN management analysis exceeds 50000 detail lines. Narrow the configured scope."))

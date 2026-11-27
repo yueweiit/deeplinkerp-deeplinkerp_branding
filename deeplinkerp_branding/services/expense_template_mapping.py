@@ -95,15 +95,30 @@ def validate(mapping, kind):
 
 
 def child(template, table, role, cells, ids=(), labels=()):
-    from .mexico_expense_templates import resolve_table_cell
+    return child_with_status(template, table, role, cells, ids, labels)[0]
+
+
+def child_with_status(template, table, role, cells, ids=(), labels=()):
+    """Keep absent/empty cells distinct from ambiguous or invalid ownership fields."""
+    from .mexico_expense_templates import empty_value, table_cell_candidates
+    from .mexico_expense_contract import _entity
     explicit = decode(template).get("table_fields", {}).get(table, {}).get(role)
-    result = resolve_table_cell(cells, explicit if explicit is not None else ids,
+    matches = table_cell_candidates(cells, explicit if explicit is not None else ids,
         () if explicit is not None else labels)
-    if explicit is not None and result:
-        kind = result.get("componentType") or re.split("[-_]", result["key"], maxsplit=1)[0]
-        if kind not in CHILD_TYPES.get(role, ()):
-            return {}
-    return result
+    if len(matches) != 1:
+        return {}, "ambiguous" if matches else "missing"
+    result = matches[0]
+    # Older label-based archives can have opaque keys and no component type.
+    if explicit is not None or role == "entity":
+        kind = result.get("componentType") or re.split("[-_]", str(result.get("key") or ""), maxsplit=1)[0]
+        known_type = explicit is not None or result.get("componentType") or kind.endswith("Field")
+        if known_type and kind not in CHILD_TYPES.get(role, ()):
+            return {}, "invalid"
+    if empty_value(result.get("value")):
+        return result, "empty"
+    if role == "entity" and not _entity(result.get("value"))[0]:
+        return result, "invalid"
+    return result, "present"
 
 
 def child_configured(template, table, role):

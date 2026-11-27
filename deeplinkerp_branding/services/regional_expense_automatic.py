@@ -4,13 +4,44 @@ Automatic plans live in the existing allocation JSON. A saved manual plan has
 no automatic marker and is never overwritten. No external requests are made.
 """
 from collections import defaultdict
+import re
+import unicodedata
 
 import frappe
 
 from .operating_expense_contract import digest
 from . import regional_expense_contract as contract
 
-VERSION = "company-country-v2"
+VERSION = "company-country-v4-strict-subject-fallback"
+
+
+def identity_key(value):
+    # Formatting and accents are not company identity. Do not use edit-distance
+    # or arbitrary substring matches for financial ownership.
+    value = unicodedata.normalize("NFKD", str(value or "")).casefold()
+    return "".join(char for char in value if not unicodedata.combining(char)
+        and not char.isspace() and char not in "()（）·_-")
+
+
+def identity_keys(value, country=None):
+    keys = {identity_key(value)} - {""}
+    suffix = {"China": r"(?:cn|china|中国)", "Mexico": r"(?:mx|mexico|méxico|墨西哥)"}.get(country)
+    if suffix:
+        base = re.sub(r"[\s_(（-]+" + suffix + r"[)）]?\s*$", "", str(value or ""), flags=re.I)
+        if len(identity_key(base)) >= 4:
+            keys.add(identity_key(base))
+    return keys
+
+
+def recognized_companies(corp, kind, label, context):
+    candidates = set()
+    for company, country in context["companies"].items():
+        if identity_keys(label, country) & identity_keys(company, country):
+            candidates.add(company)
+    for (alias_corp, alias_kind, alias), companies in context["aliases"].items():
+        if alias_corp == corp and alias_kind in (None, kind) and identity_key(alias) == identity_key(label):
+            candidates.update(companies)
+    return candidates
 
 
 def is_automatic(entries):
@@ -67,6 +98,10 @@ def resolve_company(corp, line, context):
         candidates.add(organization)
     if kind == "entity" and label in context["companies"]:
         candidates.add(label)
+    # Explicit configuration and organization IDs remain authoritative. Only
+    # unresolved names use deterministic, unique identity recognition.
+    if not candidates and label.strip():
+        candidates = recognized_companies(corp, kind, label, context)
     if len(candidates) > 1:
         return "", "conflicting_company_mapping"
     company = next(iter(candidates), "")
