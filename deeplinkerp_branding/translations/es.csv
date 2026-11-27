@@ -3261,5 +3261,10 @@ Applying job template...,Aplicando perfil de puesto...,Permission assignment
 About {0},Acerca de {0},Permission assignment
 View permissions for {0},Ver permisos de {0},Permission assignment
 Configuration help,Ayuda de configuración,Permission assignment
+库存重算任务与仓库所属公司不一致,La tarea de recálculo de existencias y el almacén pertenecen a empresas diferentes.
+库存重算不能使用分组仓库,El recálculo de existencias no puede utilizar un almacén de grupo.
+停用仓库仅允许范围未改变的已提交历史重算任务,"Los almacenes deshabilitados solo permiten tareas de recálculo existentes, enviadas y cuyo alcance no haya cambiado."
+库存重算的总账子任务来源不一致,La tarea principal del recálculo del libro mayor de existencias no coincide.
+库存重算的总账子任务未完整创建，请核查后重试,No se crearon todas las tareas de recálculo del libro mayor. Revise el problema antes de volver a intentarlo.
 
 AI Model Settings,Configuración de modelos de IA

@@ -14,6 +14,7 @@ import json
 import re
 import sys
 from contextlib import contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
 from pathlib import Path
 from threading import RLock
@@ -29,6 +30,8 @@ from . import purchase_reversal_progress as progress
 
 _install_lock = RLock()
 _compiled = {}
+TASK_OPTION_FIELDS = frozenset({"allow_negative_stock", "allow_zero_rate", "reposting_reference"})
+_gl_creation = ContextVar("historical_repost_gl_creation", default=None)
 PINS = {
 	"riv": "c4449547d07c76fd316a5b2185d4c9b60bd42e8747767fe28aea28cbc2ceafe1",
 	"stock": "8e6f465d14b40647895137572f433ba214bc5dcb2df8471f77ba7f8da0ae99ee",
@@ -276,19 +279,81 @@ def _owned_creation(doc):
 	return False
 
 
-def _task_scopes(doc):
+def _preserves_submitted_task(doc, old):
+	"""Only the unchanged persisted task may revisit a retired warehouse."""
+	return bool(
+		old
+		and old.docstatus == doc.docstatus == 1
+		and _task_fields(doc) == _task_fields(old)
+		and all(doc.get(field) == old.get(field) for field in TASK_OPTION_FIELDS)
+	)
+
+
+def _gl_parent(doc):
+	"""A native GL-only child cannot acquire permission to recreate stock."""
 	from . import purchase_payment_service as service
-	from .purchase_reversal_scope import collect_repost_pair_scope
+
+	if not (
+		doc.based_on == "Transaction" and doc.repost_only_accounting_ledgers
+		and doc.reposting_reference and doc.reposting_reference != doc.name
+		and not doc.recreate_stock_ledgers and not doc.recalculate_valuation_rate
+		and not doc.via_landed_cost_voucher
+	):
+		return None
+	with service.current_reads():
+		parent = service._read("Repost Item Valuation", doc.reposting_reference)
+	if (
+		parent.docstatus != 1 or parent.based_on != "Item and Warehouse"
+		or parent.company != doc.company or parent.get(boundary.POINTER)
+	):
+		operation.reject(_i18n("库存重算的总账子任务来源不一致"), "stock_repost_gl_parent_invalid")
+	return parent
+
+
+def _native_gl_child(doc):
+	"""Creation authority exists only during the audited native GL dispatcher."""
+	context = _gl_creation.get()
+	if not context:
+		return False
+	try:
+		if (
+			(doc.voucher_type, doc.voucher_no) not in context["expected"]
+			or doc.reposting_reference != context["parent"].name
+		):
+			progress._reject("purchase_reversal_native_scope_expanded")
+		parent = _gl_parent(doc)
+		if parent is None or not _preserves_submitted_task(context["parent"], parent):
+			progress._reject("purchase_reversal_task_changed")
+	except Exception:
+		# Native child creation swallows errors; do not lose an out-of-scope
+		# attempt just because every originally expected child also exists.
+		context["invalid"] = True
+		raise
+	return True
+
+
+def _task_scopes(doc, *, allow_disabled_warehouses=False):
+	from . import purchase_payment_service as service
+	from .purchase_reversal_scope import collect_boundary_scope, collect_repost_pair_scope
 
 	if doc.based_on == "Item and Warehouse":
 		service._read("Item", doc.item_code, {"stock_uom", "is_stock_item"})
 		warehouse = service._read("Warehouse", doc.warehouse, {"company", "is_group", "disabled"})
-		if warehouse.company != doc.company or warehouse.is_group or warehouse.disabled:
-			progress._reject("purchase_reversal_scope_invalid")
-		return (collect_repost_pair_scope(doc),), ()
+		if warehouse.company != doc.company:
+			operation.reject(_i18n("库存重算任务与仓库所属公司不一致"), "stock_repost_warehouse_company_mismatch")
+		if warehouse.is_group:
+			operation.reject(_i18n("库存重算不能使用分组仓库"), "stock_repost_group_warehouse")
+		if warehouse.disabled and not allow_disabled_warehouses:
+			operation.reject(
+				_i18n("停用仓库仅允许范围未改变的已提交历史重算任务"), "stock_repost_disabled_warehouse",
+			)
+		return (collect_repost_pair_scope(doc, allow_disabled_warehouses=allow_disabled_warehouses),), ()
 	if doc.based_on != "Transaction" or not doc.voucher_type or not doc.voucher_no:
 		progress._reject("purchase_reversal_scope_invalid")
 	source = service._read(doc.voucher_type, doc.voucher_no)
+	parent = _gl_parent(doc) if allow_disabled_warehouses else None
+	if parent is not None:
+		return (collect_boundary_scope(source, current=True, allow_disabled_warehouses=True),), (source, parent)
 	return tuple(boundary._scopes((source,), current=True, opaque=False)), (source,)
 
 
@@ -325,8 +390,11 @@ def task_boundary(doc, *, creating=False):
 				doc.company = service._read(doc.voucher_type, doc.voucher_no, {"company"}).company
 			roots = (doc, old) if old else (doc,)
 			scopes, sources = [], []
+			historical = (not creating and _preserves_submitted_task(doc, old)) or (
+				(creating or not old or old.docstatus == 0) and _native_gl_child(doc)
+			)
 			for task in roots:
-				ranges, documents = _task_scopes(task)
+				ranges, documents = _task_scopes(task, allow_disabled_warehouses=historical)
 				scopes.extend(ranges)
 				sources.extend(documents)
 			keys = boundary._scope_keys(scopes, (*sources, *roots))
@@ -334,8 +402,11 @@ def task_boundary(doc, *, creating=False):
 				current_old = boundary._persisted(doc, current=True)
 				boundary.check_pointer(doc, current_old, creating=creating)
 				fresh, current_sources = [], []
+				historical = (not creating and _preserves_submitted_task(doc, current_old)) or (
+					(creating or not current_old or current_old.docstatus == 0) and _native_gl_child(doc)
+				)
 				for task in (doc, current_old) if current_old else (doc,):
-					ranges, documents = _task_scopes(task)
+					ranges, documents = _task_scopes(task, allow_disabled_warehouses=historical)
 					fresh.extend(ranges)
 					current_sources.extend(documents)
 				if not boundary._scope_keys(fresh, (*current_sources, *roots)) <= keys:
@@ -430,6 +501,7 @@ class Receipt:
 
 
 def _unowned(doc, native):
+	from . import purchase_payment_service as service
 	from .purchase_reversal_scope import collect_boundary_scope, collect_repost_pair_scope
 
 	# Item/Warehouse RIVs have no voucher fields: their actual durable pair is
@@ -445,7 +517,10 @@ def _unowned(doc, native):
 					limit=1,
 					for_update=True,
 				)
-				footprint = collect_repost_pair_scope(current) if pending else None
+				footprint = (
+					collect_repost_pair_scope(current, allow_disabled_warehouses=current.docstatus == 1)
+					if pending else None
+				)
 				keys = (
 					boundary._scope_keys((footprint,), ())
 					if footprint
@@ -459,9 +534,16 @@ def _unowned(doc, native):
 					return native(current)
 			if current.voucher_type and frappe.db.exists(current.voucher_type, current.voucher_no):
 				source = frappe.get_doc(current.voucher_type, current.voucher_no)
-				footprint = collect_boundary_scope(source)
-				with boundary.acquire(boundary._scope_keys((footprint,), (source,))):
-					boundary._check_pending((footprint,), (source,))
+				parent = _gl_parent(current) if current.docstatus == 1 else None
+				if parent:
+					with service.current_reads():
+						source = service._read(current.voucher_type, current.voucher_no)
+				footprint = collect_boundary_scope(source, **(
+					{"current": True, "allow_disabled_warehouses": True} if parent else {}
+				))
+				scopes, sources = (footprint,), (source, parent) if parent else (source,)
+				with boundary.acquire(boundary._scope_keys(scopes, sources)):
+					boundary._check_pending(scopes, sources)
 					return native(current)
 			return native(current)
 
@@ -549,11 +631,18 @@ def repost(doc):
 
 
 def repost_gl(doc):
+	import erpnext
+	from . import purchase_payment_service as service
+	from .purchase_reversal_scope import MAX_VOUCHERS
+
 	riv = sys.modules["erpnext.stock.doctype.repost_item_valuation.repost_item_valuation"]
 	owner = progress.owner()
-	if owner is not None:
-		import erpnext
-
+	perpetual = erpnext.is_perpetual_inventory_enabled(doc.company)
+	separate = bool(
+		perpetual and doc.based_on == "Item and Warehouse" and not doc.repost_only_accounting_ledgers
+		and frappe.db.get_single_value("Stock Reposting Settings", "enable_separate_reposting_for_gl")
+	)
+	if owner is not None or separate:
 		expected = (
 			(
 				[(doc.voucher_type, doc.voucher_no)]
@@ -562,15 +651,49 @@ def repost_gl(doc):
 					set(riv._get_directly_dependent_vouchers(doc)) | set(riv.get_affected_transactions(doc))
 				)
 			)
-			if erpnext.is_perpetual_inventory_enabled(doc.company)
+			if perpetual
 			else []
 		)
+	if owner is not None:
 		allowed = {(row["doctype"], row["name"]) for row in owner["context"]["reversal"]["scope"]["vouchers"]}
 		if not set(expected) <= allowed:
 			progress._reject("purchase_reversal_native_scope_expanded")
 		owner["expected"] = [list(value) for value in expected]
 		owner["progress"]["tasks"][doc.name]["expected"] = owner["expected"]
-	return riv._dlp_reversal_original_repost_gl_entries(doc)
+	if not separate:
+		return riv._dlp_reversal_original_repost_gl_entries(doc)
+	if len(expected) > MAX_VOUCHERS:
+		progress._reject("purchase_reversal_native_scope_expanded")
+	token = None
+	creation = None
+	if owner is None:
+		with service.current_reads():
+			parent = service._read("Repost Item Valuation", doc.name)
+		if not _preserves_submitted_task(doc, parent) or parent.get(boundary.POINTER):
+			progress._reject("purchase_reversal_task_changed")
+		creation = {"parent": parent, "expected": set(expected), "invalid": False}
+		token = _gl_creation.set(creation)
+	try:
+		result = riv._dlp_reversal_original_repost_gl_entries(doc)
+		# Native child creation catches Exception. Verify durable coverage before
+		# its caller can mark the parent Completed; old Completed/Skipped children
+		# cannot stand in for this run's missing queued work.
+		children = frappe.db.get_values("Repost Item Valuation", {
+			"reposting_reference": doc.name, "company": doc.company, "docstatus": 1,
+			"based_on": "Transaction", "repost_only_accounting_ledgers": 1, "status": "Queued",
+		}, ["voucher_type", "voucher_no", "recreate_stock_ledgers", "recalculate_valuation_rate",
+			"via_landed_cost_voucher"], as_dict=True, limit=MAX_VOUCHERS + 1, for_update=True)
+		covered = {(row.voucher_type, row.voucher_no) for row in children if not (
+			row.recreate_stock_ledgers or row.recalculate_valuation_rate or row.via_landed_cost_voucher
+		)}
+		if len(children) > MAX_VOUCHERS or not set(expected) <= covered or (creation and creation["invalid"]):
+			operation.reject(
+				_i18n("库存重算的总账子任务未完整创建，请核查后重试"), "stock_repost_gl_children_incomplete",
+			)
+		return result
+	finally:
+		if token is not None:
+			_gl_creation.reset(token)
 
 
 def toggle(gl_map):

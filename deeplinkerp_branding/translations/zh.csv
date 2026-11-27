@@ -1589,5 +1589,10 @@ Applying job template...,正在应用岗位模板……,Permission assignment
 About {0},{0}的用途说明,Permission assignment
 View permissions for {0},查看{0}的权限明细,Permission assignment
 Configuration help,配置说明,Permission assignment
+库存重算任务与仓库所属公司不一致,库存重算任务与仓库所属公司不一致
+库存重算不能使用分组仓库,库存重算不能使用分组仓库
+停用仓库仅允许范围未改变的已提交历史重算任务,停用仓库仅允许范围未改变的已提交历史重算任务
+库存重算的总账子任务来源不一致,库存重算的总账子任务来源不一致
+库存重算的总账子任务未完整创建，请核查后重试,库存重算的总账子任务未完整创建，请核查后重试
 
 AI Model Settings,AI 模型设置
