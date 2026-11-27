@@ -156,6 +156,68 @@ def make_record(origin="mx"):
     return record, source, lines
 
 
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+@pytest.mark.parametrize("scenario", ["valid", "named", "matched", "manual", "stale", "old_version", "unavailable"])
+def test_virtual_group_is_opt_in_and_preserves_original_ownership_and_validity(monkeypatch, origin, scenario):
+    from deeplinkerp_branding.services import regional_expense_automatic as automatic
+    record, source, lines = make_record(origin)
+    lines[0]["source_entity"] = "Named source" if scenario == "named" else ""
+    record.facts_json = s.encode([source, lines])
+    entry = dict(line_key="original", region="pending", company="", amount="100.00", management_category="",
+        assignment_mode="manual" if scenario == "manual" else "automatic", assignment_issue="unmapped_company",
+        assignment_version="old" if scenario == "old_version" else "v1", source_available=scenario != "unavailable",
+        matched_company="China A" if scenario == "matched" else "")
+    record.allocations_json = s.encode([entry])
+    if scenario == "stale": record.state = "stale"
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda: {})
+    monkeypatch.setattr(automatic, "configuration", lambda _: {"version": "v1"})
+    context = {"companies": {"China A", "Mexico B"}, "manager": True}
+    legacy = s.management_projection(context, include_legacy=False)[1][0]
+    assert legacy["amount"] is None and legacy["is_group_expense"] == 0
+    row = s.management_projection(context, include_legacy=False, group_unassigned=True)[1][0]
+    grouped = scenario not in {"named", "matched", "manual"}
+    assert row["company"] == "" and row["is_group_expense"] == int(grouped)
+    assert row["amount"] == ("100.00" if scenario == "valid" else None)
+    if scenario != "valid": assert "regional_allocation" in row["issues"]
+    assert not s.management_projection({**context, "manager": False}, include_legacy=False, group_unassigned=True)[1]
+
+
+@pytest.mark.parametrize("origin", ["cn", "mx"])
+@pytest.mark.parametrize("label,mappings,expected", [
+    ("Salaries", [], "salary"),
+    ("Services", [{"kind": "operating", "source_path": ["Services"], "category": "service"}], "service"),
+    ("Unknown item", [], ""),
+])
+def test_group_projection_uses_current_classification_without_changing_allocations(monkeypatch, origin, label, mappings, expected):
+    from budget.services import cn_approval_management_rules as rules
+    from deeplinkerp_branding.services import regional_expense_automatic as automatic
+    record, source, lines = make_record(origin)
+    lines[0].update(source_entity="", classification_path=s.encode([{"label": label}]))
+    record.facts_json = s.encode([source, lines])
+    record.allocations_json = s.encode([dict(line_key="original", region="pending", company="", amount="100.00",
+        management_category="", assignment_mode="automatic", assignment_issue="unmapped_company",
+        assignment_version="v1", source_available=True, matched_company="")])
+    original = record.allocations_json
+    monkeypatch.setattr(s, "records", lambda: [record])
+    monkeypatch.setattr(mx, "_settings", lambda: {})
+    monkeypatch.setattr(automatic, "configuration", lambda _: {"version": "v1"})
+    configured = {**rules.defaults(), "category_mappings": mappings}
+    context = {"companies": {"China A", "Mexico B"}, "manager": True}
+    def projected(**kwargs):
+        return s.management_projection(context, include_legacy=False, management_rules=configured, **kwargs)[1][0]
+    row = projected(group_unassigned=True)
+    assert row["is_group_expense"] == 1 and row["company"] == ""
+    assert row["management_category"] == expected and row["amount"] == "100.00"
+    assert ("management_category" in row["issues"]) is (not expected)
+    assert projected()["management_category"] == ""  # Legacy projection remains opt-in.
+    record.state = "stale"
+    stale = projected(group_unassigned=True)
+    assert stale["management_category"] == expected and stale["amount"] is None
+    assert "regional_allocation" in stale["issues"]
+    assert record.allocations_json == original
+
+
 def test_unified_projection_returns_each_split_once_and_respects_permissions(monkeypatch):
     record, _, _ = make_record()
     monkeypatch.setattr(s, "records", lambda: [record])

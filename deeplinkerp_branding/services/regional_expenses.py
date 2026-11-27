@@ -436,7 +436,7 @@ def cn_projection(context):
 
 
 def management_projection(context, *, regions=("cn", "mx"), include_legacy=True, submission_fallback=False,
-        management_rules=None):
+        management_rules=None, group_unassigned=False):
     """Read allocations once; permissions apply before returning any line."""
     from budget.services.cn_approval_management_rules import CATEGORIES, classify
     from . import regional_expense_automatic as automatic
@@ -479,24 +479,27 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
             if not pending and (entry["region"] not in regions or entry["company"] not in context["companies"]):
                 continue
             original = originals.get(entry["line_key"], {})
-            valid = record.state == "confirmed" and bool(original) and not pending
+            group = bool(group_unassigned and pending and auto and original
+                and not entry.get("matched_company") and entry.get("assignment_issue") == "unmapped_company"
+                and not str(original.get("source_entity") or "").strip())
+            valid = record.state == "confirmed" and bool(original) and (not pending or group)
             if auto:
                 valid = valid and entry.get("assignment_version") == current_version and entry.get("source_available", True)
             applied, date_basis = management_date(source.get("cn_application_date"),
                 source.get("application_date_state") or date_states.get(record.name), source.get("request_date"),
                 allow_submission=record.name in fallback_records)
             issues = [] if valid else ["regional_allocation"]
-            if pending:
+            if pending and not group:
                 issues.append("organization")
             if not applied:
                 issues.append("period")
             path = contract.management_path(original)
             kind = "purchase" if source.get("approval_type") == "purchase" else "operating"
             category = entry["management_category"]
-            # MX allocations intentionally store no CN management category.
+            # MX and automatic Group allocations store no management category.
             # The unified report maps source paths at read time; saved CN
             # category decisions and legacy report behavior remain unchanged.
-            if entry["region"] == "mx" and management_rules is not None:
+            if (entry["region"] == "mx" or group) and management_rules is not None:
                 category = classify(kind, path, management_rules)
             if category not in CATEGORIES:
                 issues.append("management_category")
@@ -506,6 +509,7 @@ def management_projection(context, *, regions=("cn", "mx"), include_legacy=True,
                 "kind": kind,
                 "number": source.get("approval_no") or record.process_instance_id, "applicant": source.get("applicant") or "",
                 "company": entry["company"], "entity": original.get("source_entity", ""), "department": "",
+                "is_group_expense": int(group),
                 "scope_company": entry.get("matched_company", "") if pending else "",
                 "application_date": applied, "month": applied[:7] if applied else None, "status": source["approval_status"],
                 "date_basis": date_basis,
